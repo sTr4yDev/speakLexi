@@ -1,0 +1,19 @@
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { CreatePlanningForm } from "@/components/teacher/create-planning-form"
+
+export default function NewPlanningPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-balance">Nueva Planificación</h1>
+          <p className="mt-1 text-muted-foreground">Crea un nuevo plan de contenido educativo en 3 pasos</p>
+        </div>
+
+        <CreatePlanningForm />
+      </main>
+    </div>
+  )
+}

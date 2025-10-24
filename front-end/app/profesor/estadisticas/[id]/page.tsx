@@ -1,0 +1,208 @@
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { ArrowLeft, TrendingUp, TrendingDown, Target, Clock, Award, BookOpen } from "lucide-react"
+import Link from "next/link"
+
+export default function EstadisticasAlumnoPage({ params }: { params: { id: string } }) {
+  // Mock data for individual student
+  const student = {
+    id: params.id,
+    name: "María García",
+    email: "maria.garcia@email.com",
+    level: "Intermedio",
+    course: "Inglés B1",
+    enrolledDate: "2024-09-15",
+    lastActive: "Hace 2 horas",
+    stats: {
+      totalLessons: 45,
+      completedLessons: 34,
+      totalXP: 2450,
+      currentStreak: 12,
+      averageScore: 87,
+      timeSpent: "18.5h",
+    },
+  }
+
+  const recentActivity = [
+    { lesson: "Present Perfect", score: 92, date: "2025-01-19", time: "25 min" },
+    { lesson: "Phrasal Verbs", score: 78, date: "2025-01-18", time: "30 min" },
+    { lesson: "Conditional Sentences", score: 95, date: "2025-01-17", time: "28 min" },
+    { lesson: "Passive Voice", score: 85, date: "2025-01-16", time: "22 min" },
+  ]
+
+  const skillsBreakdown = [
+    { skill: "Vocabulario", score: 90, trend: "up" },
+    { skill: "Gramática", score: 85, trend: "up" },
+    { skill: "Comprensión Auditiva", score: 82, trend: "down" },
+    { skill: "Pronunciación", score: 88, trend: "up" },
+    { skill: "Escritura", score: 75, trend: "neutral" },
+  ]
+
+  const areasToImprove = [
+    "Comprensión auditiva de conversaciones rápidas",
+    "Uso de tiempos verbales compuestos",
+    "Vocabulario técnico y profesional",
+  ]
+
+  return (
+    <div className="min-h-screen bg-background">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Button variant="ghost" asChild className="mb-4">
+            <Link href="/profesor/estadisticas">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver a Estadísticas
+            </Link>
+          </Button>
+          <div className="flex items-start gap-4">
+            <Avatar className="h-16 w-16">
+              <AvatarFallback className="text-xl bg-primary text-primary-foreground">
+                {student.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold">{student.name}</h1>
+              <p className="text-muted-foreground">{student.email}</p>
+              <div className="flex gap-2 mt-2">
+                <Badge>{student.level}</Badge>
+                <Badge variant="outline">{student.course}</Badge>
+              </div>
+            </div>
+            <div className="text-right text-sm text-muted-foreground">
+              <p>Inscrito: {student.enrolledDate}</p>
+              <p>Última actividad: {student.lastActive}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Progreso</CardTitle>
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {student.stats.completedLessons}/{student.stats.totalLessons}
+              </div>
+              <Progress value={(student.stats.completedLessons / student.stats.totalLessons) * 100} className="mt-2" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Promedio</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{student.stats.averageScore}%</div>
+              <p className="text-xs text-muted-foreground mt-1">Calificación promedio</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Racha</CardTitle>
+              <Award className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{student.stats.currentStreak} días</div>
+              <p className="text-xs text-muted-foreground mt-1">{student.stats.totalXP} XP total</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tiempo</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{student.stats.timeSpent}</div>
+              <p className="text-xs text-muted-foreground mt-1">Tiempo total de estudio</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Skills Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Desglose por Habilidad</CardTitle>
+              <CardDescription>Rendimiento en diferentes áreas</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {skillsBreakdown.map((skill) => (
+                <div key={skill.skill} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{skill.skill}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold">{skill.score}%</span>
+                      {skill.trend === "up" && <TrendingUp className="h-4 w-4 text-green-600" />}
+                      {skill.trend === "down" && <TrendingDown className="h-4 w-4 text-red-600" />}
+                    </div>
+                  </div>
+                  <Progress value={skill.score} />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Actividad Reciente</CardTitle>
+              <CardDescription>Últimas lecciones completadas</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentActivity.map((activity, index) => (
+                  <div key={index} className="flex items-center justify-between border-b pb-3 last:border-0">
+                    <div className="flex-1">
+                      <p className="font-medium">{activity.lesson}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {activity.date} • {activity.time}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={activity.score >= 90 ? "default" : activity.score >= 70 ? "secondary" : "destructive"}
+                    >
+                      {activity.score}%
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Areas to Improve */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Áreas de Mejora</CardTitle>
+            <CardDescription>Recomendaciones basadas en el desempeño</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {areasToImprove.map((area, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="text-primary mt-1">•</span>
+                  <span>{area}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  )
+}

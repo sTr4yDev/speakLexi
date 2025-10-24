@@ -1,0 +1,32 @@
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { LeaderboardTable } from "@/components/gamification/leaderboard-table"
+import { LeaderboardFilters } from "@/components/gamification/leaderboard-filters"
+import { UserRankCard } from "@/components/gamification/user-rank-card"
+
+export default function LeaderboardPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-balance">Clasificación</h1>
+          <p className="mt-1 text-muted-foreground">Compite con otros estudiantes y sube de posición</p>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-4">
+          <aside className="lg:col-span-1">
+            <div className="space-y-6">
+              <UserRankCard />
+              <LeaderboardFilters />
+            </div>
+          </aside>
+
+          <div className="lg:col-span-3">
+            <LeaderboardTable />
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}

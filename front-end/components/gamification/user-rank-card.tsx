@@ -1,0 +1,39 @@
+import { Card } from "@/components/ui/card"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { TrendingUp } from "lucide-react"
+
+export function UserRankCard() {
+  return (
+    <Card className="p-6">
+      <div className="mb-4 text-center">
+        <Avatar className="mx-auto h-16 w-16">
+          <AvatarFallback className="bg-primary text-lg text-primary-foreground">JP</AvatarFallback>
+        </Avatar>
+        <h3 className="mt-3 font-bold">Juan Pérez</h3>
+        <p className="text-sm text-muted-foreground">Nivel 5</p>
+      </div>
+
+      <div className="space-y-3 rounded-xl bg-muted/50 p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Tu Posición</span>
+          <span className="text-2xl font-bold text-primary">#6</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">XP Total</span>
+          <span className="font-bold">1,250</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Cambio</span>
+          <div className="flex items-center gap-1 text-success">
+            <TrendingUp className="h-4 w-4" />
+            <span className="font-bold">+2</span>
+          </div>
+        </div>
+      </div>
+
+      <p className="mt-4 text-center text-sm text-muted-foreground leading-relaxed">
+        Gana 150 XP más para alcanzar el top 5
+      </p>
+    </Card>
+  )
+}

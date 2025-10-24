@@ -1,0 +1,97 @@
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Check, X } from "lucide-react"
+
+interface TrueFalseActivityProps {
+  question: string
+  correctAnswer: boolean
+  explanation?: string
+  onComplete: (correct: boolean) => void
+}
+
+export function TrueFalseActivity({ question, correctAnswer, explanation, onComplete }: TrueFalseActivityProps) {
+  const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null)
+  const [showFeedback, setShowFeedback] = useState(false)
+
+  const handleAnswer = (answer: boolean) => {
+    setSelectedAnswer(answer)
+    setShowFeedback(true)
+    const isCorrect = answer === correctAnswer
+    setTimeout(() => {
+      onComplete(isCorrect)
+    }, 2000)
+  }
+
+  const isCorrect = selectedAnswer === correctAnswer
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h3 className="text-2xl font-bold mb-2">¿Verdadero o Falso?</h3>
+        <p className="text-lg text-muted-foreground">{question}</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 max-w-2xl mx-auto">
+        <Card
+          className={`cursor-pointer transition-all ${
+            selectedAnswer === true
+              ? showFeedback
+                ? isCorrect
+                  ? "border-green-500 bg-green-50 dark:bg-green-950"
+                  : "border-red-500 bg-red-50 dark:bg-red-950"
+                : "border-primary bg-primary/5"
+              : "hover:border-primary hover:bg-accent"
+          }`}
+          onClick={() => !showFeedback && handleAnswer(true)}
+        >
+          <CardContent className="flex items-center justify-center gap-3 p-8">
+            <Check className="h-8 w-8 text-green-600" />
+            <span className="text-2xl font-bold">Verdadero</span>
+          </CardContent>
+        </Card>
+
+        <Card
+          className={`cursor-pointer transition-all ${
+            selectedAnswer === false
+              ? showFeedback
+                ? isCorrect
+                  ? "border-green-500 bg-green-50 dark:bg-green-950"
+                  : "border-red-500 bg-red-50 dark:bg-red-950"
+                : "border-primary bg-primary/5"
+              : "hover:border-primary hover:bg-accent"
+          }`}
+          onClick={() => !showFeedback && handleAnswer(false)}
+        >
+          <CardContent className="flex items-center justify-center gap-3 p-8">
+            <X className="h-8 w-8 text-red-600" />
+            <span className="text-2xl font-bold">Falso</span>
+          </CardContent>
+        </Card>
+      </div>
+
+      {showFeedback && (
+        <Card
+          className={
+            isCorrect ? "border-green-500 bg-green-50 dark:bg-green-950" : "border-red-500 bg-red-50 dark:bg-red-950"
+          }
+        >
+          <CardContent className="p-6">
+            <div className="flex items-start gap-3">
+              {isCorrect ? (
+                <Check className="h-6 w-6 text-green-600 flex-shrink-0 mt-1" />
+              ) : (
+                <X className="h-6 w-6 text-red-600 flex-shrink-0 mt-1" />
+              )}
+              <div>
+                <p className="font-semibold mb-1">{isCorrect ? "¡Correcto!" : "Incorrecto"}</p>
+                {explanation && <p className="text-sm text-muted-foreground">{explanation}</p>}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}

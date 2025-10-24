@@ -1,0 +1,368 @@
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
+import { ChevronRight, ChevronLeft, Check, Target, TrendingDown, BookOpen } from "lucide-react"
+
+export function CreatePlanningForm() {
+  const [step, setStep] = useState(1)
+  const { toast } = useToast()
+  const router = useRouter()
+
+  // Step 1 data
+  const [title, setTitle] = useState("")
+  const [course, setCourse] = useState("")
+  const [level, setLevel] = useState("")
+  const [description, setDescription] = useState("")
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([])
+
+  // Step 2 data
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([])
+
+  // Step 3 data
+  const [selectedLessons, setSelectedLessons] = useState<string[]>([])
+
+  const improvementAreas = [
+    { id: "grammar", label: "Gramática", students: 12 },
+    { id: "vocabulary", label: "Vocabulario", students: 8 },
+    { id: "pronunciation", label: "Pronunciación", students: 15 },
+    { id: "listening", label: "Comprensión Auditiva", students: 10 },
+    { id: "writing", label: "Escritura", students: 6 },
+  ]
+
+  const suggestions = [
+    {
+      id: "1",
+      title: "Reforzar Tiempos Verbales",
+      reason: "45% de errores en past simple",
+      priority: "alta",
+    },
+    {
+      id: "2",
+      title: "Práctica de Conversación",
+      reason: "Baja participación en actividades orales",
+      priority: "media",
+    },
+    {
+      id: "3",
+      title: "Vocabulario Técnico",
+      reason: "Solicitudes frecuentes de estudiantes",
+      priority: "media",
+    },
+  ]
+
+  const availableLessons = [
+    { id: "1", title: "Past Simple - Verbos Regulares", level: "A2", duration: "45 min" },
+    { id: "2", title: "Past Simple - Verbos Irregulares", level: "A2", duration: "50 min" },
+    { id: "3", title: "Conversación: Daily Routines", level: "B1", duration: "40 min" },
+    { id: "4", title: "Vocabulario: Business English", level: "B2", duration: "35 min" },
+    { id: "5", title: "Listening Practice: Interviews", level: "B1", duration: "30 min" },
+  ]
+
+  const handleAreaToggle = (areaId: string) => {
+    setSelectedAreas((prev) => (prev.includes(areaId) ? prev.filter((id) => id !== areaId) : [...prev, areaId]))
+  }
+
+  const handleSuggestionToggle = (suggestionId: string) => {
+    setSelectedSuggestions((prev) =>
+      prev.includes(suggestionId) ? prev.filter((id) => id !== suggestionId) : [...prev, suggestionId],
+    )
+  }
+
+  const handleLessonToggle = (lessonId: string) => {
+    setSelectedLessons((prev) => (prev.includes(lessonId) ? prev.filter((id) => id !== lessonId) : [...prev, lessonId]))
+  }
+
+  const handleNext = () => {
+    if (step === 1 && (!title || !course || !level || selectedAreas.length === 0)) {
+      toast({
+        title: "Campos incompletos",
+        description: "Por favor completa todos los campos requeridos",
+        variant: "destructive",
+      })
+      return
+    }
+    if (step === 2 && selectedSuggestions.length === 0) {
+      toast({
+        title: "Selección requerida",
+        description: "Selecciona al menos una sugerencia",
+        variant: "destructive",
+      })
+      return
+    }
+    setStep(step + 1)
+  }
+
+  const handleBack = () => {
+    setStep(step - 1)
+  }
+
+  const handleSubmit = () => {
+    if (selectedLessons.length === 0) {
+      toast({
+        title: "Lecciones requeridas",
+        description: "Asocia al menos una lección al plan",
+        variant: "destructive",
+      })
+      return
+    }
+
+    toast({
+      title: "Plan creado exitosamente",
+      description: "El plan ha sido guardado y está listo para activarse",
+    })
+    router.push("/profesor/planificacion")
+  }
+
+  return (
+    <Card className="mx-auto max-w-4xl">
+      <CardHeader>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex gap-2">
+            {[1, 2, 3].map((s) => (
+              <div
+                key={s}
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+                  s === step
+                    ? "bg-primary text-primary-foreground"
+                    : s < step
+                      ? "bg-green-500 text-white"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {s < step ? <Check className="h-4 w-4" /> : s}
+              </div>
+            ))}
+          </div>
+          <Badge variant="outline">Paso {step} de 3</Badge>
+        </div>
+        <CardTitle>
+          {step === 1 && "Información Básica"}
+          {step === 2 && "Análisis y Sugerencias"}
+          {step === 3 && "Asociar Lecciones"}
+        </CardTitle>
+        <CardDescription>
+          {step === 1 && "Completa la información básica del plan y selecciona áreas de mejora"}
+          {step === 2 && "Revisa el análisis de desempeño y acepta las sugerencias"}
+          {step === 3 && "Asocia las lecciones que formarán parte de este plan"}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        {/* Step 1: Basic Information */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="title">Título del Plan *</Label>
+              <Input
+                id="title"
+                placeholder="Ej: Unidad 5: Tiempos Verbales"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="course">Curso *</Label>
+                <Select value={course} onValueChange={setCourse}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un curso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="english-beginner">Inglés Principiante</SelectItem>
+                    <SelectItem value="english-intermediate">Inglés Intermedio</SelectItem>
+                    <SelectItem value="english-advanced">Inglés Avanzado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="level">Nivel *</Label>
+                <Select value={level} onValueChange={setLevel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un nivel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A1">A1 - Principiante</SelectItem>
+                    <SelectItem value="A2">A2 - Elemental</SelectItem>
+                    <SelectItem value="B1">B1 - Intermedio</SelectItem>
+                    <SelectItem value="B2">B2 - Intermedio Alto</SelectItem>
+                    <SelectItem value="C1">C1 - Avanzado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea
+                id="description"
+                placeholder="Describe los objetivos y contenido del plan..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label>Áreas de Mejora *</Label>
+              <p className="text-sm text-muted-foreground">
+                Selecciona las áreas donde los estudiantes necesitan refuerzo
+              </p>
+              <div className="space-y-2">
+                {improvementAreas.map((area) => (
+                  <div key={area.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id={area.id}
+                        checked={selectedAreas.includes(area.id)}
+                        onCheckedChange={() => handleAreaToggle(area.id)}
+                      />
+                      <div>
+                        <Label htmlFor={area.id} className="cursor-pointer font-medium">
+                          {area.label}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">{area.students} estudiantes con dificultad</p>
+                      </div>
+                    </div>
+                    <TrendingDown className="h-4 w-4 text-orange-500" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Analysis and Suggestions */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <div className="rounded-lg bg-blue-50 p-4">
+              <div className="flex items-start gap-3">
+                <Target className="mt-0.5 h-5 w-5 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-blue-900">Análisis de Desempeño</h3>
+                  <p className="mt-1 text-sm text-blue-700">
+                    Basado en las áreas seleccionadas, hemos identificado las siguientes lecciones problemáticas y
+                    generado sugerencias de mejora.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Sugerencias de Contenido</Label>
+              <p className="text-sm text-muted-foreground">Selecciona las sugerencias que deseas incluir en el plan</p>
+              <div className="space-y-3">
+                {suggestions.map((suggestion) => (
+                  <div key={suggestion.id} className="rounded-lg border p-4">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        id={`suggestion-${suggestion.id}`}
+                        checked={selectedSuggestions.includes(suggestion.id)}
+                        onCheckedChange={() => handleSuggestionToggle(suggestion.id)}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor={`suggestion-${suggestion.id}`} className="cursor-pointer font-medium">
+                            {suggestion.title}
+                          </Label>
+                          <Badge
+                            variant={suggestion.priority === "alta" ? "destructive" : "secondary"}
+                            className="text-xs"
+                          >
+                            {suggestion.priority}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground">{suggestion.reason}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Associate Lessons */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <div className="rounded-lg bg-green-50 p-4">
+              <div className="flex items-start gap-3">
+                <BookOpen className="mt-0.5 h-5 w-5 text-green-600" />
+                <div>
+                  <h3 className="font-semibold text-green-900">Lecciones Disponibles</h3>
+                  <p className="mt-1 text-sm text-green-700">
+                    Selecciona las lecciones que formarán parte de este plan de contenido.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {availableLessons.map((lesson) => (
+                <div key={lesson.id} className="rounded-lg border p-4">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id={`lesson-${lesson.id}`}
+                      checked={selectedLessons.includes(lesson.id)}
+                      onCheckedChange={() => handleLessonToggle(lesson.id)}
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor={`lesson-${lesson.id}`} className="cursor-pointer font-medium">
+                        {lesson.title}
+                      </Label>
+                      <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+                        <span>Nivel: {lesson.level}</span>
+                        <span>•</span>
+                        <span>Duración: {lesson.duration}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {selectedLessons.length > 0 && (
+              <div className="rounded-lg bg-muted p-4">
+                <p className="text-sm font-medium">
+                  {selectedLessons.length}{" "}
+                  {selectedLessons.length === 1 ? "lección seleccionada" : "lecciones seleccionadas"}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Navigation Buttons */}
+        <div className="mt-8 flex justify-between">
+          <Button variant="outline" onClick={handleBack} disabled={step === 1}>
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Anterior
+          </Button>
+
+          {step < 3 ? (
+            <Button onClick={handleNext}>
+              Siguiente
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit}>
+              <Check className="mr-2 h-4 w-4" />
+              Crear Plan
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}

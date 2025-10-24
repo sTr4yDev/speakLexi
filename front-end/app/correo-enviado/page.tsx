@@ -1,0 +1,47 @@
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { BookOpen, Mail } from "lucide-react"
+import Link from "next/link"
+
+export default function EmailSentPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+      <div className="container mx-auto flex min-h-screen flex-col items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md">
+          {/* Logo */}
+          <Link href="/" className="mb-8 flex items-center justify-center gap-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <BookOpen className="h-7 w-7" />
+            </div>
+            <span className="text-3xl font-bold">SpeakLexi</span>
+          </Link>
+
+          <Card className="p-8">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-success/10">
+                <Mail className="h-10 w-10 text-success" />
+              </div>
+              <h1 className="text-2xl font-bold text-balance">Correo Enviado</h1>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                Hemos enviado un enlace de recuperación a tu correo electrónico. Por favor revisa tu bandeja de entrada
+                y sigue las instrucciones.
+              </p>
+
+              <div className="mt-6 space-y-3">
+                <Link href="/login" className="block">
+                  <Button className="w-full">Volver al Inicio de Sesión</Button>
+                </Link>
+                <p className="text-sm text-muted-foreground">
+                  ¿No recibiste el correo?{" "}
+                  <Link href="/recuperar-contrasena" className="font-medium text-primary hover:underline">
+                    Reenviar enlace
+                  </Link>
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}

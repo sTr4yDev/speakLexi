@@ -1,0 +1,43 @@
+import { VerifyEmailForm } from "@/components/auth/verify-email-form"
+import { BookOpen } from "lucide-react"
+import Link from "next/link"
+
+export default function VerifyEmailPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+      <div className="container mx-auto flex min-h-screen flex-col items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md">
+          {/* Logo */}
+          <Link href="/" className="mb-8 flex items-center justify-center gap-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <BookOpen className="h-7 w-7" />
+            </div>
+            <span className="text-3xl font-bold">SpeakLexi</span>
+          </Link>
+
+          {/* Verify Email Card */}
+          <div className="rounded-2xl bg-card p-8 shadow-lg">
+            <div className="mb-6 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <svg className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-balance">Verifica tu Email</h1>
+              <p className="mt-2 text-muted-foreground leading-relaxed">
+                Hemos enviado un código de 6 dígitos a tu correo electrónico
+              </p>
+            </div>
+
+            <VerifyEmailForm />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

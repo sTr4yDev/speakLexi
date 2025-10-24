@@ -1,0 +1,69 @@
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import { MessageSquare } from "lucide-react"
+
+export function RecentFeedback() {
+  const feedback = [
+    {
+      id: 1,
+      student: "María García",
+      lesson: "Daily Routines",
+      comment: "No entiendo el uso de 'usually' vs 'always'",
+      status: "pending",
+      date: "Hace 2 horas",
+    },
+    {
+      id: 2,
+      student: "Carlos Rodríguez",
+      lesson: "Past Tense",
+      comment: "Excelente lección, muy clara",
+      status: "responded",
+      date: "Hace 1 día",
+    },
+    {
+      id: 3,
+      student: "Ana Martínez",
+      lesson: "Colors and Shapes",
+      comment: "Necesito más práctica con pronunciación",
+      status: "pending",
+      date: "Hace 3 horas",
+    },
+  ]
+
+  return (
+    <Card className="p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="font-bold">Comentarios Recientes</h3>
+        <Badge variant="secondary">{feedback.filter((f) => f.status === "pending").length} pendientes</Badge>
+      </div>
+
+      <div className="space-y-3">
+        {feedback.map((item) => (
+          <Link key={item.id} href={`/profesor/retroalimentacion/${item.id}`}>
+            <div
+              className={`rounded-lg border-2 p-3 transition-all ${
+                item.status === "pending"
+                  ? "border-accent/30 bg-accent/5 hover:border-accent"
+                  : "border-border bg-card hover:border-primary/50"
+              }`}
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{item.student}</span>
+                </div>
+                <Badge variant={item.status === "pending" ? "default" : "secondary"} className="text-xs">
+                  {item.status === "pending" ? "Pendiente" : "Respondido"}
+                </Badge>
+              </div>
+              <p className="mb-2 text-sm text-muted-foreground">{item.lesson}</p>
+              <p className="text-sm leading-relaxed">{item.comment}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{item.date}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Card>
+  )
+}

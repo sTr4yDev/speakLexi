@@ -1,0 +1,128 @@
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Lock, CheckCircle2 } from "lucide-react"
+
+export function AchievementsList() {
+  const achievements = [
+    {
+      id: 1,
+      name: "First Steps",
+      description: "Complete your first lesson",
+      icon: "🎯",
+      unlocked: true,
+      progress: 100,
+      xpReward: 50,
+      unlockedAt: "2024-01-15",
+    },
+    {
+      id: 2,
+      name: "Week Warrior",
+      description: "Maintain a 7-day streak",
+      icon: "🔥",
+      unlocked: true,
+      progress: 100,
+      xpReward: 100,
+      unlockedAt: "2024-01-20",
+    },
+    {
+      id: 3,
+      name: "Dedicated Learner",
+      description: "Complete 10 lessons",
+      icon: "📚",
+      unlocked: false,
+      progress: 50,
+      current: 5,
+      total: 10,
+      xpReward: 200,
+    },
+    {
+      id: 4,
+      name: "Perfect Score",
+      description: "Get 100% on any lesson",
+      icon: "⭐",
+      unlocked: false,
+      progress: 0,
+      current: 0,
+      total: 1,
+      xpReward: 75,
+    },
+    {
+      id: 5,
+      name: "Rising Star",
+      description: "Reach 500 XP",
+      icon: "🌟",
+      unlocked: false,
+      progress: 40,
+      current: 200,
+      total: 500,
+      xpReward: 150,
+    },
+    {
+      id: 6,
+      name: "Social Butterfly",
+      description: "Reach top 10 in leaderboard",
+      icon: "🦋",
+      unlocked: false,
+      progress: 0,
+      current: 0,
+      total: 1,
+      xpReward: 300,
+    },
+  ]
+
+  return (
+    <Card className="p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-xl font-bold">Tus Logros</h2>
+        <Badge variant="secondary">
+          {achievements.filter((a) => a.unlocked).length} / {achievements.length}
+        </Badge>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {achievements.map((achievement) => (
+          <div
+            key={achievement.id}
+            className={`rounded-xl border-2 p-4 transition-all ${
+              achievement.unlocked ? "border-success/30 bg-success/5" : "border-border bg-card hover:border-primary/50"
+            }`}
+          >
+            <div className="mb-3 flex items-start justify-between">
+              <div
+                className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${
+                  achievement.unlocked ? "bg-success/10" : "bg-muted"
+                }`}
+              >
+                {achievement.unlocked ? achievement.icon : <Lock className="h-5 w-5 text-muted-foreground" />}
+              </div>
+              {achievement.unlocked && <CheckCircle2 className="h-5 w-5 text-success" />}
+            </div>
+
+            <h3 className="font-bold">{achievement.name}</h3>
+            <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{achievement.description}</p>
+
+            {achievement.unlocked ? (
+              <div className="mt-3 flex items-center gap-2">
+                <Badge className="bg-accent text-accent-foreground">+{achievement.xpReward} XP</Badge>
+                <span className="text-xs text-muted-foreground">
+                  Desbloqueado el {new Date(achievement.unlockedAt).toLocaleDateString()}
+                </span>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <div className="mb-1 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">
+                    {achievement.current} / {achievement.total}
+                  </span>
+                  <span className="font-medium">{achievement.progress}%</span>
+                </div>
+                <Progress value={achievement.progress} className="h-2" />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}

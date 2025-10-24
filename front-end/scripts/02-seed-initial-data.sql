@@ -1,0 +1,32 @@
+-- Seed initial data for SpeakLexi
+
+-- Insert sample courses
+INSERT INTO courses (id, name, language, level, description, is_active) VALUES
+  ('550e8400-e29b-41d4-a716-446655440001', 'English Basics', 'English', 'A1', 'Beginner English course for Spanish speakers', true),
+  ('550e8400-e29b-41d4-a716-446655440002', 'English Elementary', 'English', 'A2', 'Elementary English course', true),
+  ('550e8400-e29b-41d4-a716-446655440003', 'English Intermediate', 'English', 'B1', 'Intermediate English course', true),
+  ('550e8400-e29b-41d4-a716-446655440004', 'French Basics', 'French', 'A1', 'Beginner French course', true),
+  ('550e8400-e29b-41d4-a716-446655440005', 'German Basics', 'German', 'A1', 'Beginner German course', true);
+
+-- Insert sample lessons for English Basics
+INSERT INTO lessons (id, course_id, title, description, level, order_index, xp_reward, is_published) VALUES
+  ('660e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440001', 'Greetings and Introductions', 'Learn how to greet people and introduce yourself', 'A1', 1, 10, true),
+  ('660e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440001', 'Numbers 1-20', 'Learn to count from 1 to 20 in English', 'A1', 2, 10, true),
+  ('660e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440001', 'Colors and Shapes', 'Learn basic colors and shapes', 'A1', 3, 10, true),
+  ('660e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440001', 'Family Members', 'Learn vocabulary about family', 'A1', 4, 15, true),
+  ('660e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440001', 'Daily Routines', 'Learn to talk about your daily activities', 'A1', 5, 15, true);
+
+-- Insert sample activities for "Greetings and Introductions" lesson
+INSERT INTO activities (lesson_id, type, question, correct_answer, options, order_index) VALUES
+  ('660e8400-e29b-41d4-a716-446655440001', 'multiple_choice', 'How do you say "Hello" in English?', 'Hello', '["Hello", "Goodbye", "Thank you", "Please"]', 1),
+  ('660e8400-e29b-41d4-a716-446655440001', 'multiple_choice', 'What is the correct response to "How are you?"', 'I am fine, thank you', '["I am fine, thank you", "My name is John", "Goodbye", "Yes, please"]', 2),
+  ('660e8400-e29b-41d4-a716-446655440001', 'fill_blank', 'Complete: "Nice to ___ you"', 'meet', NULL, 3),
+  ('660e8400-e29b-41d4-a716-446655440001', 'multiple_choice', 'How do you introduce yourself?', 'My name is...', '["My name is...", "How are you?", "Goodbye", "Thank you"]', 4);
+
+-- Insert sample achievements
+INSERT INTO achievements (id, name, description, icon, criteria, xp_reward) VALUES
+  ('770e8400-e29b-41d4-a716-446655440001', 'First Steps', 'Complete your first lesson', '🎯', '{"type": "lessons_completed", "count": 1}', 50),
+  ('770e8400-e29b-41d4-a716-446655440002', 'Week Warrior', 'Maintain a 7-day streak', '🔥', '{"type": "streak_days", "count": 7}', 100),
+  ('770e8400-e29b-41d4-a716-446655440003', 'Dedicated Learner', 'Complete 10 lessons', '📚', '{"type": "lessons_completed", "count": 10}', 200),
+  ('770e8400-e29b-41d4-a716-446655440004', 'Perfect Score', 'Get 100% on any lesson', '⭐', '{"type": "perfect_score", "count": 1}', 75),
+  ('770e8400-e29b-41d4-a716-446655440005', 'Rising Star', 'Reach 500 XP', '🌟', '{"type": "total_xp", "count": 500}', 150);

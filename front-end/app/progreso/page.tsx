@@ -1,0 +1,184 @@
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { BookOpen, Clock, Target, TrendingUp, Calendar, Award } from "lucide-react"
+
+export default function ProgresoPage() {
+  // Mock data
+  const weeklyProgress = [
+    { day: "Lun", minutes: 45, lessons: 3 },
+    { day: "Mar", minutes: 30, lessons: 2 },
+    { day: "Mié", minutes: 60, lessons: 4 },
+    { day: "Jue", minutes: 20, lessons: 1 },
+    { day: "Vie", minutes: 50, lessons: 3 },
+    { day: "Sáb", minutes: 0, lessons: 0 },
+    { day: "Dom", minutes: 40, lessons: 2 },
+  ]
+
+  const courseProgress = [
+    { course: "Inglés Básico", progress: 75, lessons: 45, completed: 34 },
+    { course: "Inglés Intermedio", progress: 30, lessons: 60, completed: 18 },
+    { course: "Conversación", progress: 50, lessons: 30, completed: 15 },
+  ]
+
+  const skillsProgress = [
+    { skill: "Vocabulario", level: 85, xp: 850 },
+    { skill: "Gramática", level: 70, xp: 700 },
+    { skill: "Pronunciación", level: 60, xp: 600 },
+    { skill: "Comprensión Auditiva", level: 75, xp: 750 },
+    { skill: "Escritura", level: 55, xp: 550 },
+  ]
+
+  return (
+    <div className="min-h-screen bg-background">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Mi Progreso</h1>
+          <p className="text-muted-foreground">Visualiza tu avance y estadísticas de aprendizaje</p>
+        </div>
+
+        <Tabs defaultValue="general" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="cursos">Por Curso</TabsTrigger>
+            <TabsTrigger value="habilidades">Habilidades</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general" className="space-y-6">
+            {/* Weekly Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Actividad Semanal
+                </CardTitle>
+                <CardDescription>Tu progreso en los últimos 7 días</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end justify-between gap-2 h-48">
+                  {weeklyProgress.map((day) => (
+                    <div key={day.day} className="flex flex-col items-center gap-2 flex-1">
+                      <div className="flex flex-col items-center gap-1 text-xs text-muted-foreground">
+                        <span className="font-medium">{day.minutes}m</span>
+                        <span>{day.lessons} lec</span>
+                      </div>
+                      <div
+                        className="w-full bg-primary rounded-t-md transition-all hover:bg-primary/80"
+                        style={{ height: `${(day.minutes / 60) * 100}%`, minHeight: day.minutes > 0 ? "20px" : "0" }}
+                      />
+                      <span className="text-sm font-medium">{day.day}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Stats Grid */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Lecciones</CardTitle>
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">67</div>
+                  <p className="text-xs text-muted-foreground">+12 esta semana</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Tiempo Total</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">24.5h</div>
+                  <p className="text-xs text-muted-foreground">+3.5h esta semana</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Racha Actual</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">15 días</div>
+                  <p className="text-xs text-muted-foreground">¡Sigue así!</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">XP Total</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">3,450</div>
+                  <p className="text-xs text-muted-foreground">+450 esta semana</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="cursos" className="space-y-6">
+            {courseProgress.map((course) => (
+              <Card key={course.course}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle>{course.course}</CardTitle>
+                      <CardDescription>
+                        {course.completed} de {course.lessons} lecciones completadas
+                      </CardDescription>
+                    </div>
+                    <Badge variant="secondary">{course.progress}%</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Progress value={course.progress} className="h-3" />
+                </CardContent>
+              </Card>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="habilidades" className="space-y-6">
+            {skillsProgress.map((skill) => (
+              <Card key={skill.skill}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <Award className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">{skill.skill}</CardTitle>
+                        <CardDescription>{skill.xp} XP ganados</CardDescription>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="text-lg">
+                      Nivel {Math.floor(skill.level / 10)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Progreso al siguiente nivel</span>
+                      <span className="font-medium">{skill.level % 10}/10</span>
+                    </div>
+                    <Progress value={(skill.level % 10) * 10} className="h-2" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  )
+}

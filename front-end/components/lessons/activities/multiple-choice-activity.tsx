@@ -1,0 +1,74 @@
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { CheckCircle2, XCircle } from "lucide-react"
+
+interface MultipleChoiceActivityProps {
+  question: string
+  options: string[]
+  correctAnswer: number
+  onComplete: (correct: boolean) => void
+}
+
+export function MultipleChoiceActivity({ question, options, correctAnswer, onComplete }: MultipleChoiceActivityProps) {
+  const [selectedOption, setSelectedOption] = useState<number | null>(null)
+  const [submitted, setSubmitted] = useState(false)
+
+  const handleSubmit = () => {
+    if (selectedOption === null) return
+
+    setSubmitted(true)
+    const isCorrect = selectedOption === correctAnswer
+    setTimeout(() => {
+      onComplete(isCorrect)
+      setSelectedOption(null)
+      setSubmitted(false)
+    }, 1500)
+  }
+
+  return (
+    <div>
+      <h2 className="mb-8 text-2xl font-bold text-balance">{question}</h2>
+
+      <div className="mb-8 space-y-3">
+        {options.map((option, index) => {
+          const isSelected = selectedOption === index
+          const isCorrect = index === correctAnswer
+          const showResult = submitted && isSelected
+
+          return (
+            <button
+              key={index}
+              onClick={() => !submitted && setSelectedOption(index)}
+              disabled={submitted}
+              className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+                showResult
+                  ? isCorrect
+                    ? "border-success bg-success/10"
+                    : "border-destructive bg-destructive/10"
+                  : isSelected
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card hover:border-primary hover:bg-primary/5"
+              } ${submitted ? "cursor-not-allowed" : ""}`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-medium">{option}</span>
+                {showResult &&
+                  (isCorrect ? (
+                    <CheckCircle2 className="h-5 w-5 text-success" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-destructive" />
+                  ))}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      <Button onClick={handleSubmit} disabled={selectedOption === null || submitted} className="w-full">
+        {submitted ? "Verificando..." : "Verificar Respuesta"}
+      </Button>
+    </div>
+  )
+}

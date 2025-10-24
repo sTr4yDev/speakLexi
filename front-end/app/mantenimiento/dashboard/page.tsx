@@ -1,0 +1,171 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { AlertTriangle, CheckCircle, Clock, Settings, FileText, Calendar } from "lucide-react"
+import Link from "next/link"
+
+export default function MaintenanceDashboardPage() {
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto flex items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Settings className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">SpeakLexi</h1>
+              <p className="text-xs text-muted-foreground">Panel de Mantenimiento</p>
+            </div>
+          </div>
+
+          <nav className="hidden items-center gap-6 md:flex">
+            <Link href="/mantenimiento/dashboard" className="font-medium text-foreground hover:text-primary">
+              Dashboard
+            </Link>
+            <Link href="/mantenimiento/reportes" className="font-medium text-muted-foreground hover:text-primary">
+              Reportes
+            </Link>
+            <Link href="/mantenimiento/tareas" className="font-medium text-muted-foreground hover:text-primary">
+              Tareas
+            </Link>
+          </nav>
+
+          <Button variant="outline" asChild>
+            <Link href="/login">Cerrar Sesión</Link>
+          </Button>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold">Panel de Mantenimiento</h2>
+          <p className="text-muted-foreground">Gestiona reportes de fallas y tareas programadas</p>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="mb-8 grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Reportes Pendientes</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">12</div>
+              <p className="text-xs text-muted-foreground">+3 desde ayer</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Reportes Resueltos</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">48</div>
+              <p className="text-xs text-muted-foreground">Este mes</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tareas Programadas</CardTitle>
+              <Clock className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">8</div>
+              <p className="text-xs text-muted-foreground">Próximas 7 días</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tiempo Promedio</CardTitle>
+              <Calendar className="h-4 w-4 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">2.4h</div>
+              <p className="text-xs text-muted-foreground">Resolución de reportes</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Recent Reports */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Reportes Recientes</CardTitle>
+              <CardDescription>Últimas fallas reportadas por usuarios</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[
+                  { id: 1, title: "Error al cargar lección", priority: "Alta", status: "Pendiente" },
+                  { id: 2, title: "Audio no reproduce", priority: "Media", status: "En progreso" },
+                  { id: 3, title: "Problema con clasificación", priority: "Baja", status: "Pendiente" },
+                ].map((report) => (
+                  <div key={report.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex-1">
+                      <p className="font-medium">{report.title}</p>
+                      <p className="text-sm text-muted-foreground">Prioridad: {report.priority}</p>
+                    </div>
+                    <span
+                      className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        report.status === "Pendiente" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {report.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <Button variant="outline" className="mt-4 w-full bg-transparent" asChild>
+                <Link href="/mantenimiento/reportes">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Ver Todos los Reportes
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Scheduled Tasks */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tareas Programadas</CardTitle>
+              <CardDescription>Próximas tareas de mantenimiento</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[
+                  { id: 1, title: "Backup de base de datos", date: "Hoy, 23:00", type: "Automática" },
+                  { id: 2, title: "Actualización de servidor", date: "Mañana, 02:00", type: "Manual" },
+                  { id: 3, title: "Limpieza de logs", date: "En 3 días", type: "Automática" },
+                ].map((task) => (
+                  <div key={task.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex-1">
+                      <p className="font-medium">{task.title}</p>
+                      <p className="text-sm text-muted-foreground">{task.date}</p>
+                    </div>
+                    <span
+                      className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        task.type === "Automática" ? "bg-green-100 text-green-700" : "bg-purple-100 text-purple-700"
+                      }`}
+                    >
+                      {task.type}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <Button variant="outline" className="mt-4 w-full bg-transparent" asChild>
+                <Link href="/mantenimiento/tareas">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Ver Todas las Tareas
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </div>
+  )
+}
