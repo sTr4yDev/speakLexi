@@ -16,6 +16,15 @@ class Usuario(db.Model):
     correo_verificado = db.Column(db.Boolean, default=False)
     codigo_verificacion = db.Column(db.String(6))
     expira_verificacion = db.Column(db.DateTime)
+    
+    # ✅ NUEVO: Estado de cuenta
+    estado_cuenta = db.Column(
+        db.String(20), 
+        default='activo', 
+        nullable=False
+    )  # valores: activo, desactivado, eliminado
+    fecha_desactivacion = db.Column(db.DateTime)  # Para saber cuándo se desactivó
+    
     creado_en = db.Column(db.DateTime, default=datetime.utcnow)
     actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -26,6 +35,10 @@ class Usuario(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.contrasena_hash, password)
+    
+    def esta_activo(self):
+        """Verifica si la cuenta está activa"""
+        return self.estado_cuenta == 'activo'
 
 
 class PerfilUsuario(db.Model):

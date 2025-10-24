@@ -1,0 +1,204 @@
+# get_all_urls_fixed.py
+import requests
+from datetime import datetime
+
+def get_tree(user, repo, branch="main"):
+    url = f"https://api.github.com/repos/{user}/{repo}/git/trees/{branch}?recursive=1"
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        tree = response.json()
+        
+        backend_urls = []
+        frontend_urls = []
+        
+        # Carpetas/archivos a IGNORAR
+        ignore_patterns = [
+            'node_modules/',
+            '__pycache__/',
+            '.next/',
+            'venv/',
+            'env/',
+            '.git/',
+            'dist/',
+            'build/',
+            '.env',
+            'package-lock.json',
+            'yarn.lock',
+            '.vercel/',
+            'out/'
+        ]
+        
+        print("🔍 Escaneando proyecto SpeakLexi...\n")
+        
+        for item in tree['tree']:
+            path = item['path']
+            
+            # Ignorar patrones
+            if any(pattern in path for pattern in ignore_patterns):
+                continue
+            
+            raw_url = f"https://raw.githubusercontent.com/{user}/{repo}/{branch}/{path}"
+            
+            # Backend Python (back-end con guión)
+            if path.startswith('back-end/') and path.endswith('.py'):
+                print(f"🐍 Backend: {path}")
+                backend_urls.append({
+                    'path': path,
+                    'url': raw_url
+                })
+            
+            # Frontend (front-end con guión)
+            elif path.startswith('front-end/'):
+                # Next.js/React/TypeScript files
+                if any(path.endswith(ext) for ext in ['.tsx', '.ts', '.jsx', '.js', '.css']):
+                    # Ignorar archivos de configuración
+                    if not any(config in path for config in ['next.config', 'postcss.config', 'tailwind.config']):
+                        print(f"⚛️  Frontend: {path}")
+                        frontend_urls.append({
+                            'path': path,
+                            'url': raw_url
+                        })
+        
+        print("\n" + "="*60)
+        print(f"✅ Backend: {len(backend_urls)} archivos")
+        print(f"✅ Frontend: {len(frontend_urls)} archivos")
+        print(f"✅ Total: {len(backend_urls) + len(frontend_urls)} archivos")
+        print("="*60)
+        
+        # Guardar Backend organizado
+        if backend_urls:
+            models = [u for u in backend_urls if '/models/' in u['path']]
+            services = [u for u in backend_urls if '/services/' in u['path']]
+            routes = [u for u in backend_urls if '/routes/' in u['path']]
+            config = [u for u in backend_urls if '/config/' in u['path']]
+            utils = [u for u in backend_urls if '/utils/' in u['path']]
+            other = [u for u in backend_urls if not any(x in u['path'] for x in ['/models/', '/services/', '/routes/', '/config/', '/utils/'])]
+            
+            with open('urls_backend.txt', 'w', encoding='utf-8') as f:
+                f.write(f"# BACKEND - SpeakLexi (Python/Flask)\n")
+                f.write(f"# Total: {len(backend_urls)} archivos\n")
+                f.write(f"# Generado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                
+                if config:
+                    f.write(f"# ========== CONFIG ({len(config)}) ==========\n")
+                    for item in config:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+                
+                if models:
+                    f.write(f"# ========== MODELS ({len(models)}) ==========\n")
+                    for item in models:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+                
+                if services:
+                    f.write(f"# ========== SERVICES ({len(services)}) ==========\n")
+                    for item in services:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+                
+                if routes:
+                    f.write(f"# ========== ROUTES ({len(routes)}) ==========\n")
+                    for item in routes:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+                
+                if utils:
+                    f.write(f"# ========== UTILS ({len(utils)}) ==========\n")
+                    for item in utils:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+                
+                if other:
+                    f.write(f"# ========== OTROS ({len(other)}) ==========\n")
+                    for item in other:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+            
+            print("\n💾 Backend: urls_backend.txt")
+        
+        # Guardar Frontend organizado
+        if frontend_urls:
+            pages = [u for u in frontend_urls if '/app/' in u['path']]
+            components = [u for u in frontend_urls if '/components/' in u['path']]
+            lib = [u for u in frontend_urls if '/lib/' in u['path']]
+            styles = [u for u in frontend_urls if '.css' in u['path'] or '/styles/' in u['path']]
+            other = [u for u in frontend_urls if not any(x in u['path'] for x in ['/app/', '/components/', '/lib/', '.css', '/styles/'])]
+            
+            with open('urls_frontend.txt', 'w', encoding='utf-8') as f:
+                f.write(f"# FRONTEND - SpeakLexi (Next.js 15/React 19/TypeScript)\n")
+                f.write(f"# Total: {len(frontend_urls)} archivos\n")
+                f.write(f"# Generado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                
+                if pages:
+                    f.write(f"# ========== PAGES/APP ROUTER ({len(pages)}) ==========\n")
+                    for item in pages:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+                
+                if components:
+                    f.write(f"# ========== COMPONENTS ({len(components)}) ==========\n")
+                    for item in components:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+                
+                if lib:
+                    f.write(f"# ========== LIB/UTILS ({len(lib)}) ==========\n")
+                    for item in lib:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+                
+                if styles:
+                    f.write(f"# ========== STYLES ({len(styles)}) ==========\n")
+                    for item in styles:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+                
+                if other:
+                    f.write(f"# ========== OTROS ({len(other)}) ==========\n")
+                    for item in other:
+                        f.write(item['url'] + '\n')
+                    f.write('\n')
+            
+            print("💾 Frontend: urls_frontend.txt")
+        
+        # Archivo completo
+        with open('urls_completo.txt', 'w', encoding='utf-8') as f:
+            f.write(f"# PROYECTO COMPLETO - SpeakLexi\n")
+            f.write(f"# Backend: {len(backend_urls)} archivos\n")
+            f.write(f"# Frontend: {len(frontend_urls)} archivos\n")
+            f.write(f"# Total: {len(backend_urls) + len(frontend_urls)} archivos\n")
+            f.write(f"# Generado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            
+            f.write("# " + "="*58 + "\n")
+            f.write("# BACKEND\n")
+            f.write("# " + "="*58 + "\n\n")
+            for item in backend_urls:
+                f.write(item['url'] + '\n')
+            
+            f.write("\n# " + "="*58 + "\n")
+            f.write("# FRONTEND\n")
+            f.write("# " + "="*58 + "\n\n")
+            for item in frontend_urls:
+                f.write(item['url'] + '\n')
+        
+        print("💾 Completo: urls_completo.txt")
+        
+        return backend_urls, frontend_urls
+    else:
+        print(f"❌ Error al acceder al repositorio: {response.status_code}")
+        print("Verifica que el repositorio sea público")
+        return [], []
+
+if __name__ == "__main__":
+    backend, frontend = get_tree("sTr4yDev", "speakLexi", "main")
+    
+    print("\n" + "="*60)
+    print("🎯 Archivos generados:")
+    print("   📄 urls_backend.txt  - Solo backend organizado")
+    print("   📄 urls_frontend.txt - Solo frontend organizado")
+    print("   📄 urls_completo.txt - Todo junto")
+    print("\n💡 Copia el contenido del archivo que quieras revisar")
+    print("   y pégalo aquí en el chat para análisis completo 🚀")
+    print("="*60)

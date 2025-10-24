@@ -1,0 +1,34 @@
+# back-end/test_password.py
+from app import create_app
+from models.usuario import Usuario
+
+def test_login(correo, password):
+    app = create_app()
+    
+    with app.app_context():
+        usuario = Usuario.query.filter_by(correo=correo).first()
+        
+        if not usuario:
+            print(f"❌ Usuario con correo {correo} NO existe")
+            return
+        
+        print(f"✅ Usuario encontrado:")
+        print(f"   - ID: {usuario.id}")
+        print(f"   - Nombre: {usuario.nombre}")
+        print(f"   - Correo: {usuario.correo}")
+        print(f"   - Rol: {usuario.rol}")
+        print(f"   - Verificado: {usuario.correo_verificado}")
+        print(f"   - Hash almacenado: {usuario.contrasena_hash[:50]}...")
+        
+        print(f"\n🔐 Probando contraseña...")
+        if usuario.check_password(password):
+            print("✅ ¡Contraseña CORRECTA!")
+        else:
+            print("❌ Contraseña INCORRECTA")
+            print("\nIntenta registrarte de nuevo o usar recuperación de contraseña")
+
+if __name__ == "__main__":
+    # Cambia estos valores por los tuyos
+    correo = input("Correo: ")
+    password = input("Contraseña: ")
+    test_login(correo, password)
