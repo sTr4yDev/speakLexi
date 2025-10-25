@@ -80,7 +80,7 @@ class GestorUsuarios:
             print(f"❌ Usuario no encontrado: {correo}")
             return {"error": "Credenciales inválidas"}, 401
 
-        # ✅ NUEVO: 2. Verificar estado de la cuenta
+        # 2. Verificar estado de la cuenta
         if usuario.estado_cuenta == 'desactivado':
             dias_restantes = None
             if usuario.fecha_desactivacion:
@@ -277,3 +277,56 @@ class GestorUsuarios:
         db.session.commit()
 
         return {"mensaje": "Cuenta reactivada correctamente"}, 200
+
+    def eliminar_cuenta(self, correo, password):
+        """
+        Elimina permanentemente una cuenta de usuario verificando primero la contraseña
+        
+        Args:
+            correo (str): Correo electrónico del usuario
+            password (str): Contraseña del usuario para confirmar
+            
+        Returns:
+            tuple: (diccionario con respuesta, código HTTP)
+        """
+        # Buscar usuario por correo
+        usuario = Usuario.query.filter_by(correo=correo).first()
+        
+        if not usuario:
+            return {"error": "Usuario no encontrado"}, 404
+        
+        # Verificar la contraseña antes de eliminar
+        if not usuario.check_password(password):
+            return {"error": "Contraseña incorrecta"}, 401
+        
+        try:
+            # Obtener el perfil asociado
+            perfil = PerfilUsuario.query.filter_by(usuario_id=usuario.id).first()
+            
+            # Guardar información para el mensaje de log
+            nombre_usuario = usuario.nombre
+            id_usuario = usuario.id
+            
+            # Eliminar perfil primero (por la relación de clave foránea)
+            if perfil:
+                db.session.delete(perfil)
+                print(f"🗑️  Perfil eliminado: ID {perfil.id}")
+            
+            # Eliminar usuario
+            db.session.delete(usuario)
+            db.session.commit()
+            
+            print(f"✅ Cuenta eliminada exitosamente:")
+            print(f"   - ID: {id_usuario}")
+            print(f"   - Correo: {correo}")
+            print(f"   - Nombre: {nombre_usuario}")
+            
+            return {
+                "mensaje": "Cuenta eliminada exitosamente",
+                "usuario": nombre_usuario
+            }, 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error al eliminar cuenta {correo}: {str(e)}")
+            return {"error": f"Error al eliminar cuenta: {str(e)}"}, 500

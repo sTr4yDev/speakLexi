@@ -1,9 +1,13 @@
 from flask import Blueprint, request, jsonify
 from config.database import db
 from models.usuario import Usuario, PerfilUsuario
-from werkzeug.security import check_password_hash
+from services.gestor_usuarios import GestorUsuarios
 
 usuario_bp = Blueprint("usuario_bp", __name__, url_prefix="/api/usuario")
+
+# Instancia del gestor de usuarios
+gestor = GestorUsuarios()
+
 
 @usuario_bp.route("/perfil/<int:usuario_id>", methods=["GET"])
 def obtener_perfil(usuario_id):
@@ -97,33 +101,6 @@ def actualizar_perfil(usuario_id):
         return jsonify({"error": f"Error al actualizar: {str(e)}"}), 500
 
 
-@usuario_bp.route("/eliminar/<int:usuario_id>", methods=["DELETE"])
-def eliminar_cuenta(usuario_id):
-    """Elimina la cuenta del usuario (requiere confirmación de contraseña)"""
-    data = request.get_json()
-    password = data.get("password")
-    
-    if not password:
-        return jsonify({"error": "Se requiere la contraseña para confirmar"}), 400
-    
-    usuario = Usuario.query.get(usuario_id)
-    if not usuario:
-        return jsonify({"error": "Usuario no encontrado"}), 404
-    
-    # Verificar contraseña
-    if not usuario.check_password(password):
-        return jsonify({"error": "Contraseña incorrecta"}), 401
-    
-    try:
-        # El perfil se elimina automáticamente por cascade
-        db.session.delete(usuario)
-        db.session.commit()
-        return jsonify({"mensaje": "Cuenta eliminada correctamente"}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"Error al eliminar: {str(e)}"}), 500
-
-
 @usuario_bp.route("/actualizar-nivel", methods=["PATCH"])
 def actualizar_nivel():
     """Actualiza el nivel del usuario tras completar el test"""
@@ -191,3 +168,20 @@ def cambiar_curso():
         "idioma": nuevo_idioma,
         "nivel": nuevo_nivel
     }), 200
+
+
+@usuario_bp.route("/eliminar-cuenta", methods=["DELETE"])
+def eliminar_cuenta_endpoint():
+    """
+    Endpoint que elimina permanentemente la cuenta del usuario
+    Requiere correo y contraseña para confirmar la eliminación
+    """
+    data = request.get_json()
+    correo = data.get("correo")
+    password = data.get("password")
+
+    if not correo or not password:
+        return jsonify({"error": "Correo y contraseña son requeridos"}), 400
+
+    respuesta, codigo = gestor.eliminar_cuenta(correo, password)
+    return jsonify(respuesta), codigo
