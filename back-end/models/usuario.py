@@ -17,14 +17,11 @@ class Usuario(db.Model):
     codigo_verificacion = db.Column(db.String(6))
     expira_verificacion = db.Column(db.DateTime)
     
-    # ✅ NUEVO: Estado de cuenta
-    estado_cuenta = db.Column(
-        db.String(20), 
-        default='activo', 
-        nullable=False
-    )  # valores: activo, desactivado, eliminado
-    fecha_desactivacion = db.Column(db.DateTime)  # Para saber cuándo se desactivó
-    
+    # ✅ NUEVOS CAMPOS PARA SOFT DELETE
+    estado_cuenta = db.Column(db.String(20), default='activo', nullable=False)
+    fecha_desactivacion = db.Column(db.DateTime)
+    token_recuperacion = db.Column(db.String(255))
+    expira_token_recuperacion = db.Column(db.DateTime)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow)
     actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

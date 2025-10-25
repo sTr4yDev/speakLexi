@@ -1,3 +1,4 @@
+
 from flask import Blueprint, request, jsonify
 from config.database import db
 from models.usuario import Usuario, PerfilUsuario
@@ -5,43 +6,12 @@ from services.gestor_usuarios import GestorUsuarios
 
 usuario_bp = Blueprint("usuario_bp", __name__, url_prefix="/api/usuario")
 
-# Instancia del gestor de usuarios
-gestor = GestorUsuarios()
-
-
 @usuario_bp.route("/perfil/<int:usuario_id>", methods=["GET"])
 def obtener_perfil(usuario_id):
     """Obtiene el perfil completo del usuario"""
-    usuario = Usuario.query.get(usuario_id)
-    if not usuario:
-        return jsonify({"error": "Usuario no encontrado"}), 404
-    
-    perfil = usuario.perfil
-    if not perfil:
-        return jsonify({"error": "Perfil no encontrado"}), 404
-    
-    return jsonify({
-        "usuario": {
-            "id": usuario.id,
-            "id_publico": usuario.id_publico,
-            "nombre": usuario.nombre,
-            "primer_apellido": usuario.primer_apellido,
-            "segundo_apellido": usuario.segundo_apellido,
-            "correo": usuario.correo,
-            "rol": usuario.rol,
-            "correo_verificado": usuario.correo_verificado,
-            "creado_en": usuario.creado_en.isoformat() if usuario.creado_en else None
-        },
-        "perfil": {
-            "nombre_completo": perfil.nombre_completo,
-            "idioma": perfil.idioma,
-            "nivel_actual": perfil.nivel_actual,
-            "curso_actual": perfil.curso_actual,
-            "total_xp": perfil.total_xp,
-            "dias_racha": perfil.dias_racha,
-            "ultima_actividad": perfil.ultima_actividad.isoformat() if perfil.ultima_actividad else None
-        }
-    }), 200
+    gestor = GestorUsuarios()
+    respuesta, codigo = gestor.obtener_perfil(usuario_id)
+    return jsonify(respuesta), codigo
 
 
 @usuario_bp.route("/perfil/<int:usuario_id>", methods=["PUT"])
@@ -71,7 +41,7 @@ def actualizar_perfil(usuario_id):
         if correo_existente:
             return jsonify({"error": "El correo electrónico ya está registrado"}), 400
         usuario.correo = data["correo"]
-        usuario.correo_verificado = False  # Requiere nueva verificación
+        usuario.correo_verificado = False
     
     # Actualizar nombre completo en perfil
     if any(k in data for k in ["nombre", "primer_apellido", "segundo_apellido"]):
@@ -99,6 +69,51 @@ def actualizar_perfil(usuario_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Error al actualizar: {str(e)}"}), 500
+
+
+@usuario_bp.route("/desactivar/<int:usuario_id>", methods=["POST"])
+def desactivar_cuenta(usuario_id):
+    """Desactiva la cuenta del usuario (soft delete)"""
+    gestor = GestorUsuarios()
+    
+    data = request.get_json()
+    password = data.get("password")
+    confirmacion = data.get("confirmacion")
+    
+    if not password:
+        return jsonify({"error": "Se requiere la contraseña"}), 400
+    
+    if confirmacion != "ELIMINAR":
+        return jsonify({"error": "Debes escribir ELIMINAR para confirmar"}), 400
+    
+    respuesta, codigo = gestor.desactivar_cuenta(usuario_id, password)
+    return jsonify(respuesta), codigo
+
+
+@usuario_bp.route("/reactivar/<int:usuario_id>", methods=["POST"])
+def reactivar_cuenta(usuario_id):
+    """Reactiva una cuenta desactivada"""
+    gestor = GestorUsuarios()
+    
+    data = request.get_json()
+    password = data.get("password")
+    
+    if not password:
+        return jsonify({"error": "Se requiere la contraseña"}), 400
+    
+    respuesta, codigo = gestor.reactivar_cuenta(usuario_id, password)
+    return jsonify(respuesta), codigo
+
+
+@usuario_bp.route("/eliminar-permanente/<int:usuario_id>", methods=["DELETE"])
+def eliminar_permanente(usuario_id):
+    """Elimina definitivamente una cuenta (admin only o cron job)"""
+    gestor = GestorUsuarios()
+    
+    # TODO: Agregar verificación de admin o token especial
+    
+    respuesta, codigo = gestor.eliminar_cuenta_permanente(usuario_id)
+    return jsonify(respuesta), codigo
 
 
 @usuario_bp.route("/actualizar-nivel", methods=["PATCH"])
@@ -134,7 +149,7 @@ def cambiar_curso():
     data = request.get_json()
     usuario_id = data.get("usuario_id")
     nuevo_idioma = data.get("idioma")
-    nuevo_nivel = data.get("nivel", "A1")  # Nivel por defecto al cambiar
+    nuevo_nivel = data.get("nivel", "A1")
     
     if not usuario_id or not nuevo_idioma:
         return jsonify({"error": "Datos insuficientes"}), 400
@@ -148,7 +163,7 @@ def cambiar_curso():
         return jsonify({"error": "Perfil no encontrado"}), 404
     
     # Validar que el idioma esté disponible
-    idiomas_disponibles = ["Inglés"]  # Por ahora solo inglés
+    idiomas_disponibles = ["Inglés"]
     if nuevo_idioma not in idiomas_disponibles:
         return jsonify({
             "error": f"El curso de {nuevo_idioma} está en desarrollo",
@@ -157,7 +172,6 @@ def cambiar_curso():
     
     perfil.idioma = nuevo_idioma
     perfil.nivel_actual = nuevo_nivel
-    # Reiniciar progreso al cambiar de curso
     perfil.total_xp = 0
     perfil.dias_racha = 0
     
@@ -168,20 +182,3 @@ def cambiar_curso():
         "idioma": nuevo_idioma,
         "nivel": nuevo_nivel
     }), 200
-
-
-@usuario_bp.route("/eliminar-cuenta", methods=["DELETE"])
-def eliminar_cuenta_endpoint():
-    """
-    Endpoint que elimina permanentemente la cuenta del usuario
-    Requiere correo y contraseña para confirmar la eliminación
-    """
-    data = request.get_json()
-    correo = data.get("correo")
-    password = data.get("password")
-
-    if not correo or not password:
-        return jsonify({"error": "Correo y contraseña son requeridos"}), 400
-
-    respuesta, codigo = gestor.eliminar_cuenta(correo, password)
-    return jsonify(respuesta), codigo

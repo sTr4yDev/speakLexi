@@ -1,64 +1,135 @@
 from flask import Blueprint, request, jsonify
 from services.gestor_usuarios import GestorUsuarios
 
-# Cambiar el nombre del blueprint para que no colisione
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
-gestor = GestorUsuarios()
-
-@auth_bp.route("/register", methods=["POST"])
-def registrar():
+@auth_bp.route("/login", methods=["POST"])
+def login():
+    """Endpoint de inicio de sesión"""
     data = request.get_json()
+    correo = data.get("correo")
+    password = data.get("password")
+
+    if not correo or not password:
+        return jsonify({"error": "Correo y contraseña son requeridos"}), 400
+
+    gestor = GestorUsuarios()
+    respuesta, codigo = gestor.autenticar_usuario(correo, password)
+    
+    # ✅ IMPORTANTE: Asegurarnos de que siempre devuelva el usuario_id
+    # incluso cuando la cuenta está desactivada
+    if codigo in [403] and respuesta.get("codigo") == "CUENTA_DESACTIVADA":
+        # Agregar el usuario_id a la respuesta para que el frontend pueda reactivar
+        from models.usuario import Usuario
+        usuario = Usuario.query.filter_by(correo=correo).first()
+        if usuario:
+            respuesta["usuario_id"] = usuario.id
+    
+    return jsonify(respuesta), codigo
+
+
+@auth_bp.route("/registro", methods=["POST"])
+def registro():
+    """Endpoint de registro de usuario"""
+    data = request.get_json()
+    
     nombre = data.get("nombre")
     primer_apellido = data.get("primer_apellido")
     segundo_apellido = data.get("segundo_apellido")
     correo = data.get("correo")
     password = data.get("password")
-    idioma = data.get("idioma")
-    nivel_actual = data.get("nivel_actual")
+    idioma = data.get("idioma", "Inglés")
+    nivel_actual = data.get("nivel_actual", "A1")
 
-    if not all([nombre, primer_apellido, correo, password, idioma]):
-        return jsonify({"error": "Faltan datos obligatorios"}), 400
+    if not all([nombre, primer_apellido, correo, password]):
+        return jsonify({"error": "Datos incompletos"}), 400
 
-    # Solo inglés está disponible por ahora
-    if idioma.lower() != "inglés":
-        return jsonify({
-            "mensaje": f"El curso de {idioma.capitalize()} está en desarrollo. Actualmente solo está disponible el curso de Inglés."
-        }), 200
-
+    gestor = GestorUsuarios()
     respuesta, codigo = gestor.registrar_usuario(
-        nombre, primer_apellido, segundo_apellido, correo, password, idioma, nivel_actual
+        nombre, primer_apellido, segundo_apellido, 
+        correo, password, idioma, nivel_actual
     )
+    
     return jsonify(respuesta), codigo
 
 
 @auth_bp.route("/verificar-email", methods=["POST"])
 def verificar_email():
+    """Endpoint para verificar correo electrónico"""
     data = request.get_json()
     correo = data.get("correo")
     codigo = data.get("codigo")
-    respuesta, codigo_http = gestor.verificar_correo(correo, codigo)
-    return jsonify(respuesta), codigo_http
+
+    if not correo or not codigo:
+        return jsonify({"error": "Correo y código son requeridos"}), 400
+
+    gestor = GestorUsuarios()
+    respuesta, status = gestor.verificar_correo(correo, codigo)
+    
+    return jsonify(respuesta), status
 
 
 @auth_bp.route("/reenviar-codigo", methods=["POST"])
 def reenviar_codigo():
+    """Endpoint para reenviar código de verificación"""
     data = request.get_json()
     correo = data.get("correo")
-    respuesta, codigo_http = gestor.reenviar_codigo(correo)
-    return jsonify(respuesta), codigo_http
+
+    if not correo:
+        return jsonify({"error": "Correo es requerido"}), 400
+
+    gestor = GestorUsuarios()
+    respuesta, status = gestor.reenviar_codigo(correo)
+    
+    return jsonify(respuesta), status
 
 
-@auth_bp.route("/login", methods=["POST"])
-def login():
+# ✅ NUEVOS ENDPOINTS PARA RECUPERACIÓN DE CONTRASEÑA
+
+@auth_bp.route("/recuperar-password", methods=["POST"])
+def recuperar_password():
+    """Solicita recuperación de contraseña"""
     data = request.get_json()
     correo = data.get("correo")
-    password = data.get("password")
-    respuesta, codigo = gestor.autenticar_usuario(correo, password)
+    
+    if not correo:
+        return jsonify({"error": "Correo es requerido"}), 400
+    
+    gestor = GestorUsuarios()
+    respuesta, codigo = gestor.solicitar_recuperacion_password(correo)
+    
     return jsonify(respuesta), codigo
 
 
-@auth_bp.route("/perfil/<int:id_usuario>", methods=["GET"])
-def perfil(id_usuario):
-    respuesta, codigo = gestor.obtener_perfil(id_usuario)
+@auth_bp.route("/validar-token-recuperacion", methods=["POST"])
+def validar_token():
+    """Valida un token de recuperación"""
+    data = request.get_json()
+    token = data.get("token")
+    
+    if not token:
+        return jsonify({"error": "Token es requerido"}), 400
+    
+    gestor = GestorUsuarios()
+    respuesta, codigo = gestor.validar_token_recuperacion(token)
+    
+    return jsonify(respuesta), codigo
+
+
+@auth_bp.route("/restablecer-password", methods=["POST"])
+def restablecer_password():
+    """Restablece la contraseña con el token"""
+    data = request.get_json()
+    token = data.get("token")
+    nueva_password = data.get("nueva_password")
+    
+    if not token or not nueva_password:
+        return jsonify({"error": "Token y nueva contraseña son requeridos"}), 400
+    
+    if len(nueva_password) < 8:
+        return jsonify({"error": "La contraseña debe tener al menos 8 caracteres"}), 400
+    
+    gestor = GestorUsuarios()
+    respuesta, codigo = gestor.restablecer_password(token, nueva_password)
+    
     return jsonify(respuesta), codigo

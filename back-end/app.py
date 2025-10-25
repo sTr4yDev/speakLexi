@@ -10,21 +10,27 @@ from models.usuario import Usuario, PerfilUsuario
 def create_app():
     app = Flask(__name__)
 
-    # Cargar configuración desde el archivo settings.py
+    # Cargar configuración
     app.config.from_pyfile('config/settings.py')
 
-    # Habilitar CORS para permitir comunicación con el frontend
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # ✅ CORS - Permitir localhost:3000
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": ["http://localhost:3000"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+            "allow_headers": ["Content-Type"]
+        }
+    })
 
     # Inicializar extensiones
     db.init_app(app)
     mail.init_app(app)
 
-    # Registrar los blueprints de rutas
+    # Registrar blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(usuario_bp)
 
-    # Crear las tablas si no existen
+    # Crear tablas
     with app.app_context():
         db.create_all()
         print("✅ Tablas creadas correctamente en la base de datos SpeakLexi")
