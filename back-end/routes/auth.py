@@ -3,6 +3,13 @@ from services.gestor_usuarios import GestorUsuarios
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
+# ✅ Manejo de preflight requests (CORS)
+@auth_bp.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        return "", 204
+
+
 @auth_bp.route("/login", methods=["POST"])
 def login():
     """Endpoint de inicio de sesión"""
@@ -16,10 +23,9 @@ def login():
     gestor = GestorUsuarios()
     respuesta, codigo = gestor.autenticar_usuario(correo, password)
     
-    # ✅ IMPORTANTE: Asegurarnos de que siempre devuelva el usuario_id
+    # ✅ Asegurarnos de que siempre devuelva el usuario_id
     # incluso cuando la cuenta está desactivada
     if codigo in [403] and respuesta.get("codigo") == "CUENTA_DESACTIVADA":
-        # Agregar el usuario_id a la respuesta para que el frontend pueda reactivar
         from models.usuario import Usuario
         usuario = Usuario.query.filter_by(correo=correo).first()
         if usuario:
@@ -28,7 +34,7 @@ def login():
     return jsonify(respuesta), codigo
 
 
-@auth_bp.route("/registro", methods=["POST"])
+@auth_bp.route("/register", methods=["POST"])
 def registro():
     """Endpoint de registro de usuario"""
     data = request.get_json()
@@ -84,7 +90,9 @@ def reenviar_codigo():
     return jsonify(respuesta), status
 
 
-# ✅ NUEVOS ENDPOINTS PARA RECUPERACIÓN DE CONTRASEÑA
+# ========================================
+# RECUPERACIÓN DE CONTRASEÑA
+# ========================================
 
 @auth_bp.route("/recuperar-password", methods=["POST"])
 def recuperar_password():

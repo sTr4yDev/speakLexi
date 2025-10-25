@@ -1,10 +1,17 @@
-
 from flask import Blueprint, request, jsonify
 from config.database import db
 from models.usuario import Usuario, PerfilUsuario
 from services.gestor_usuarios import GestorUsuarios
 
 usuario_bp = Blueprint("usuario_bp", __name__, url_prefix="/api/usuario")
+
+# ✅ AGREGAR MANEJO DE PREFLIGHT REQUESTS (CORS)
+@usuario_bp.before_request
+def handle_preflight():
+    """Maneja las peticiones OPTIONS para CORS"""
+    if request.method == "OPTIONS":
+        return "", 204
+
 
 @usuario_bp.route("/perfil/<int:usuario_id>", methods=["GET"])
 def obtener_perfil(usuario_id):
@@ -50,6 +57,7 @@ def actualizar_perfil(usuario_id):
     
     try:
         db.session.commit()
+        print(f"✅ Perfil actualizado para usuario ID: {usuario_id}")
         return jsonify({
             "mensaje": "Perfil actualizado correctamente",
             "usuario": {
@@ -68,6 +76,7 @@ def actualizar_perfil(usuario_id):
         }), 200
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error al actualizar perfil: {e}")
         return jsonify({"error": f"Error al actualizar: {str(e)}"}), 500
 
 
@@ -137,6 +146,8 @@ def actualizar_nivel():
     perfil.nivel_actual = nuevo_nivel
     db.session.commit()
 
+    print(f"✅ Nivel actualizado para {correo}: {nuevo_nivel}")
+
     return jsonify({
         "mensaje": f"Nivel actualizado correctamente a {nuevo_nivel}",
         "nivel": nuevo_nivel
@@ -176,6 +187,8 @@ def cambiar_curso():
     perfil.dias_racha = 0
     
     db.session.commit()
+    
+    print(f"✅ Curso cambiado para usuario {usuario_id}: {nuevo_idioma} - {nuevo_nivel}")
     
     return jsonify({
         "mensaje": f"Curso cambiado a {nuevo_idioma}",

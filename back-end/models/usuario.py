@@ -11,7 +11,7 @@ class Usuario(db.Model):
     primer_apellido = db.Column(db.String(100), nullable=False)
     segundo_apellido = db.Column(db.String(100), nullable=True)
     correo = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
+    contrasena_hash = db.Column(db.String(256), nullable=False)
     rol = db.Column(db.String(20), default="estudiante")
     
     # Verificación de correo
@@ -19,12 +19,12 @@ class Usuario(db.Model):
     codigo_verificacion = db.Column(db.String(6), nullable=True)
     expira_verificacion = db.Column(db.DateTime, nullable=True)
     
-    # ✅ RECUPERACIÓN DE CONTRASEÑA
+    # Recuperación de contraseña
     token_recuperacion = db.Column(db.String(256), nullable=True, unique=True)
     expira_token_recuperacion = db.Column(db.DateTime, nullable=True)
     
     # Estado de cuenta (soft delete)
-    estado_cuenta = db.Column(db.String(20), default="activo")  # activo, desactivado, eliminado
+    estado_cuenta = db.Column(db.String(20), default="activo")
     fecha_desactivacion = db.Column(db.DateTime, nullable=True)
     
     # Timestamps
@@ -36,18 +36,19 @@ class Usuario(db.Model):
 
     def set_password(self, password):
         """Genera el hash de la contraseña"""
-        self.password_hash = generate_password_hash(password)
+        self.contrasena_hash = generate_password_hash(password)
 
     def check_password(self, password):
         """Verifica la contraseña"""
-        return check_password_hash(self.password_hash, password)
+        return check_password_hash(self.contrasena_hash, password)
 
     def __repr__(self):
         return f"<Usuario {self.nombre} {self.primer_apellido} - {self.correo}>"
 
 
 class PerfilUsuario(db.Model):
-    __tablename__ = "perfiles_usuarios"
+    # ✅ CORREGIDO: perfil_usuarios (sin la 'es' en perfiles)
+    __tablename__ = "perfil_usuarios"
 
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
