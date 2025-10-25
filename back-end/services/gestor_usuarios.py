@@ -280,7 +280,7 @@ class GestorUsuarios:
             db.session.rollback()
             return {"error": f"Error al eliminar: {str(e)}"}, 500
 
-    # ✅ NUEVOS MÉTODOS PARA RECUPERACIÓN DE CONTRASEÑA
+    # ✅ MÉTODOS PARA RECUPERACIÓN DE CONTRASEÑA
     def solicitar_recuperacion_password(self, correo):
         """Genera token y envía correo de recuperación"""
         usuario = Usuario.query.filter_by(correo=correo).first()
@@ -299,7 +299,7 @@ class GestorUsuarios:
         try:
             db.session.commit()
             
-            # Enviar correo
+            # Enviar correo con enlace
             enviar_recuperacion_password(correo, token)
             
             print(f"✅ Token de recuperación generado para: {correo}")
@@ -310,7 +310,6 @@ class GestorUsuarios:
             db.session.rollback()
             print(f"❌ Error al procesar solicitud: {e}")
             return {"error": "Error al procesar la solicitud"}, 500
-    
     
     def validar_token_recuperacion(self, token):
         """Valida que el token sea válido y no haya expirado"""
@@ -323,7 +322,6 @@ class GestorUsuarios:
             return {"error": "El token ha expirado. Solicita uno nuevo."}, 400
         
         return {"mensaje": "Token válido", "correo": usuario.correo}, 200
-    
     
     def restablecer_password(self, token, nueva_password):
         """Restablece la contraseña usando el token"""

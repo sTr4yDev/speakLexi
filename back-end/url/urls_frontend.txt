@@ -1,6 +1,6 @@
 # FRONTEND - SpeakLexi (Next.js 15/React 19/TypeScript)
 # Total: 141 archivos
-# Generado: 2025-10-24 21:02:31
+# Generado: 2025-10-25 10:17:29
 
 # ========== PAGES/APP ROUTER (39) ==========
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/dashboard/page.tsx
