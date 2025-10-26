@@ -23,8 +23,6 @@ interface Idioma {
   icono: string
   disponible: boolean
   descripcion: string
-  nivelActual?: string
-  xp?: number
 }
 
 const IDIOMAS_BASE: Idioma[] = [
@@ -42,6 +40,20 @@ const IDIOMAS_BASE: Idioma[] = [
     disponible: true,
     descripcion: "El idioma del amor y la cultura",
   },
+  {
+    id: "Alemán",
+    nombre: "Alemán",
+    icono: "🇩🇪",
+    disponible: true,
+    descripcion: "El idioma de la precisión",
+  },
+  {
+    id: "Italiano",
+    nombre: "Italiano",
+    icono: "🇮🇹",
+    disponible: true,
+    descripcion: "El idioma de la música",
+  },
 ]
 
 export default function CambiarCursoPage() {
@@ -50,7 +62,7 @@ export default function CambiarCursoPage() {
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [idiomaActual, setIdiomaActual] = useState("Inglés")
-  const [idiomas, setIdiomas] = useState<Idioma[]>(IDIOMAS_BASE)
+  const [idiomas] = useState<Idioma[]>(IDIOMAS_BASE)
   const [selectedIdioma, setSelectedIdioma] = useState<string | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [nivelActual, setNivelActual] = useState("A1")
@@ -74,7 +86,7 @@ export default function CambiarCursoPage() {
       if (res.ok && data.perfil) {
         setIdiomaActual(data.perfil.idioma || "Inglés")
         setNivelActual(data.perfil.nivel_actual || "A1")
-        setXpActual(data.perfil.experiencia || 0)
+        setXpActual(data.perfil.total_xp || 0)
       } else {
         toast({
           title: "Error",
@@ -115,15 +127,24 @@ export default function CambiarCursoPage() {
         throw new Error(data.error || "Error al cambiar de idioma")
       }
 
+      // ✅ Actualizar estado local inmediatamente
+      setIdiomaActual(selectedIdioma)
+      setNivelActual(data.nivel_actual || nivelActual)
+
+      // ✅ Actualizar localStorage
       localStorage.setItem("idioma", selectedIdioma)
-      localStorage.setItem("nivel", data.perfil?.nivel_actual || "A1")
+      localStorage.setItem("nivel", data.nivel_actual || nivelActual)
 
       toast({
         title: "¡Idioma cambiado! 🎉",
         description: `Ahora estás aprendiendo ${selectedIdioma}`,
       })
 
-      setTimeout(() => window.location.reload(), 1500)
+      // ✅ Redirigir al dashboard después de 1.5 segundos
+      setTimeout(() => {
+        router.push("/dashboard")
+        router.refresh() // Forzar recarga de datos
+      }, 1500)
 
     } catch (error: any) {
       toast({
@@ -203,7 +224,7 @@ export default function CambiarCursoPage() {
         </Alert>
 
         {/* Grid de Idiomas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {idiomas.map((idioma) => (
             <Card
               key={idioma.id}

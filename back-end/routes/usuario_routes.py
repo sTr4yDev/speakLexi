@@ -114,18 +114,25 @@ def actualizar_nivel():
 
 @usuario_bp.route("/cambiar-curso", methods=["PATCH"])
 def cambiar_curso():
-    """Cambia el curso o idioma del usuario"""
+    """Cambia el idioma y/o nivel actual del usuario"""
     data = request.get_json()
     usuario_id = data.get("usuario_id")
-    nuevo_curso = data.get("curso")
     nuevo_idioma = data.get("idioma")
     nuevo_nivel = data.get("nivel")
 
-    if not usuario_id or not nuevo_curso:
-        return jsonify({"error": "Datos insuficientes"}), 400
+    if not usuario_id:
+        return jsonify({"error": "Falta el ID del usuario"}), 400
+    
+    if not nuevo_idioma:
+        return jsonify({"error": "Falta el idioma"}), 400
 
+    # ✅ Llamar al método con los parámetros correctos
     gestor = GestorUsuarios()
-    respuesta, codigo = gestor.cambiar_curso(usuario_id, nuevo_curso, nuevo_idioma, nuevo_nivel)
+    respuesta, codigo = gestor.cambiar_curso(
+        usuario_id,
+        nuevo_idioma=nuevo_idioma,
+        nuevo_nivel=nuevo_nivel
+    )
     return jsonify(respuesta), codigo
 
 

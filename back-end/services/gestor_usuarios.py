@@ -205,13 +205,17 @@ class GestorUsuarios:
         except Exception as e:
             print(f"❌ Error obteniendo perfil: {str(e)}")
             return {"error": f"Error al obtener perfil: {str(e)}"}, 500
-        
-    def cambiar_curso(self, id_usuario, nuevo_curso, nuevo_idioma=None, nuevo_nivel=None):
+
+# ========================================
+# CAMBIO DE CURSO/IDIOMA (TODO: MEJORAR)
+# ========================================
+    def cambiar_curso(self, usuario_id, nuevo_idioma, nuevo_nivel=None):
         """
-        Cambia el curso actual del usuario y opcionalmente su idioma o nivel.
+        Cambia el idioma y/o nivel del usuario de forma simple.
+        Mantiene el progreso actual (no lo reinicia).
         """
         try:
-            usuario = Usuario.query.get(id_usuario)
+            usuario = Usuario.query.get(usuario_id)
             if not usuario:
                 return {"error": "Usuario no encontrado"}, 404
 
@@ -219,34 +223,51 @@ class GestorUsuarios:
             if not perfil:
                 return {"error": "Perfil no encontrado"}, 404
 
-            # Cambiar curso y otros datos opcionales
-            perfil.curso_actual = nuevo_curso
-            if nuevo_idioma:
-                perfil.idioma = nuevo_idioma
+            # Validar que el idioma esté disponible
+            idiomas_disponibles = ["Inglés", "Francés", "Alemán", "Italiano"]
+            if nuevo_idioma not in idiomas_disponibles:
+                return {"error": f"Idioma '{nuevo_idioma}' no disponible"}, 400
+
+            # Guardar idioma anterior para el mensaje
+            idioma_anterior = perfil.idioma
+
+            # ✅ Actualizar idioma
+            perfil.idioma = nuevo_idioma
+            
+            # ✅ Si se proporciona un nuevo nivel, actualizarlo
             if nuevo_nivel:
                 perfil.nivel_actual = nuevo_nivel
-
-            perfil.ultima_actividad = datetime.utcnow()
+            
+            # Actualizar última actividad
+            perfil.ultima_actividad = datetime.utcnow().date()
+            
             db.session.commit()
-
+            
+            print(f"✅ Idioma cambiado para usuario {usuario_id}: {idioma_anterior} → {nuevo_idioma}")
+            
             return {
-                "mensaje": "Curso actualizado correctamente",
+                "mensaje": f"Curso cambiado exitosamente a {nuevo_idioma}",
+                "idioma_anterior": idioma_anterior,
+                "idioma_nuevo": nuevo_idioma,
+                "nivel_actual": perfil.nivel_actual,
+                "total_xp": perfil.total_xp,
+                "dias_racha": perfil.dias_racha,
                 "perfil": {
                     "idioma": perfil.idioma,
                     "nivel_actual": perfil.nivel_actual,
-                    "curso_actual": perfil.curso_actual,
-                    "ultima_actividad": perfil.ultima_actividad.isoformat() if perfil.ultima_actividad else None
+                    "total_xp": perfil.total_xp,
+                    "dias_racha": perfil.dias_racha,
+                    "curso_actual": perfil.curso_actual
                 }
             }, 200
-
+            
         except Exception as e:
             db.session.rollback()
-            print(f"❌ Error al cambiar curso: {str(e)}")
+            print(f"❌ Error al cambiar curso: {e}")
             return {"error": f"Error al cambiar curso: {str(e)}"}, 500
-
-    # ========================================
-    # SOFT DELETE Y RECUPERACIÓN DE CUENTA
-    # ========================================
+# ========================================
+# SOFT DELETE Y RECUPERACIÓN DE CUENTA
+# ========================================
     def desactivar_cuenta(self, usuario_id, password):
         """Desactiva temporalmente la cuenta del usuario"""
         usuario = Usuario.query.get(usuario_id)
