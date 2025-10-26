@@ -1,8 +1,8 @@
 # PROYECTO COMPLETO - SpeakLexi
 # Backend: 15 archivos
-# Frontend: 141 archivos
-# Total: 156 archivos
-# Generado: 2025-10-25 23:08:14
+# Frontend: 146 archivos
+# Total: 161 archivos
+# Generado: 2025-10-25 23:09:49
 
 # ==========================================================
 # BACKEND
@@ -40,6 +40,7 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/asignar-
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/cambiar-curso/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/clasificacion/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/correo-enviado/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/cuenta-desactivada/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/dashboard/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/eliminar-cuenta/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/globals.css
@@ -66,6 +67,8 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/progreso/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/recuperar-contrasena/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/registro/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/restablecer-contrasena/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/restablecer-contrasena/reset-password-content.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/verificar-email/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/admin-stats.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/create-lesson-form.tsx
@@ -168,4 +171,6 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/u
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/use-toast.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-mobile.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-toast.ts
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-user-data.ts
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/middleware.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/styles/globals.css

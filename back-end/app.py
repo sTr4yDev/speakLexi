@@ -11,12 +11,12 @@ def create_app():
     # Cargar configuración
     app.config.from_object(Config)
     
-    # ✅ CONFIGURACIÓN DE CORS - INCLUYE PATCH
+    # ✅ CONFIGURACIÓN DE CORS - ÚNICA Y COMPLETA
     CORS(app, 
          resources={
              r"/api/*": {
                  "origins": ["http://localhost:3000"],
-                 "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],  # ✅ PATCH agregado
+                 "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
                  "allow_headers": ["Content-Type", "Authorization"],
                  "supports_credentials": True,
                  "expose_headers": ["Content-Type", "Authorization"],
@@ -40,14 +40,8 @@ def create_app():
         db.create_all()
         print("✅ Base de datos inicializada")
     
-    # Agregar headers CORS manualmente en cada respuesta (refuerzo adicional)
-    @app.after_request
-    def after_request(response):
-        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
+    # ❌ ELIMINADO: @app.after_request duplicaba los headers CORS
+    # La configuración de CORS() ya se encarga de todo
     
     return app
 

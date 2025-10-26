@@ -214,7 +214,7 @@ export function LoginForm() {
         throw new Error(data.error || "Error al iniciar sesión")
       }
 
-      // LOGIN EXITOSO - Usar authStorage
+      // ✅ LOGIN EXITOSO - Usar authStorage (guarda localStorage + cookies)
       const usuario = data.usuario
 
       if (!usuario) {
@@ -223,7 +223,7 @@ export function LoginForm() {
 
       console.log("✅ Usuario recibido del backend:", usuario)
 
-      // ✅ GUARDAR CON authStorage
+      // ✅ GUARDAR CON authStorage (esto guarda localStorage Y cookies automáticamente)
       authStorage.setUser({
         id: usuario.id,
         id_publico: usuario.id_publico || "",
@@ -234,10 +234,11 @@ export function LoginForm() {
         nivel_actual: usuario.nivel_actual || null,
       })
 
-      console.log("✅ Usuario guardado en authStorage:", authStorage.getUser())
+      console.log("✅ Usuario guardado en authStorage (localStorage + cookies):", authStorage.getUser())
+      console.log("🍪 Cookies creadas - authenticated:", document.cookie.includes('authenticated=true'))
 
       toast({
-        title: "Inicio de sesión exitoso",
+        title: "✅ Inicio de sesión exitoso",
         description: `Bienvenido ${usuario.nombre}`,
       })
 
@@ -259,7 +260,8 @@ export function LoginForm() {
 
       console.log("🚀 Redirigiendo a:", redirectPath)
       
-      // Forzar recarga completa para que authStorage esté disponible
+      // Usar window.location.href para forzar recarga completa
+      // Esto asegura que el middleware detecte las cookies recién creadas
       window.location.href = redirectPath
 
     } catch (error: any) {
