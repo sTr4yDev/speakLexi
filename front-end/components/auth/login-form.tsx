@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { Eye, EyeOff, Loader2, ChevronDown, ChevronUp, User } from "lucide-react"
+import { Eye, EyeOff, Loader2, ChevronDown, ChevronUp, User, AlertCircle, RefreshCw } from "lucide-react"
+import { authStorage } from "@/lib/auth"
 
 const TEST_USERS = [
   {
@@ -48,6 +50,7 @@ const TEST_USERS = [
 export function LoginForm() {
   const router = useRouter()
   const { toast } = useToast()
+  
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showTestUsers, setShowTestUsers] = useState(false)
@@ -56,21 +59,92 @@ export function LoginForm() {
     password: "",
   })
 
+  const [cuentaDesactivada, setCuentaDesactivada] = useState(false)
+  const [diasRestantes, setDiasRestantes] = useState(0)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [error, setError] = useState("")
+
   const handleTestUserClick = (user: (typeof TEST_USERS)[0]) => {
     setFormData({
       email: user.email,
       password: user.password,
     })
     setShowTestUsers(false)
+    setCuentaDesactivada(false)
+    setError("")
+    
     toast({
       title: "Credenciales cargadas",
       description: `Listo para iniciar sesión como ${user.role}`,
     })
   }
 
+  const handleReactivar = async () => {
+    if (!userId) {
+      toast({
+        title: "Error",
+        description: "No se pudo identificar el usuario",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoading(true)
+    setError("")
+    
+    try {
+      const res = await fetch(`http://localhost:5000/api/usuario/reactivar/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: formData.password }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || "Error al reactivar la cuenta")
+      }
+
+      const data = await res.json()
+
+      toast({
+        title: "¡Cuenta reactivada!",
+        description: data.mensaje || "Tu cuenta ha sido reactivada exitosamente",
+      })
+
+      setCuentaDesactivada(false)
+      setError("")
+      
+      setTimeout(() => {
+        handleSubmit(new Event('submit') as any)
+      }, 1000)
+
+    } catch (error: any) {
+      console.error("Error al reactivar:", error)
+      
+      let errorMessage = "Error al reactivar la cuenta"
+      
+      if (error.message === "Failed to fetch") {
+        errorMessage = "No se pudo conectar con el servidor. Verifica que esté corriendo."
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      setError(errorMessage)
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setCuentaDesactivada(false)
+    setError("")
 
     try {
       const res = await fetch("http://localhost:5000/api/auth/login", {
@@ -84,78 +158,125 @@ export function LoginForm() {
 
       const data = await res.json()
       
-      // Debug: Ver qué está devolviendo el backend
-      console.log("Respuesta del backend:", data)
+      console.log("📦 Respuesta completa del backend:", data)
 
       if (!res.ok) {
-        throw new Error(data.error || data.message || "Error al iniciar sesión")
+        // CUENTA DESACTIVADA
+        if (data.codigo === "CUENTA_DESACTIVADA") {
+          const id = data.usuario_id || data.usuario?.id
+          
+          if (id) {
+            setUserId(id.toString())
+          }
+          
+          setCuentaDesactivada(true)
+          setDiasRestantes(data.dias_restantes || 0)
+          
+          toast({
+            title: "Cuenta desactivada",
+            description: `Tienes ${data.dias_restantes || 0} días para reactivarla`,
+            variant: "destructive",
+          })
+          
+          setIsLoading(false)
+          return
+        }
+
+        // CUENTA ELIMINADA
+        if (data.codigo === "CUENTA_ELIMINADA") {
+          setError("Esta cuenta ha sido eliminada permanentemente")
+          toast({
+            title: "Cuenta eliminada",
+            description: "Esta cuenta ha sido eliminada permanentemente",
+            variant: "destructive",
+          })
+          
+          setIsLoading(false)
+          return
+        }
+
+        // EMAIL NO VERIFICADO
+        if (data.codigo === "EMAIL_NOT_VERIFIED") {
+          toast({
+            title: "Email no verificado",
+            description: "Redirigiendo a verificación...",
+            variant: "destructive",
+          })
+          
+          setTimeout(() => {
+            router.push(`/verificar-email?email=${encodeURIComponent(formData.email)}`)
+          }, 1500)
+          
+          setIsLoading(false)
+          return
+        }
+
+        throw new Error(data.error || "Error al iniciar sesión")
       }
 
-      // Detectar la estructura de la respuesta (flexible)
-      const usuario = data.usuario || data.user || data
+      // LOGIN EXITOSO - Usar authStorage
+      const usuario = data.usuario
 
-      // Validar que tengamos los datos mínimos
-      if (!usuario.rol && !usuario.role) {
-        console.error("No se encontró el rol del usuario:", data)
-        throw new Error("Respuesta del servidor inválida")
+      if (!usuario) {
+        throw new Error("Respuesta del servidor inválida: falta información del usuario")
       }
 
-      // Extraer datos con compatibilidad para diferentes formatos
-      const rol = usuario.rol || usuario.role || "estudiante"
-      const nombre = usuario.nombre || usuario.name || usuario.correo || formData.email
-      const correo = usuario.correo || usuario.email || formData.email
-      const id = usuario.id || usuario.usuario_id || ""
+      console.log("✅ Usuario recibido del backend:", usuario)
 
-      // Guardar datos del usuario en localStorage
-      localStorage.setItem("token", data.token || data.access_token || "")
-      localStorage.setItem("userRole", rol)
-      localStorage.setItem("userEmail", correo)
-      localStorage.setItem("userName", nombre)
-      localStorage.setItem("userId", id.toString())
-      
-      // Opcional: guardar idioma y nivel si vienen en la respuesta
-      if (usuario.idioma) {
-        localStorage.setItem("idioma", usuario.idioma)
-      }
-      if (usuario.nivel_actual) {
-        localStorage.setItem("nivel", usuario.nivel_actual)
-      }
+      // ✅ GUARDAR CON authStorage
+      authStorage.setUser({
+        id: usuario.id,
+        id_publico: usuario.id_publico || "",
+        nombre: usuario.nombre,
+        correo: usuario.correo,
+        rol: usuario.rol,
+        idioma: usuario.idioma || null,
+        nivel_actual: usuario.nivel_actual || null,
+      })
+
+      console.log("✅ Usuario guardado en authStorage:", authStorage.getUser())
 
       toast({
         title: "Inicio de sesión exitoso",
-        description: `Bienvenido ${nombre}`,
+        description: `Bienvenido ${usuario.nombre}`,
       })
 
-      // Redirigir según el rol del usuario
-      let redirectPath = "/dashboard" // Default para estudiantes
+      // Redirigir según el rol
+      const rol = usuario.rol.toLowerCase()
+      console.log("🔀 Rol detectado:", rol)
+      
+      let redirectPath = "/dashboard"
 
-      switch (rol.toLowerCase()) {
-        case "estudiante":
-        case "alumno":
-          redirectPath = "/dashboard"
-          break
-        case "profesor":
-        case "teacher":
-          redirectPath = "/profesor/dashboard"
-          break
-        case "admin":
-        case "administrador":
-          redirectPath = "/admin/dashboard"
-          break
-        case "mantenimiento":
-        case "maintenance":
-          redirectPath = "/mantenimiento/dashboard"
-          break
-        default:
-          redirectPath = "/dashboard"
+      if (rol === "profesor" || rol === "teacher") {
+        redirectPath = "/profesor/dashboard"
+      } else if (rol === "admin" || rol === "administrador") {
+        redirectPath = "/admin/dashboard"
+      } else if (rol === "mantenimiento" || rol === "maintenance") {
+        redirectPath = "/mantenimiento/dashboard"
+      } else {
+        redirectPath = "/dashboard"
       }
 
-      router.push(redirectPath)
+      console.log("🚀 Redirigiendo a:", redirectPath)
+      
+      // Forzar recarga completa para que authStorage esté disponible
+      window.location.href = redirectPath
+
     } catch (error: any) {
-      console.error("Error en login:", error)
+      console.error("❌ Error en login:", error)
+      
+      let errorMessage = "Error al iniciar sesión"
+      
+      if (error.message === "Failed to fetch" || error.name === "TypeError") {
+        errorMessage = "No se pudo conectar con el servidor. Verifica que esté corriendo en http://localhost:5000"
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      setError(errorMessage)
       toast({
         title: "Error",
-        description: error.message || "Credenciales incorrectas",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -165,7 +286,57 @@ export function LoginForm() {
 
   return (
     <div className="space-y-4">
-      {/* Sección de usuarios de prueba */}
+      {/* ALERTA DE ERRORES GENERALES */}
+      {error && !cuentaDesactivada && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* ALERTA DE CUENTA DESACTIVADA */}
+      {cuentaDesactivada && (
+        <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950">
+          <RefreshCw className="h-4 w-4 text-orange-600" />
+          <AlertDescription>
+            <strong className="text-orange-900 dark:text-orange-100">
+              Tu cuenta está desactivada
+            </strong>
+            <p className="mt-2 text-sm text-orange-800 dark:text-orange-200">
+              {diasRestantes > 0 ? (
+                <>
+                  Tienes <strong>{diasRestantes} días</strong> para reactivarla. 
+                  Después de ese período será eliminada permanentemente.
+                </>
+              ) : (
+                "El período de recuperación ha expirado. La cuenta será eliminada pronto."
+              )}
+            </p>
+            {diasRestantes > 0 && (
+              <Button
+                onClick={handleReactivar}
+                disabled={isLoading}
+                className="mt-3 w-full"
+                variant="default"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Reactivando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Reactivar mi cuenta
+                  </>
+                )}
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* USUARIOS DE PRUEBA */}
       <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
         <button
           type="button"
@@ -204,7 +375,7 @@ export function LoginForm() {
         )}
       </div>
 
-      {/* Formulario de login */}
+      {/* FORMULARIO DE LOGIN */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Correo Electrónico</Label>
@@ -215,13 +386,18 @@ export function LoginForm() {
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
+            disabled={isLoading}
           />
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Contraseña</Label>
-            <Link href="/recuperar-contrasena" className="text-sm text-primary hover:underline">
+            <Link 
+              href="/recuperar-contrasena" 
+              className="text-sm text-primary hover:underline"
+              tabIndex={-1}
+            >
               ¿Olvidaste tu contraseña?
             </Link>
           </div>
@@ -233,11 +409,13 @@ export function LoginForm() {
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
+              disabled={isLoading}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              disabled={isLoading}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -255,6 +433,14 @@ export function LoginForm() {
           )}
         </Button>
       </form>
+
+      {/* ENLACE A REGISTRO */}
+      <div className="text-center text-sm text-muted-foreground">
+        ¿No tienes cuenta?{" "}
+        <Link href="/registro" className="text-primary hover:underline font-medium">
+          Regístrate aquí
+        </Link>
+      </div>
     </div>
   )
 }

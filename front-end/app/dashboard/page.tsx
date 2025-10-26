@@ -1,31 +1,132 @@
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { ProgressOverview } from "@/components/dashboard/progress-overview"
-import { QuickActions } from "@/components/dashboard/quick-actions"
 import { StreakCard } from "@/components/dashboard/streak-card"
 import { RecentLessons } from "@/components/dashboard/recent-lessons"
+import { QuickActions } from "@/components/dashboard/quick-actions"
+import { authStorage } from "@/lib/auth"
+import { useUserData } from "@/hooks/use-user-data"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function DashboardPage() {
+  const router = useRouter()
+  const { userData, isLoading, error } = useUserData()
+
+  useEffect(() => {
+    // Verificar autenticación
+    if (!authStorage.isAuthenticated()) {
+      console.log("❌ No autenticado, redirigiendo a login...")
+      router.push("/login")
+    }
+  }, [router])
+
+  // Si hay error, mostrar usando datos de authStorage
+  if (error) {
+    console.warn("⚠️ Error cargando datos del backend, usando authStorage:", error)
+    
+    const user = authStorage.getUser()
+    if (!user) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground mb-4">Error al cargar el perfil</p>
+            <button 
+              onClick={() => router.push("/login")}
+              className="text-primary hover:underline"
+            >
+              Volver al login
+            </button>
+          </div>
+        </div>
+      )
+    }
+    
+    // Usar datos de authStorage como fallback
+    return (
+      <div className="min-h-screen bg-background">
+        <DashboardHeader />
+        <main className="container mx-auto px-4 py-8">
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold">¡Hola, {user.nombre}! 👋</h1>
+              <p className="text-muted-foreground">
+                Nivel {user.nivel_actual || "A1"} • {user.idioma || "Inglés"}
+              </p>
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-800">
+                No se pudieron cargar todos los datos. Intenta recargar la página.
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <DashboardHeader />
+        <main className="container mx-auto px-4 py-8">
+          <div className="space-y-6">
+            {/* Skeleton del título */}
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-64" />
+              <Skeleton className="h-5 w-48" />
+            </div>
+
+            {/* Skeleton del contenido */}
+            <div className="grid gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2 space-y-6">
+                <Skeleton className="h-96" />
+                <Skeleton className="h-64" />
+              </div>
+              <div className="space-y-6">
+                <Skeleton className="h-64" />
+                <Skeleton className="h-48" />
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  const userName = userData?.usuario.nombre || "Usuario"
+  const nivelActual = userData?.perfil.nivel_actual || "A1"
+  const idioma = userData?.perfil.idioma || "Inglés"
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+    <div className="min-h-screen bg-background">
       <DashboardHeader />
 
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-balance">Bienvenido de Nuevo, Juan</h1>
-          <p className="mt-1 text-muted-foreground">Continua tu viaje de aprendizaje</p>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Content */}
-          <div className="space-y-6 lg:col-span-2">
-            <ProgressOverview />
-            <RecentLessons />
+        <div className="space-y-6">
+          {/* Welcome Section */}
+          <div>
+            <h1 className="text-3xl font-bold">¡Hola, {userName}! 👋</h1>
+            <p className="text-muted-foreground">
+              Nivel {nivelActual} • {idioma} • ¡Sigue aprendiendo!
+            </p>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <StreakCard />
-            <QuickActions />
+          {/* Main Content Grid */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Left Column - Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              <ProgressOverview />
+              <RecentLessons />
+            </div>
+
+            {/* Right Column - Sidebar */}
+            <div className="space-y-6">
+              <StreakCard />
+              <QuickActions />
+            </div>
           </div>
         </div>
       </main>

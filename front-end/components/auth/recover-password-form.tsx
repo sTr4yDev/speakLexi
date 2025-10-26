@@ -1,48 +1,101 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, Mail, CheckCircle } from "lucide-react"
+import { authAPI } from "@/lib/api"
 
 export function RecoverPasswordForm() {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState("")
+  const [emailSent, setEmailSent] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const data = await authAPI.recuperarPassword(email)
+      
       toast({
         title: "Correo enviado",
-        description: "Revisa tu bandeja de entrada para restablecer tu contraseña",
+        description: data.mensaje || "Revisa tu bandeja de entrada",
       })
-      router.push("/correo-enviado")
+      
+      setEmailSent(true)
+      
+      // Redirigir después de 3 segundos
+      setTimeout(() => {
+        router.push("/correo-enviado")
+      }, 3000)
+      
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo enviar el correo",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
+  }
+
+  if (emailSent) {
+    return (
+      <div className="space-y-4 text-center">
+        <div className="flex justify-center">
+          <div className="rounded-full bg-green-100 p-3">
+            <CheckCircle className="h-12 w-12 text-green-600" />
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">¡Correo enviado!</h3>
+          <p className="text-sm text-muted-foreground">
+            Revisa tu bandeja de entrada en <strong>{email}</strong>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Haz clic en el enlace del correo para restablecer tu contraseña
+          </p>
+        </div>
+
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => router.push("/login")}
+        >
+          Volver al inicio de sesión
+        </Button>
+      </div>
+    )
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="email">Correo Electrónico</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="tu@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <div className="relative">
+          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            id="email"
+            type="email"
+            placeholder="tu@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="pl-10"
+            required
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Te enviaremos un enlace para restablecer tu contraseña
+        </p>
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
@@ -54,6 +107,15 @@ export function RecoverPasswordForm() {
         ) : (
           "Enviar Enlace de Recuperación"
         )}
+      </Button>
+
+      <Button
+        type="button"
+        variant="ghost"
+        className="w-full"
+        onClick={() => router.push("/login")}
+      >
+        Volver al inicio de sesión
       </Button>
     </form>
   )

@@ -1,210 +1,315 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Checkbox } from "@/components/ui/checkbox"
+import { AlertTriangle, Loader2, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { AlertTriangle, Loader2 } from "lucide-react"
 
 export default function EliminarCuentaPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const [step, setStep] = useState(1)
-  const [isLoading, setIsLoading] = useState(false)
+  
+  // Step 1
   const [password, setPassword] = useState("")
-  const [confirmText, setConfirmText] = useState("")
+  
+  // Step 2
+  const [aceptaTerminos, setAceptaTerminos] = useState(false)
+  
+  // Step 3
+  const [confirmacion, setConfirmacion] = useState("")
 
-  const handleStep1Continue = () => {
-    setStep(2)
-  }
+  // Obtener datos del usuario
+  const userEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : ''
 
-  const handleStep2Continue = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (password.length < 6) {
-      toast({
-        title: "Error",
-        description: "Por favor ingresa tu contraseña",
-        variant: "destructive",
-      })
+  const handleNextStep = () => {
+    setError("")
+    
+    if (step === 1 && !password) {
+      setError("Debes ingresar tu contraseña")
       return
     }
-    setStep(3)
+    
+    if (step === 2 && !aceptaTerminos) {
+      setError("Debes aceptar los términos para continuar")
+      return
+    }
+    
+    setStep(step + 1)
   }
 
-  const handleFinalDelete = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (confirmText !== "ELIMINAR") {
-      toast({
-        title: "Error",
-        description: 'Debes escribir exactamente "ELIMINAR" para continuar',
-        variant: "destructive",
-      })
+  const handleFinalDelete = async () => {
+    setError("")
+
+    // Validación final
+    if (confirmacion.toUpperCase() !== "ELIMINAR") {
+      setError("Debes escribir ELIMINAR para confirmar")
       return
     }
 
-    setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
+    setLoading(true)
+
+    try {
+      const userId = localStorage.getItem('userId')
+      if (!userId) {
+        throw new Error("No se pudo identificar tu usuario")
+      }
+
+      const res = await fetch(`http://localhost:5000/api/usuario/desactivar/${userId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          password: password,
+          confirmacion: "ELIMINAR" // Backend espera exactamente esto
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error al desactivar la cuenta")
+      }
+
+      toast({
+        title: "Cuenta desactivada",
+        description: "Tu cuenta ha sido desactivada correctamente",
+      })
+      
+      // Limpiar sesión
       localStorage.clear()
+      
+      // Redirigir
+      router.push('/cuenta-desactivada')
+      
+    } catch (err: any) {
+      setError(err.message || "Error al desactivar la cuenta")
       toast({
-        title: "Cuenta eliminada",
-        description: "Tu cuenta ha sido eliminada permanentemente",
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
       })
-      router.push("/")
-    }, 2000)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardHeader />
-
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-destructive">Eliminar Cuenta</h1>
-          <p className="text-muted-foreground">Esta acción es permanente e irreversible</p>
-        </div>
-
-        <Card className="border-destructive">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
+      <div className="w-full max-w-2xl">
+        <Card className="border-destructive shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Paso {step} de 3
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <CardTitle>Eliminar Cuenta</CardTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/perfil')}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Volver al perfil
+              </Button>
+            </div>
             <CardDescription>
-              {step === 1 && "Lee cuidadosamente las consecuencias"}
-              {step === 2 && "Confirma tu identidad"}
-              {step === 3 && "Confirmación final"}
+              Esta acción es permanente e irreversible
             </CardDescription>
+            {userEmail && (
+              <p className="text-sm text-muted-foreground">
+                Cuenta: <strong>{userEmail}</strong>
+              </p>
+            )}
           </CardHeader>
-          <CardContent className="space-y-6">
-            {step === 1 && (
-              <>
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Advertencia:</strong> Esta acción no se puede deshacer
-                  </AlertDescription>
-                </Alert>
 
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Al eliminar tu cuenta perderás:</h3>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li className="flex items-start gap-2">
-                      <span className="text-destructive">•</span>
-                      <span>Todo tu progreso de aprendizaje y estadísticas</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-destructive">•</span>
-                      <span>Todos tus logros, insignias y recompensas</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-destructive">•</span>
-                      <span>Tu posición en la tabla de clasificación</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-destructive">•</span>
-                      <span>Acceso a todos los cursos en los que estás inscrito</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-destructive">•</span>
-                      <span>Tu información personal y preferencias</span>
-                    </li>
+        <CardContent className="space-y-6">
+          {/* Indicador de paso */}
+          <Alert>
+            <AlertDescription>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                <strong>Paso {step} de 3</strong>
+              </div>
+              <p className="text-sm mt-1">
+                {step === 1 && "Verificación de identidad"}
+                {step === 2 && "Confirmación de términos"}
+                {step === 3 && "Confirmación final"}
+              </p>
+            </AlertDescription>
+          </Alert>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* PASO 1: Contraseña */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  <strong>¿Qué sucederá?</strong>
+                  <ul className="mt-2 ml-4 list-disc space-y-1 text-sm">
+                    <li>Tu cuenta será desactivada por 30 días</li>
+                    <li>Puedes reactivarla en cualquier momento</li>
+                    <li>Después de 30 días, se eliminará permanentemente</li>
                   </ul>
-                </div>
+                </AlertDescription>
+              </Alert>
 
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => router.back()} className="flex-1">
-                    Cancelar
-                  </Button>
-                  <Button variant="destructive" onClick={handleStep1Continue} className="flex-1">
-                    Entiendo, continuar
-                  </Button>
-                </div>
-              </>
-            )}
+              <div className="space-y-2">
+                <Label htmlFor="password">Confirma tu contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Ingresa tu contraseña"
+                />
+              </div>
 
-            {step === 2 && (
-              <form onSubmit={handleStep2Continue} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="password">Confirma tu contraseña</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Ingresa tu contraseña"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">Necesitamos verificar tu identidad antes de continuar</p>
-                </div>
+              <div className="flex gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                  className="flex-1"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Atrás
+                </Button>
+                <Button
+                  onClick={handleNextStep}
+                  className="flex-1"
+                >
+                  Continuar
+                </Button>
+              </div>
+            </div>
+          )}
 
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={() => setStep(1)} className="flex-1">
-                    Atrás
-                  </Button>
-                  <Button type="submit" variant="destructive" className="flex-1">
-                    Verificar
-                  </Button>
-                </div>
-              </form>
-            )}
+          {/* PASO 2: Términos */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <Alert variant="destructive">
+                <AlertDescription>
+                  <strong>Advertencia importante:</strong>
+                  <ul className="mt-2 ml-4 list-disc space-y-1 text-sm">
+                    <li>Perderás acceso a todas tus lecciones</li>
+                    <li>Tu progreso y logros se eliminarán</li>
+                    <li>No podrás recuperar tu información después de 30 días</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
 
-            {step === 3 && (
-              <form onSubmit={handleFinalDelete} className="space-y-6">
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Última advertencia:</strong> Esta es tu última oportunidad para cancelar
-                  </AlertDescription>
-                </Alert>
+              <div className="flex items-start space-x-2 bg-muted p-4 rounded-lg">
+                <Checkbox
+                  id="terms"
+                  checked={aceptaTerminos}
+                  onCheckedChange={(checked) => setAceptaTerminos(checked as boolean)}
+                />
+                <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
+                  Entiendo que esta acción desactivará mi cuenta por 30 días y que después 
+                  de ese período será eliminada permanentemente junto con toda mi información.
+                </Label>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirm">
-                    Escribe <strong>ELIMINAR</strong> para confirmar
-                  </Label>
-                  <Input
-                    id="confirm"
-                    type="text"
-                    placeholder="ELIMINAR"
-                    value={confirmText}
-                    onChange={(e) => setConfirmText(e.target.value)}
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">Debes escribir exactamente "ELIMINAR" en mayúsculas</p>
-                </div>
+              <div className="flex gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep(1)}
+                  className="flex-1"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Atrás
+                </Button>
+                <Button
+                  onClick={handleNextStep}
+                  disabled={!aceptaTerminos}
+                  className="flex-1"
+                >
+                  Continuar
+                </Button>
+              </div>
+            </div>
+          )}
 
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1">
-                    Atrás
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="destructive"
-                    className="flex-1"
-                    disabled={isLoading || confirmText !== "ELIMINAR"}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Eliminando...
-                      </>
-                    ) : (
-                      "Eliminar mi cuenta permanentemente"
-                    )}
-                  </Button>
-                </div>
-              </form>
-            )}
-          </CardContent>
-        </Card>
-      </main>
+          {/* PASO 3: Confirmación final */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <Alert variant="destructive">
+                <AlertDescription>
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <strong>Última advertencia:</strong>
+                  </div>
+                  <p className="text-sm">
+                    Esta es tu última oportunidad para cancelar
+                  </p>
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmacion">
+                  Escribe <strong className="text-destructive">ELIMINAR</strong> para confirmar
+                </Label>
+                <Input
+                  id="confirmacion"
+                  type="text"
+                  value={confirmacion}
+                  onChange={(e) => setConfirmacion(e.target.value)}
+                  placeholder="ELIMINAR"
+                  disabled={loading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Debes escribir exactamente "ELIMINAR" en mayúsculas
+                </p>
+              </div>
+
+              <div className="flex gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep(2)}
+                  disabled={loading}
+                  className="flex-1"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Atrás
+                </Button>
+                <Button
+                  onClick={handleFinalDelete}
+                  variant="destructive"
+                  disabled={loading || confirmacion.toUpperCase() !== "ELIMINAR"}
+                  className="flex-1"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Desactivando...
+                    </>
+                  ) : (
+                    "Eliminar mi cuenta permanentemente"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
     </div>
   )
 }

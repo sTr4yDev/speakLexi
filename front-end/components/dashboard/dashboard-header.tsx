@@ -14,21 +14,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { BookOpen, Bell, Settings, LogOut, User } from "lucide-react"
+import { authStorage } from "@/lib/auth"
 
 export function DashboardHeader() {
   const router = useRouter()
   const pathname = usePathname()
   const [userRole, setUserRole] = useState<string>("")
+  const [userName, setUserName] = useState<string>("")
+  const [userInitials, setUserInitials] = useState<string>("U")
 
   useEffect(() => {
-    const role = localStorage.getItem("userRole") || "estudiante"
+    // Obtener datos del usuario desde authStorage
+    const role = authStorage.getUserRole()
+    const name = authStorage.getUserName()
+    const initials = authStorage.getUserInitials()
+    
     setUserRole(role)
+    setUserName(name)
+    setUserInitials(initials)
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem("userRole")
-    localStorage.removeItem("userEmail")
-    localStorage.removeItem("userName")
+    authStorage.logout()
     router.push("/login")
   }
 
@@ -77,7 +84,7 @@ export function DashboardHeader() {
             <Link
               key={link.href}
               href={link.href}
-              className={`font-medium ${
+              className={`font-medium transition-colors ${
                 pathname === link.href || (index === 0 && pathname.startsWith(link.href.split("/")[1]))
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-primary"
@@ -100,13 +107,18 @@ export function DashboardHeader() {
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar>
                   <AvatarFallback className="bg-primary text-primary-foreground">
-                    {userRole === "profesor" ? "MP" : userRole === "admin" ? "AC" : "JP"}
+                    {userInitials}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span className="font-medium">{userName}</span>
+                  <span className="text-xs text-muted-foreground capitalize">{userRole}</span>
+                </div>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/perfil" className="flex cursor-pointer items-center">

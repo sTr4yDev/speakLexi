@@ -1,0 +1,140 @@
+"use client"
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { CheckCircle2, Info, Clock, AlertTriangle } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+
+export default function CuentaDesactivadaPage() {
+  const router = useRouter()
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
+      <Card className="w-full max-w-2xl shadow-lg">
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="relative">
+              <CheckCircle2 className="h-20 w-20 text-green-500" />
+              <Clock className="h-8 w-8 text-orange-500 absolute -bottom-1 -right-1 bg-background rounded-full p-1" />
+            </div>
+          </div>
+          <div>
+            <CardTitle className="text-3xl font-bold">Cuenta Desactivada</CardTitle>
+            <CardDescription className="text-lg mt-2">
+              Tu cuenta ha sido desactivada temporalmente
+            </CardDescription>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {/* Información principal */}
+          <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950/20">
+            <AlertTriangle className="h-5 w-5 text-orange-600" />
+            <AlertDescription className="text-base">
+              <strong className="block mb-2 text-orange-700 dark:text-orange-400">
+                Tu cuenta permanecerá desactivada por 30 días
+              </strong>
+              <p className="text-sm text-muted-foreground">
+                Durante este período, no podrás acceder a tu cuenta pero toda tu información 
+                permanecerá guardada de forma segura.
+              </p>
+            </AlertDescription>
+          </Alert>
+
+          {/* ¿Qué sucede ahora? */}
+          <div className="bg-muted/50 rounded-lg p-6 space-y-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Info className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-lg">¿Qué sucede ahora?</h3>
+            </div>
+            
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-primary/10 p-1 mt-0.5">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                </div>
+                <p>
+                  <strong className="text-foreground">Desactivación temporal:</strong> Tu cuenta 
+                  estará inactiva durante los próximos 30 días.
+                </p>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-primary/10 p-1 mt-0.5">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                </div>
+                <p>
+                  <strong className="text-foreground">Datos protegidos:</strong> Todo tu progreso, 
+                  logros y configuración permanecen guardados de forma segura.
+                </p>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-primary/10 p-1 mt-0.5">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                </div>
+                <p>
+                  <strong className="text-foreground">Reactivación fácil:</strong> Puedes reactivar 
+                  tu cuenta en cualquier momento simplemente iniciando sesión.
+                </p>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-destructive/10 p-1 mt-0.5">
+                  <div className="w-2 h-2 rounded-full bg-destructive" />
+                </div>
+                <p>
+                  <strong className="text-foreground">Eliminación automática:</strong> Si no 
+                  reactivas tu cuenta en 30 días, será eliminada permanentemente y no podrás 
+                  recuperar tu información.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ¿Cambiaste de opinión? */}
+          <div className="border-2 border-primary/20 rounded-lg p-6 bg-primary/5">
+            <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              ¿Cambiaste de opinión?
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Si quieres volver a SpeakLexi, es muy fácil. Solo tienes que iniciar sesión 
+              con tu correo y contraseña. Te daremos la opción de reactivar tu cuenta 
+              inmediatamente y continuar donde lo dejaste.
+            </p>
+            <Button 
+              onClick={() => router.push('/login')} 
+              variant="outline"
+              className="w-full"
+            >
+              Reactivar mi cuenta ahora
+            </Button>
+          </div>
+
+          {/* Botón principal */}
+          <div className="pt-4">
+            <Button 
+              onClick={() => router.push('/')} 
+              size="lg"
+              className="w-full"
+            >
+              Volver a la página principal
+            </Button>
+          </div>
+
+          {/* Nota al pie */}
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">
+              Si tienes dudas o necesitas ayuda, contáctanos en{" "}
+              <a href="mailto:soporte@speaklexi.com" className="text-primary hover:underline">
+                soporte@speaklexi.com
+              </a>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

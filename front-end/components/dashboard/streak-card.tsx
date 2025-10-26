@@ -1,9 +1,41 @@
+"use client"
+
 import { Card } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Flame } from "lucide-react"
+import { useUserData } from "@/hooks/use-user-data"
 
 export function StreakCard() {
+  const { userData, isLoading } = useUserData()
+  
   const weekDays = ["L", "M", "X", "J", "V", "S", "D"]
-  const completedDays = [true, true, true, true, true, true, true]
+  
+  // Obtener racha del backend o 0 si es nuevo
+  const diasRacha = userData?.perfil.dias_racha || 0
+  
+  // Simular días completados basado en la racha
+  const completedDays = weekDays.map((_, index) => index < diasRacha)
+
+  if (isLoading) {
+    return (
+      <Card className="p-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-10 w-10 rounded-lg" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          </div>
+          <div className="flex justify-between gap-2">
+            {weekDays.map((_, index) => (
+              <Skeleton key={index} className="h-10 w-10 rounded-lg" />
+            ))}
+          </div>
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <Card className="p-6">
@@ -13,7 +45,13 @@ export function StreakCard() {
         </div>
         <div>
           <h3 className="font-bold">Racha de Fuego</h3>
-          <p className="text-sm text-muted-foreground">7 días consecutivos</p>
+          <p className="text-sm text-muted-foreground">
+            {diasRacha === 0 
+              ? "Comienza tu racha hoy" 
+              : diasRacha === 1 
+              ? "1 día consecutivo" 
+              : `${diasRacha} días consecutivos`}
+          </p>
         </div>
       </div>
 
@@ -21,7 +59,7 @@ export function StreakCard() {
         {weekDays.map((day, index) => (
           <div key={index} className="flex flex-col items-center gap-1">
             <div
-              className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-medium ${
+              className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-medium transition-all ${
                 completedDays[index]
                   ? "bg-accent text-accent-foreground"
                   : "border-2 border-dashed border-muted-foreground/30 text-muted-foreground"
@@ -34,7 +72,9 @@ export function StreakCard() {
       </div>
 
       <p className="mt-4 text-center text-sm text-muted-foreground leading-relaxed">
-        Completa una lección hoy para mantener tu racha
+        {diasRacha === 0 
+          ? "¡Completa tu primera lección para comenzar tu racha!" 
+          : "Completa una lección hoy para mantener tu racha"}
       </p>
     </Card>
   )

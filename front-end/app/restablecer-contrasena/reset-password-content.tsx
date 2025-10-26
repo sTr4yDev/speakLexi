@@ -1,0 +1,274 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2, Lock, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react"
+import { authAPI } from "@/lib/api"
+
+export default function ResetPasswordContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+  
+  const [token, setToken] = useState<string | null>(null)
+  const [isValidating, setIsValidating] = useState(true)
+  const [isValidToken, setIsValidToken] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [email, setEmail] = useState("")
+
+  // Validar token al cargar
+  useEffect(() => {
+    const tokenParam = searchParams.get("token")
+    
+    if (!tokenParam) {
+      toast({
+        title: "Error",
+        description: "Token no encontrado",
+        variant: "destructive",
+      })
+      setTimeout(() => router.push("/recuperar-contrasena"), 2000)
+      return
+    }
+
+    setToken(tokenParam)
+    validateToken(tokenParam)
+  }, [searchParams])
+
+  const validateToken = async (tokenToValidate: string) => {
+    try {
+      const data = await authAPI.validarToken(tokenToValidate)
+      setIsValidToken(true)
+      setEmail(data.correo)
+      toast({
+        title: "Token válido",
+        description: "Puedes proceder a cambiar tu contraseña",
+      })
+    } catch (error: any) {
+      setIsValidToken(false)
+      toast({
+        title: "Token inválido",
+        description: error.message || "El enlace ha expirado o es inválido",
+        variant: "destructive",
+      })
+      setTimeout(() => router.push("/recuperar-contrasena"), 3000)
+    } finally {
+      setIsValidating(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Validaciones
+    if (newPassword.length < 8) {
+      toast({
+        title: "Error",
+        description: "La contraseña debe tener al menos 8 caracteres",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Las contraseñas no coinciden",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!token) {
+      toast({
+        title: "Error",
+        description: "Token no encontrado",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const data = await authAPI.restablecerPassword(token, newPassword)
+      
+      toast({
+        title: "¡Éxito!",
+        description: data.mensaje || "Tu contraseña ha sido actualizada",
+      })
+      
+      setTimeout(() => {
+        router.push("/login")
+      }, 2000)
+      
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo restablecer la contraseña",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Indicador de fortaleza de contraseña
+  const getPasswordStrength = (password: string) => {
+    if (password.length === 0) return { strength: 0, label: "", color: "" }
+    if (password.length < 6) return { strength: 1, label: "Débil", color: "text-red-500" }
+    if (password.length < 10) return { strength: 2, label: "Media", color: "text-yellow-500" }
+    if (password.length >= 10 && /[A-Z]/.test(password) && /[0-9]/.test(password)) {
+      return { strength: 3, label: "Fuerte", color: "text-green-500" }
+    }
+    return { strength: 2, label: "Media", color: "text-yellow-500" }
+  }
+
+  const passwordStrength = getPasswordStrength(newPassword)
+
+  if (isValidating) {
+    return (
+      <div className="flex flex-col items-center justify-center space-y-4 py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+        <p className="text-sm text-gray-600">Validando enlace...</p>
+      </div>
+    )
+  }
+
+  if (!isValidToken) {
+    return (
+      <div className="flex flex-col items-center justify-center space-y-4 py-8">
+        <AlertCircle className="h-12 w-12 text-red-500" />
+        <h3 className="text-lg font-semibold">Enlace inválido o expirado</h3>
+        <p className="text-sm text-gray-600 text-center">
+          Serás redirigido a la página de recuperación...
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {email && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <p className="text-sm text-blue-800">
+            Restableciendo contraseña para: <strong>{email}</strong>
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="newPassword">Nueva Contraseña</Label>
+        <div className="relative">
+          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            id="newPassword"
+            type={showPassword ? "text" : "password"}
+            placeholder="••••••••"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className="pl-10 pr-10"
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-3 text-muted-foreground hover:text-gray-700"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        
+        {newPassword && (
+          <div className="space-y-1">
+            <div className="flex gap-1">
+              {[1, 2, 3].map((level) => (
+                <div
+                  key={level}
+                  className={`h-1 flex-1 rounded-full transition-colors ${
+                    level <= passwordStrength.strength
+                      ? passwordStrength.strength === 1
+                        ? "bg-red-500"
+                        : passwordStrength.strength === 2
+                        ? "bg-yellow-500"
+                        : "bg-green-500"
+                      : "bg-gray-200"
+                  }`}
+                />
+              ))}
+            </div>
+            <p className={`text-xs ${passwordStrength.color}`}>
+              Fortaleza: {passwordStrength.label}
+            </p>
+          </div>
+        )}
+        
+        <p className="text-xs text-muted-foreground">
+          Mínimo 8 caracteres. Recomendado: incluir mayúsculas, números y símbolos
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+        <div className="relative">
+          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            id="confirmPassword"
+            type={showConfirmPassword ? "text" : "password"}
+            placeholder="••••••••"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="pl-10 pr-10"
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute right-3 top-3 text-muted-foreground hover:text-gray-700"
+          >
+            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        
+        {confirmPassword && (
+          <div className="flex items-center gap-2">
+            {newPassword === confirmPassword ? (
+              <>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <p className="text-xs text-green-600">Las contraseñas coinciden</p>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                <p className="text-xs text-red-600">Las contraseñas no coinciden</p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={isLoading || newPassword !== confirmPassword || newPassword.length < 8}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Guardando...
+          </>
+        ) : (
+          "Restablecer Contraseña"
+        )}
+      </Button>
+    </form>
+  )
+}
