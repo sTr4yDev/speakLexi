@@ -205,6 +205,44 @@ class GestorUsuarios:
         except Exception as e:
             print(f"❌ Error obteniendo perfil: {str(e)}")
             return {"error": f"Error al obtener perfil: {str(e)}"}, 500
+        
+    def cambiar_curso(self, id_usuario, nuevo_curso, nuevo_idioma=None, nuevo_nivel=None):
+        """
+        Cambia el curso actual del usuario y opcionalmente su idioma o nivel.
+        """
+        try:
+            usuario = Usuario.query.get(id_usuario)
+            if not usuario:
+                return {"error": "Usuario no encontrado"}, 404
+
+            perfil = usuario.perfil
+            if not perfil:
+                return {"error": "Perfil no encontrado"}, 404
+
+            # Cambiar curso y otros datos opcionales
+            perfil.curso_actual = nuevo_curso
+            if nuevo_idioma:
+                perfil.idioma = nuevo_idioma
+            if nuevo_nivel:
+                perfil.nivel_actual = nuevo_nivel
+
+            perfil.ultima_actividad = datetime.utcnow()
+            db.session.commit()
+
+            return {
+                "mensaje": "Curso actualizado correctamente",
+                "perfil": {
+                    "idioma": perfil.idioma,
+                    "nivel_actual": perfil.nivel_actual,
+                    "curso_actual": perfil.curso_actual,
+                    "ultima_actividad": perfil.ultima_actividad.isoformat() if perfil.ultima_actividad else None
+                }
+            }, 200
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error al cambiar curso: {str(e)}")
+            return {"error": f"Error al cambiar curso: {str(e)}"}, 500
 
     # ========================================
     # SOFT DELETE Y RECUPERACIÓN DE CUENTA
