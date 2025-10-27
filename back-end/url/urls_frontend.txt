@@ -1,6 +1,6 @@
 # FRONTEND - SpeakLexi (Next.js/React/TypeScript)
-# Total: 146 archivos
-# Generado: 2025-10-26 16:51:27
+# Total: 147 archivos
+# Generado: 2025-10-27 12:29:55
 
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/dashboard/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/[id]/editar/page.tsx
@@ -147,4 +147,5 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-mo
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-toast.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-user-data.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/middleware.ts
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/next-env.d.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/styles/globals.css

@@ -647,10 +647,14 @@
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/middleware.ts"
     },
     {
+      "path": "front-end/next-env.d.ts",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/next-env.d.ts"
+    },
+    {
       "path": "front-end/styles/globals.css",
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/styles/globals.css"
     }
   ],
   "docs": [],
-  "generated": "2025-10-26 16:51:27"
+  "generated": "2025-10-27 12:29:55"
 }

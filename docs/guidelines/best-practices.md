@@ -1,0 +1,780 @@
+# 🌟 Mejores Prácticas y Prevención de Errores - SpeakLexi
+
+> **Documento basado en errores reales del proyecto**  
+> Este documento te ayudará a evitar los problemas más comunes que han ocurrido durante el desarrollo.
+
+---
+
+## 🚨 Errores Críticos y Cómo Evitarlos
+
+### 1. **Error: CORS - No 'Access-Control-Allow-Origin' header**
+
+#### ❌ Problema Común
+```python
+# app.py - Configuración incorrecta de CORS
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)  # ❌ Demasiado permisivo o restrictivo
+```
+
+#### ✅ Solución Correcta
+```python
+# app.py - Configuración específica y segura
+from flask_cors import CORS
+
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000"],  # Frontend específico
+        "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True  # Si usas cookies/sesiones
+    }
+})
+```
+
+#### 🔍 Verificación
+```bash
+# Probar desde el navegador
+fetch('http://localhost:5000/api/usuarios', {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+```
+
+---
+
+### 2. **Error: 405 Method Not Allowed**
+
+#### ❌ Problema Común
+```python
+# routes/usuario_routes.py
+@usuario_bp.route('/perfil', methods=['GET'])  # ❌ Solo GET definido
+def actualizar_perfil():  # ❌ Pero el frontend envía POST
+    data = request.get_json()
+    # ...
+```
+
+#### ✅ Solución Correcta
+```python
+# Definir todos los métodos necesarios
+@usuario_bp.route('/perfil', methods=['GET', 'PUT', 'PATCH'])
+def gestionar_perfil():
+    if request.method == 'GET':
+        return obtener_perfil()
+    elif request.method in ['PUT', 'PATCH']:
+        return actualizar_perfil()
+
+# O mejor, separa en rutas diferentes
+@usuario_bp.route('/perfil', methods=['GET'])
+def obtener_perfil():
+    pass
+
+@usuario_bp.route('/perfil', methods=['PUT', 'PATCH'])
+def actualizar_perfil():
+    pass
+```
+
+---
+
+### 3. **Error: AttributeError: 'NoneType' object has no attribute**
+
+#### ❌ Problema Común
+```python
+# services/gestor_usuarios.py
+def obtener_usuario(usuario_id):
+    usuario = db.session.query(Usuario).filter_by(id=usuario_id).first()
+    return usuario.to_dict()  # ❌ Si usuario es None, explota aquí
+```
+
+#### ✅ Solución Correcta
+```python
+def obtener_usuario(usuario_id):
+    usuario = db.session.query(Usuario).filter_by(id=usuario_id).first()
+    
+    if not usuario:
+        raise UsuarioNoEncontradoError(f"Usuario {usuario_id} no existe")
+    
+    return usuario.to_dict()
+
+# En la ruta
+@usuario_bp.route('/<int:usuario_id>', methods=['GET'])
+def get_usuario(usuario_id):
+    try:
+        resultado = gestor_usuarios.obtener_usuario(usuario_id)
+        return jsonify(resultado), 200
+    except UsuarioNoEncontradoError as e:
+        return jsonify({'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'error': 'Error interno'}), 500
+```
+
+---
+
+### 4. **Error: SQLAlchemy - (OperationalError) no such table**
+
+#### ❌ Problema Común
+```python
+# Olvidar ejecutar db.create_all()
+from config.database import db
+from models.usuario import Usuario
+
+# ❌ No se crean las tablas
+usuario = Usuario(nombre="Test")
+db.session.add(usuario)
+db.session.commit()  # ❌ Error: tabla no existe
+```
+
+#### ✅ Solución Correcta
+```python
+# app.py - Asegurar creación de tablas
+def create_app():
+    app = Flask(__name__)
+    db.init_app(app)
+    
+    with app.app_context():
+        try:
+            db.create_all()  # ✅ Crear tablas si no existen
+            print("✅ Tablas creadas correctamente")
+        except Exception as e:
+            print(f"❌ Error al crear tablas: {e}")
+    
+    return app
+```
+
+#### 🔍 Verificación
+```bash
+# Conectarse a MySQL y verificar
+mysql -u root -p
+USE SpeakLexi;
+SHOW TABLES;  # Debe mostrar: usuarios, perfiles_usuario, etc.
+```
+
+---
+
+### 5. **Error: JWT - Token has expired / Invalid token**
+
+#### ❌ Problema Común
+```python
+# Frontend - No manejar tokens expirados
+const response = await fetch('/api/usuarios/perfil', {
+  headers: {
+    'Authorization': `Bearer ${token}`  // ❌ Token expirado
+  }
+});
+// ❌ No hay manejo de error 401
+```
+
+#### ✅ Solución Correcta
+```python
+# Backend - Validar y devolver error claro
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from jwt.exceptions import ExpiredSignatureError
+
+@usuario_bp.route('/perfil', methods=['GET'])
+@jwt_required()
+def obtener_perfil():
+    try:
+        usuario_id = get_jwt_identity()
+        # ...
+    except ExpiredSignatureError:
+        return jsonify({'error': 'Token expirado', 'code': 'TOKEN_EXPIRED'}), 401
+```
+```tsx
+// Frontend - Manejar renovación de token
+async function fetchConAuth(url: string) {
+  const token = localStorage.getItem('token');
+  
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  
+  if (response.status === 401) {
+    const data = await response.json();
+    
+    if (data.code === 'TOKEN_EXPIRED') {
+      // Redirigir a login o renovar token
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+  }
+  
+  return response;
+}
+```
+
+---
+
+### 6. **Error: Contraseñas en Texto Plano**
+
+#### ❌ Problema Común
+```python
+# models/usuario.py - ¡NUNCA HAGAS ESTO!
+class Usuario(db.Model):
+    password = db.Column(db.String(255))  # ❌ Texto plano
+    
+    def verificar_password(self, password):
+        return self.password == password  # ❌ Comparación directa
+```
+
+#### ✅ Solución Correcta
+```python
+# models/usuario.py
+from werkzeug.security import generate_password_hash, check_password_hash
+
+class Usuario(db.Model):
+    password_hash = db.Column(db.String(255))  # ✅ Hash almacenado
+    
+    def set_password(self, password):
+        """Hashea la contraseña antes de guardar"""
+        self.password_hash = generate_password_hash(password)
+    
+    def verificar_password(self, password):
+        """Verifica contraseña contra el hash"""
+        return check_password_hash(self.password_hash, password)
+    
+    def to_dict(self):
+        """NUNCA incluir password_hash en respuestas"""
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'email': self.email
+            # password_hash NO se incluye
+        }
+```
+
+---
+
+### 7. **Error: Validación de Entrada Faltante**
+
+#### ❌ Problema Común
+```python
+# routes/auth.py - Sin validación
+@auth_bp.route('/registro', methods=['POST'])
+def registro():
+    data = request.get_json()
+    
+    # ❌ Asumir que los datos son correctos
+    usuario = Usuario(
+        nombre=data['nombre'],
+        email=data['email']
+    )
+    db.session.add(usuario)
+    db.session.commit()
+```
+
+#### ✅ Solución Correcta
+```python
+# routes/auth.py - Con validación
+from marshmallow import Schema, fields, validate, ValidationError
+
+class RegistroSchema(Schema):
+    nombre = fields.Str(
+        required=True, 
+        validate=validate.Length(min=2, max=100)
+    )
+    email = fields.Email(required=True)
+    password = fields.Str(
+        required=True,
+        validate=validate.Length(min=8, max=128)
+    )
+
+@auth_bp.route('/registro', methods=['POST'])
+def registro():
+    schema = RegistroSchema()
+    
+    try:
+        # Validar datos de entrada
+        data = schema.load(request.get_json())
+    except ValidationError as err:
+        return jsonify({
+            'error': 'Datos inválidos',
+            'detalles': err.messages
+        }), 400
+    
+    # Validaciones de negocio adicionales
+    if gestor_usuarios.email_existe(data['email']):
+        return jsonify({'error': 'Email ya registrado'}), 409
+    
+    # Procesar registro
+    resultado = gestor_usuarios.registrar(data)
+    return jsonify(resultado), 201
+```
+
+---
+
+### 8. **Error: SQL Injection (Aunque SQLAlchemy protege, es importante saberlo)**
+
+#### ❌ Problema Común (Si usaras SQL crudo)
+```python
+# ❌ NUNCA HAGAS ESTO
+email = request.args.get('email')
+query = f"SELECT * FROM usuarios WHERE email = '{email}'"
+resultado = db.session.execute(db.text(query))
+# Vulnerable a: email = "'; DROP TABLE usuarios; --"
+```
+
+#### ✅ Solución Correcta
+```python
+# ✅ Usar ORM de SQLAlchemy (protección automática)
+email = request.args.get('email')
+usuario = Usuario.query.filter_by(email=email).first()
+
+# ✅ O con parámetros si usas SQL crudo
+query = db.text("SELECT * FROM usuarios WHERE email = :email")
+resultado = db.session.execute(query, {'email': email})
+```
+
+---
+
+### 9. **Error: Frontend - No manejar estados de carga**
+
+#### ❌ Problema Común
+```tsx
+// components/auth/LoginForm.tsx
+export function LoginForm() {
+  const handleSubmit = async (e) => {
+    const response = await fetch('/api/auth/login', {...});
+    // ❌ Sin indicador de carga
+    // ❌ El botón puede clickearse múltiples veces
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <Button type="submit">Iniciar Sesión</Button>
+    </form>
+  );
+}
+```
+
+#### ✅ Solución Correcta
+```tsx
+export function LoginForm() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al iniciar sesión');
+      }
+      
+      const result = await response.json();
+      // Manejar éxito
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      {error && <Alert variant="destructive">{error}</Alert>}
+      
+      <Button 
+        type="submit" 
+        disabled={loading}
+      >
+        {loading ? 'Cargando...' : 'Iniciar Sesión'}
+      </Button>
+    </form>
+  );
+}
+```
+
+---
+
+### 10. **Error: Variables de Entorno No Cargadas**
+
+#### ❌ Problema Común
+```python
+# config/settings.py
+import os
+
+# ❌ Sin load_dotenv(), las variables no se cargan
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+```
+
+#### ✅ Solución Correcta
+```python
+# config/settings.py
+import os
+from dotenv import load_dotenv
+
+# ✅ Cargar variables de entorno PRIMERO
+load_dotenv()
+
+# Ahora sí funcionan
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_PORT = os.getenv('DB_PORT', '3306')
+
+# Verificar que se cargaron
+if not os.getenv('DB_PASSWORD'):
+    print("⚠️ WARNING: DB_PASSWORD no está configurada en .env")
+```
+
+---
+
+### 11. **Error: Circular Imports**
+
+#### ❌ Problema Común
+```python
+# models/usuario.py
+from config.database import db
+from services.gestor_usuarios import GestorUsuarios  # ❌
+
+class Usuario(db.Model):
+    def calcular_nivel(self):
+        return GestorUsuarios.calcular_nivel(self)  # ❌ Import circular
+
+# services/gestor_usuarios.py
+from models.usuario import Usuario  # ❌ Importa Usuario
+
+class GestorUsuarios:
+    @staticmethod
+    def calcular_nivel(usuario: Usuario):  # ❌ Usa Usuario
+        pass
+```
+
+#### ✅ Solución Correcta
+```python
+# models/usuario.py - Solo definición del modelo
+from config.database import db
+
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100))
+    # NO incluir lógica de negocio aquí
+
+# services/gestor_usuarios.py - Toda la lógica aquí
+from models.usuario import Usuario  # ✅ Import unidireccional
+
+class GestorUsuarios:
+    @staticmethod
+    def calcular_nivel(usuario: Usuario):
+        # Lógica de negocio
+        return usuario.puntos // 100
+```
+
+---
+
+### 12. **Error: No Cerrar Conexiones de Base de Datos**
+
+#### ❌ Problema Común
+```python
+# services/gestor_usuarios.py
+def obtener_usuarios():
+    usuarios = Usuario.query.all()
+    # ❌ No se cierra la sesión explícitamente
+    return [u.to_dict() for u in usuarios]
+```
+
+#### ✅ Solución Correcta
+```python
+# SQLAlchemy con Flask maneja esto automáticamente
+# Pero si haces consultas manuales:
+
+from contextlib import contextmanager
+
+@contextmanager
+def session_scope():
+    """Proporciona un scope transaccional para operaciones de BD"""
+    session = db.session()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+# Uso
+def operacion_compleja():
+    with session_scope() as session:
+        usuario = Usuario(nombre="Test")
+        session.add(usuario)
+        # Se hace commit automático al salir del with
+```
+
+---
+
+### 13. **Error: No Manejar Errores de Email**
+
+#### ❌ Problema Común
+```python
+# services/correo_service.py
+def enviar_verificacion(email, token):
+    msg = Message(
+        subject="Verificación de cuenta",
+        recipients=[email]
+    )
+    mail.send(msg)  # ❌ Si falla, crashea la app
+```
+
+#### ✅ Solución Correcta
+```python
+def enviar_verificacion(email, token):
+    try:
+        msg = Message(
+            subject="Verificación de cuenta",
+            recipients=[email],
+            body=f"Tu código: {token}"
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"❌ Error enviando email a {email}: {e}")
+        # Registrar en logs
+        logger.error(f"Fallo envío email: {e}")
+        return False
+
+# En el servicio de registro
+def registrar(data):
+    usuario = crear_usuario(data)
+    
+    email_enviado = correo_service.enviar_verificacion(
+        usuario.email, 
+        usuario.token_verificacion
+    )
+    
+    return {
+        'success': True,
+        'usuario_id': usuario.id,
+        'email_enviado': email_enviado,
+        'mensaje': 'Registro exitoso. Revisa tu email.' if email_enviado 
+                   else 'Registro exitoso. Email no pudo enviarse.'
+    }
+```
+
+---
+
+### 14. **Error: Frontend - Dependencias Faltantes en useEffect**
+
+#### ❌ Problema Común
+```tsx
+function UserProfile() {
+  const [user, setUser] = useState(null);
+  const userId = useParams().id;
+  
+  useEffect(() => {
+    fetchUser(userId);  // ❌ userId no está en dependencias
+  }, []);  // ❌ Array vacío
+  
+  // Si userId cambia, no se vuelve a cargar
+}
+```
+
+#### ✅ Solución Correcta
+```tsx
+function UserProfile() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { id: userId } = useParams();
+  
+  useEffect(() => {
+    async function loadUser() {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/usuarios/${userId}`);
+        const data = await response.json();
+        setUser(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    if (userId) {
+      loadUser();
+    }
+  }, [userId]);  // ✅ userId como dependencia
+  
+  if (loading) return <Spinner />;
+  
+  return <div>{user?.nombre}</div>;
+}
+```
+
+---
+
+### 15. **Error: No Validar Roles/Permisos**
+
+#### ❌ Problema Común
+```python
+# routes/admin/usuario_routes.py
+@admin_bp.route('/usuarios/<int:usuario_id>/eliminar', methods=['DELETE'])
+@jwt_required()
+def eliminar_usuario(usuario_id):
+    # ❌ Cualquier usuario autenticado puede eliminar
+    gestor_usuarios.eliminar(usuario_id)
+    return jsonify({'success': True})
+```
+
+#### ✅ Solución Correcta
+```python
+# utils/decorators.py
+from functools import wraps
+from flask_jwt_extended import get_jwt_identity
+from flask import jsonify
+
+def requiere_rol(rol_requerido):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            usuario_id = get_jwt_identity()
+            usuario = Usuario.query.get(usuario_id)
+            
+            if not usuario or usuario.rol != rol_requerido:
+                return jsonify({
+                    'error': 'No autorizado',
+                    'mensaje': f'Se requiere rol: {rol_requerido}'
+                }), 403
+            
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# routes/admin/usuario_routes.py
+from utils.decorators import requiere_rol
+
+@admin_bp.route('/usuarios/<int:usuario_id>/eliminar', methods=['DELETE'])
+@jwt_required()
+@requiere_rol('admin')  # ✅ Solo admins pueden eliminar
+def eliminar_usuario(usuario_id):
+    gestor_usuarios.eliminar(usuario_id)
+    return jsonify({'success': True})
+```
+
+---
+
+## 🛡️ Checklist de Seguridad
+
+Antes de hacer commit, verifica:
+
+- [ ] ✅ No hay contraseñas o tokens hardcodeados
+- [ ] ✅ Todas las rutas sensibles requieren autenticación (`@jwt_required()`)
+- [ ] ✅ Se validan roles/permisos en rutas admin/profesor
+- [ ] ✅ Todas las entradas de usuario se validan (marshmallow)
+- [ ] ✅ Las contraseñas se hashean con `bcrypt` o `werkzeug.security`
+- [ ] ✅ No se exponen datos sensibles en respuestas JSON
+- [ ] ✅ CORS configurado correctamente (no usar `*` en producción)
+- [ ] ✅ Variables de entorno en `.env` (no en el código)
+- [ ] ✅ `.env` está en `.gitignore`
+
+---
+
+## 🧪 Checklist de Testing
+
+- [ ] ✅ Probar con datos inválidos (emails malformados, campos vacíos)
+- [ ] ✅ Probar con tokens expirados
+- [ ] ✅ Probar con usuarios sin permisos
+- [ ] ✅ Probar límites (strings muy largos, números negativos)
+- [ ] ✅ Probar casos edge (usuario no existe, email duplicado)
+
+---
+
+## 📊 Monitoreo y Debugging
+
+### Logging Efectivo
+```python
+# config/logging.py
+import logging
+
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('app.log'),
+            logging.StreamHandler()
+        ]
+    )
+
+# En servicios
+import logging
+logger = logging.getLogger(__name__)
+
+def registrar_usuario(data):
+    logger.info(f"Intentando registrar usuario: {data['email']}")
+    try:
+        # ...
+        logger.info(f"Usuario registrado exitosamente: {usuario.id}")
+    except Exception as e:
+        logger.error(f"Error registrando usuario: {e}", exc_info=True)
+        raise
+```
+
+---
+
+## 🚀 Performance
+
+### Queries N+1
+```python
+# ❌ MAL - Query N+1
+usuarios = Usuario.query.all()
+for usuario in usuarios:
+    print(usuario.perfil.biografia)  # ❌ Query por cada usuario
+
+# ✅ BIEN - Eager loading
+from sqlalchemy.orm import joinedload
+
+usuarios = Usuario.query.options(
+    joinedload(Usuario.perfil)
+).all()
+
+for usuario in usuarios:
+    print(usuario.perfil.biografia)  # ✅ Una sola query
+```
+
+---
+
+## 📝 Documentación
+
+Documenta código complejo:
+```python
+def calcular_nivel_usuario(progreso, tiempo_estudio, racha):
+    """
+    Calcula el nivel del usuario basado en múltiples factores.
+    
+    Args:
+        progreso (int): Lecciones completadas (0-100)
+        tiempo_estudio (int): Minutos totales estudiados
+        racha (int): Días consecutivos de estudio
+    
+    Returns:
+        int: Nivel calculado (1-10)
+    
+    Examples:
+        >>> calcular_nivel_usuario(50, 300, 7)
+        5
+    
+    Notes:
+        - El algoritmo prioriza la constancia (racha) sobre cantidad
+        - Nivel máximo es 10, independiente de los puntos
+    """
+    # Implementación con comentarios explicativos
+    pass
+```
+
+---
+
+**Actualizado:** Octubre 2025  
+**Basado en:** Errores reales del proyecto SpeakLexi  
+**Versión:** 1.0.0

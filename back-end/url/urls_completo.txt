@@ -1,9 +1,9 @@
 # PROYECTO COMPLETO - SpeakLexi
 # Backend: 16 archivos
-# Frontend: 146 archivos
+# Frontend: 147 archivos
 # Docs: 0 archivos
-# Total: 162 archivos
-# Generado: 2025-10-26 16:51:27
+# Total: 163 archivos
+# Generado: 2025-10-27 12:29:55
 
 # ==========================================================
 # BACKEND
@@ -175,6 +175,7 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-mo
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-toast.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-user-data.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/middleware.ts
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/next-env.d.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/styles/globals.css
 
 # ==========================================================
