@@ -4,7 +4,8 @@ import { ProfileSettings } from "@/components/profile/profile-settings"
 export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-      <DashboardHeader />
+      {/* Header con botón de regreso habilitado */}
+      <DashboardHeader showBackButton={true} />
 
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">

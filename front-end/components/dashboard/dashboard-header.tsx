@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Bell, Settings, LogOut, Languages } from "lucide-react"
+import { Bell, Settings, LogOut, Languages, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation"
 interface DashboardHeaderProps {
   nombre?: string
   primerApellido?: string
+  showBackButton?: boolean // Nueva prop para mostrar botón de regreso
 }
 
 const IDIOMA_FLAGS: { [key: string]: string } = {
@@ -27,10 +28,16 @@ const IDIOMA_FLAGS: { [key: string]: string } = {
   "Italiano": "🇮🇹"
 }
 
-export function DashboardHeader({ nombre = "Usuario", primerApellido = "" }: DashboardHeaderProps) {
+export function DashboardHeader({ 
+  nombre = "Usuario", 
+  primerApellido = "",
+  showBackButton = false // Por defecto no se muestra
+}: DashboardHeaderProps) {
   const router = useRouter()
   const [idioma, setIdioma] = useState("Inglés")
   const [nivel, setNivel] = useState("A1")
+  const [nombreUsuario, setNombreUsuario] = useState(nombre)
+  const [apellidoUsuario, setApellidoUsuario] = useState(primerApellido)
 
   useEffect(() => {
     cargarDatosUsuario()
@@ -44,9 +51,18 @@ export function DashboardHeader({ nombre = "Usuario", primerApellido = "" }: Das
       const res = await fetch(`http://localhost:5000/api/usuario/perfil/${userId}`)
       const data = await res.json()
 
-      if (res.ok && data.perfil) {
-        setIdioma(data.perfil.idioma || "Inglés")
-        setNivel(data.perfil.nivel_actual || "A1")
+      if (res.ok) {
+        // Actualizar nombre del usuario
+        if (data.usuario) {
+          setNombreUsuario(data.usuario.nombre)
+          setApellidoUsuario(data.usuario.primer_apellido)
+        }
+        
+        // Actualizar perfil
+        if (data.perfil) {
+          setIdioma(data.perfil.idioma || "Inglés")
+          setNivel(data.perfil.nivel_actual || "A1")
+        }
       }
     } catch (error) {
       console.error("Error al cargar datos del usuario:", error)
@@ -58,16 +74,33 @@ export function DashboardHeader({ nombre = "Usuario", primerApellido = "" }: Das
     router.push("/login")
   }
 
-  const iniciales = nombre && primerApellido 
-    ? `${nombre[0]}${primerApellido[0]}`.toUpperCase()
+  const handleBackToDashboard = () => {
+    router.push("/dashboard")
+  }
+
+  // Iniciales corregidas: Primer Apellido + Nombre (PH en lugar de HP)
+  const iniciales = nombreUsuario && apellidoUsuario 
+    ? `${apellidoUsuario[0]}${nombreUsuario[0]}`.toUpperCase()
     : "U"
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
-        {/* Logo / Título */}
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">SpeakLexi</h1>
+        {/* Logo / Título con botón de regreso opcional */}
+        <div className="flex items-center gap-3">
+          {showBackButton && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleBackToDashboard}
+              title="Volver al dashboard"
+            >
+              <Home className="h-5 w-5" />
+            </Button>
+          )}
+          <h1 className="text-2xl font-bold cursor-pointer" onClick={handleBackToDashboard}>
+            SpeakLexi
+          </h1>
         </div>
 
         {/* Idioma Actual */}
@@ -90,16 +123,6 @@ export function DashboardHeader({ nombre = "Usuario", primerApellido = "" }: Das
             </span>
           </Button>
 
-          {/* Cambiar Curso */}
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => router.push("/cambiar-curso")}
-            title="Cambiar curso"
-          >
-            <Languages className="h-5 w-5" />
-          </Button>
-
           {/* Menú de Usuario */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -114,20 +137,28 @@ export function DashboardHeader({ nombre = "Usuario", primerApellido = "" }: Das
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{nombre} {primerApellido}</p>
+                  {/* Mostrar nombre completo del usuario */}
+                  <p className="text-sm font-medium">
+                    {nombreUsuario} {apellidoUsuario}
+                  </p>
                   <p className="text-xs text-muted-foreground">Estudiante</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              
+              {/* Solo Perfil y Configuración */}
+              <DropdownMenuItem onClick={() => router.push("/perfil")}>
+                <Settings className="mr-2 h-4 w-4" />
+                Perfil
+              </DropdownMenuItem>
+              
               <DropdownMenuItem onClick={() => router.push("/perfil")}>
                 <Settings className="mr-2 h-4 w-4" />
                 Configuración
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/cambiar-curso")}>
-                <Languages className="mr-2 h-4 w-4" />
-                Cambiar curso
-              </DropdownMenuItem>
+              
               <DropdownMenuSeparator />
+              
               <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
                 Cerrar sesión

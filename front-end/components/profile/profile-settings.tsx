@@ -6,19 +6,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
-import { Save, Trash2, BookOpen, Loader2 } from "lucide-react"
+import { Save, Trash2, Loader2, Languages } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { useUserData } from "@/hooks/use-user-data"
-import { userAPI } from "@/lib/api"
-import { authStorage } from "@/lib/auth"
 
 export function ProfileSettings() {
   const { toast } = useToast()
   const router = useRouter()
-  const { userData, isLoading, refetch } = useUserData()
   
+  const [isLoading, setIsLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [userData, setUserData] = useState<any>(null)
   const [formData, setFormData] = useState({
     nombre: "",
     primer_apellido: "",
@@ -27,40 +25,62 @@ export function ProfileSettings() {
   })
 
   useEffect(() => {
-    if (userData) {
-      setFormData({
-        nombre: userData.usuario.nombre,
-        primer_apellido: userData.usuario.primer_apellido,
-        segundo_apellido: userData.usuario.segundo_apellido || "",
-        correo: userData.usuario.correo,
+    cargarDatosUsuario()
+  }, [])
+
+  const cargarDatosUsuario = async () => {
+    try {
+      const userId = localStorage.getItem("userId")
+      if (!userId) {
+        router.push("/login")
+        return
+      }
+
+      const res = await fetch(`http://localhost:5000/api/usuario/perfil/${userId}`)
+      const data = await res.json()
+
+      if (res.ok) {
+        setUserData(data)
+        setFormData({
+          nombre: data.usuario.nombre,
+          primer_apellido: data.usuario.primer_apellido,
+          segundo_apellido: data.usuario.segundo_apellido || "",
+          correo: data.usuario.correo,
+        })
+      }
+    } catch (error) {
+      console.error("Error al cargar datos del usuario:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo cargar el perfil",
+        variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
-  }, [userData])
+  }
 
   const handleSave = async () => {
     if (!userData) return
 
     setSaving(true)
     try {
-      await userAPI.updatePerfil(formData)
-      
-      // Actualizar authStorage
-      const currentUser = authStorage.getUser()
-      if (currentUser) {
-        authStorage.setUser({
-          ...currentUser,
-          nombre: formData.nombre,
-          correo: formData.correo,
-        })
-      }
-      
+      const userId = localStorage.getItem("userId")
+      const res = await fetch(`http://localhost:5000/api/usuarios/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
+
+      if (!res.ok) throw new Error("Error al actualizar")
+
       toast({
         title: "Perfil actualizado",
         description: "Tus cambios han sido guardados exitosamente",
       })
       
       // Recargar datos
-      refetch()
+      await cargarDatosUsuario()
     } catch (error: any) {
       toast({
         title: "Error",
@@ -83,9 +103,10 @@ export function ProfileSettings() {
     }
   }
 
+  // Iniciales corregidas: PH (Primer apellido + Nombre)
   const getInitials = () => {
     if (!userData) return "U"
-    const { nombre, primer_apellido } = userData.usuario
+    const { primer_apellido, nombre } = userData.usuario
     return `${primer_apellido[0]}${nombre[0]}`.toUpperCase()
   }
 
@@ -171,7 +192,7 @@ export function ProfileSettings() {
             </p>
           </div>
 
-          {isStudent && (
+          {isStudent && userData.perfil && (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="level">Nivel Actual</Label>
@@ -185,16 +206,16 @@ export function ProfileSettings() {
             </div>
           )}
 
-          {isStudent && (
+          {isStudent && userData.perfil && (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="xp">Experiencia Total</Label>
-                <Input id="xp" value={`${userData.perfil.total_xp} XP`} disabled />
+                <Input id="xp" value={`${userData.perfil.total_xp || 0} XP`} disabled />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="racha">Racha Actual</Label>
-                <Input id="racha" value={`${userData.perfil.dias_racha} días`} disabled />
+                <Input id="racha" value={`${userData.perfil.dias_racha || 0} días`} disabled />
               </div>
             </div>
           )}
@@ -220,26 +241,36 @@ export function ProfileSettings() {
         </div>
       </Card>
 
+      {/* Gestión de Curso - Solo para estudiantes */}
       {isStudent && (
         <Card className="p-6">
           <h2 className="mb-2 text-xl font-bold">Gestión de Curso</h2>
           <p className="mb-4 text-sm text-muted-foreground">
-            Cambia tu curso actual si deseas aprender un idioma diferente.
+            Cambia tu curso actual si deseas aprender un idioma diferente o ajustar tu nivel.
           </p>
-          <Button variant="outline" onClick={() => router.push("/cambiar-curso")}>
-            <BookOpen className="mr-2 h-4 w-4" />
+          <Button 
+            variant="outline" 
+            onClick={() => router.push("/cambiar-curso")}
+            className="w-full sm:w-auto"
+          >
+            <Languages className="mr-2 h-4 w-4" />
             Cambiar Curso
           </Button>
         </Card>
       )}
 
+      {/* Zona de Peligro - Solo para estudiantes */}
       {isStudent && (
         <Card className="border-destructive/50 p-6">
           <h2 className="mb-2 text-xl font-bold text-destructive">Zona de Peligro</h2>
           <p className="mb-4 text-sm text-muted-foreground">
             Una vez que elimines tu cuenta, no hay vuelta atrás. Por favor, ten cuidado.
           </p>
-          <Button variant="destructive" onClick={() => router.push("/eliminar-cuenta")}>
+          <Button 
+            variant="destructive" 
+            onClick={() => router.push("/eliminar-cuenta")}
+            className="w-full sm:w-auto"
+          >
             <Trash2 className="mr-2 h-4 w-4" />
             Eliminar Cuenta
           </Button>
