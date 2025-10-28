@@ -21,6 +21,14 @@
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/extensions.py"
     },
     {
+      "path": "back-end/models/leccion.py",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/leccion.py"
+    },
+    {
+      "path": "back-end/models/multimedia.py",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/multimedia.py"
+    },
+    {
       "path": "back-end/models/usuario.py",
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/usuario.py"
     },
@@ -33,12 +41,28 @@
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/auth.py"
     },
     {
+      "path": "back-end/routes/leccion_routes.py",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/leccion_routes.py"
+    },
+    {
+      "path": "back-end/routes/multimedia_routes.py",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/multimedia_routes.py"
+    },
+    {
       "path": "back-end/routes/usuario_routes.py",
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/usuario_routes.py"
     },
     {
       "path": "back-end/services/correo_service.py",
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/correo_service.py"
+    },
+    {
+      "path": "back-end/services/gestor_lecciones.py",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_lecciones.py"
+    },
+    {
+      "path": "back-end/services/gestor_multimedia.py",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_multimedia.py"
     },
     {
       "path": "back-end/services/gestor_usuarios.py",
@@ -681,6 +705,10 @@
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/naming-conventions.md"
     },
     {
+      "path": "docs/guidelines/requisitos-funcionales.md",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/requisitos-funcionales.md"
+    },
+    {
       "path": "docs/workflows/lession-creation.md",
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/lession-creation.md"
     },
@@ -689,5 +717,5 @@
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/user-registration.md"
     }
   ],
-  "generated": "2025-10-27 12:31:11"
+  "generated": "2025-10-27 20:27:09"
 }

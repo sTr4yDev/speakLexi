@@ -178,3 +178,11 @@ def eliminar_permanente(usuario_id):
     # TODO: verificar permisos admin antes de eliminar
     respuesta, codigo = gestor.eliminar_cuenta_permanente(usuario_id)
     return jsonify(respuesta), codigo
+
+@usuario_bp.route('/perfil/<int:id_usuario>', methods=['GET'])
+def obtener_perfil_alternativo(id_usuario):
+    """Ruta alternativa para obtener perfil (compatibilidad)"""
+    from services.gestor_usuarios import GestorUsuarios
+    gestor = GestorUsuarios()
+    respuesta, codigo = gestor.obtener_perfil(id_usuario)
+    return jsonify(respuesta), codigo

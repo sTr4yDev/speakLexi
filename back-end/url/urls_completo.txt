@@ -1,9 +1,9 @@
 # PROYECTO COMPLETO - SpeakLexi
-# Backend: 16 archivos
+# Backend: 22 archivos
 # Frontend: 147 archivos
-# Docs: 8 archivos
-# Total: 171 archivos
-# Generado: 2025-10-27 12:31:11
+# Docs: 9 archivos
+# Total: 178 archivos
+# Generado: 2025-10-27 20:27:09
 
 # ==========================================================
 # BACKEND
@@ -14,11 +14,17 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/__init
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/database.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/settings.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/extensions.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/leccion.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/multimedia.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/usuario.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/__init__.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/auth.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/leccion_routes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/multimedia_routes.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/usuario_routes.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/correo_service.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_lecciones.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_multimedia.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_usuarios.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_password.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_routes.py
@@ -188,6 +194,7 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/database.md
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/errores/bitacoras/ERRORES - 27 OCT 25.md
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/best-practices.md
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/naming-conventions.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/requisitos-funcionales.md
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/lession-creation.md
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/user-registration.md
 

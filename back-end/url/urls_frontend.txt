@@ -1,6 +1,6 @@
 # FRONTEND - SpeakLexi (Next.js/React/TypeScript)
 # Total: 147 archivos
-# Generado: 2025-10-27 12:31:11
+# Generado: 2025-10-27 20:27:09
 
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/dashboard/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/[id]/editar/page.tsx

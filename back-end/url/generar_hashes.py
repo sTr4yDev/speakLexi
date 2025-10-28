@@ -1,0 +1,88 @@
+"""
+Script para generar hashes de contraseña compatibles con Werkzeug/Flask
+Ejecutar: python generate_hashes.py
+"""
+
+from werkzeug.security import generate_password_hash
+
+# Contraseñas de los usuarios demo
+usuarios = {
+    'estudiante@speaklexi.com': 'estudiante123',
+    'profesor@speaklexi.com': 'profesor123',
+    'admin@speaklexi.com': 'admin123',
+    'mantenimiento@speaklexi.com': 'mantenimiento123'
+}
+
+print("=" * 70)
+print("GENERANDO HASHES SCRYPT PARA USUARIOS DEMO")
+print("=" * 70)
+print()
+
+for email, password in usuarios.items():
+    hash_password = generate_password_hash(password, method='scrypt')
+    print(f"-- {email}")
+    print(f"-- Password: {password}")
+    print(f"'{hash_password}',")
+    print()
+
+print("=" * 70)
+print("SCRIPT SQL COMPLETO")
+print("=" * 70)
+print()
+
+sql_template = """
+DELETE FROM usuarios WHERE correo IN (
+    'estudiante@speaklexi.com',
+    'profesor@speaklexi.com', 
+    'admin@speaklexi.com',
+    'mantenimiento@speaklexi.com'
+);
+
+INSERT INTO usuarios (
+    id_publico,
+    nombre,
+    primer_apellido,
+    segundo_apellido,
+    correo,
+    contrasena_hash,
+    rol,
+    correo_verificado,
+    estado_cuenta,
+    creado_en,
+    actualizado_en
+) VALUES
+"""
+
+print(sql_template)
+
+# Generar inserts
+inserts = []
+roles = [
+    ('USR-001', 'Estudiante', 'Demo', 'estudiante@speaklexi.com', 'alumno'),
+    ('USR-002', 'Profesor', 'Demo', 'profesor@speaklexi.com', 'profesor'),
+    ('USR-003', 'Admin', 'Demo', 'admin@speaklexi.com', 'admin'),
+    ('USR-004', 'Mantenimiento', 'Demo', 'mantenimiento@speaklexi.com', 'mantenimiento')
+]
+
+for id_pub, nombre, apellido, email, rol in roles:
+    password = usuarios[email]
+    hash_pass = generate_password_hash(password, method='scrypt')
+    
+    insert = f"""(
+    '{id_pub}',
+    '{nombre}',
+    '{apellido}',
+    '',
+    '{email}',
+    '{hash_pass}',
+    '{rol}',
+    TRUE,
+    'activo',
+    NOW(),
+    NOW()
+)"""
+    inserts.append(insert)
+
+print(",\n".join(inserts) + ";")
+print()
+print("-- ✅ Hashes generados con scrypt (compatibles con Werkzeug)")
