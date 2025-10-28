@@ -14,6 +14,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
+// --- IMPORTACIÓN AÑADIDA ---
+import { userAPI } from "@/lib/api" // Importar la API centralizada
 
 interface DashboardHeaderProps {
   nombre?: string
@@ -25,7 +27,8 @@ const IDIOMA_FLAGS: { [key: string]: string } = {
   "Inglés": "🇺🇸",
   "Francés": "🇫🇷",
   "Alemán": "🇩🇪",
-  "Italiano": "🇮🇹"
+  "Italiano": "🇮🇹",
+  "Español": "🇪🇸", // <-- Añadido por si acaso
 }
 
 export function DashboardHeader({ 
@@ -43,15 +46,29 @@ export function DashboardHeader({
     cargarDatosUsuario()
   }, [])
 
+  // --- FUNCIÓN 'handleLogout' MOVIDA ARRIBA ---
+  // Para poder llamarla en caso de error 401
+  const handleLogout = () => {
+    localStorage.clear()
+    router.push("/login")
+  }
+
   const cargarDatosUsuario = async () => {
     try {
-      const userId = localStorage.getItem("userId")
-      if (!userId) return
+      // --- INICIO DE MODIFICACIÓN ---
+      // const userId = localStorage.getItem("userId") // No es necesario, userAPI.getPerfilCompleto lo maneja
+      // if (!userId) return
 
-      const res = await fetch(`http://localhost:5000/api/usuario/perfil/${userId}`)
-      const data = await res.json()
+      // const res = await fetch(`http://localhost:5000/api/usuario/perfil/${userId}`) // <-- NO USAR FETCH DIRECTO
+      // const data = await res.json()
 
-      if (res.ok) {
+      // Usar la función centralizada de la API
+      // Esta función (getPerfilCompleto) ya usa el token gracias a la corrección en api.ts
+      const data = await userAPI.getPerfilCompleto()
+      // --- FIN DE MODIFICACIÓN ---
+
+
+      // if (res.ok) { // fetchAPI ya maneja las respuestas no-ok
         // Actualizar nombre del usuario
         if (data.usuario) {
           setNombreUsuario(data.usuario.nombre)
@@ -63,15 +80,17 @@ export function DashboardHeader({
           setIdioma(data.perfil.idioma || "Inglés")
           setNivel(data.perfil.nivel_actual || "A1")
         }
-      }
-    } catch (error) {
+      // }
+    } catch (error: any) {
       console.error("Error al cargar datos del usuario:", error)
+      
+      // --- MANEJO DE ERROR 401 ---
+      // Si el token es inválido o expiró (error 401), desloguear al usuario
+      if (error.status === 401) {
+        console.warn("Token no válido o expirado. Deslogueando...")
+        handleLogout()
+      }
     }
-  }
-
-  const handleLogout = () => {
-    localStorage.clear()
-    router.push("/login")
   }
 
   const handleBackToDashboard = () => {

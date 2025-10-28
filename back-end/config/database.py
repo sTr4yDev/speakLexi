@@ -4,38 +4,32 @@ Inicializa SQLAlchemy y proporciona utilidades para la DB
 """
 
 import os
-from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 
 # Cargar variables de entorno
 load_dotenv()
 
-# Inicializar SQLAlchemy
-db = SQLAlchemy()
+# Importar db desde extensions (instancia única)
+from extensions import db
 
 
-def init_db(app):
+def init_db():
     """
-    Inicializa la base de datos con la aplicación Flask
-    
-    Args:
-        app: Instancia de la aplicación Flask
+    Crea todas las tablas y verifica la conexión
+    IMPORTANTE: Se debe llamar DESPUÉS de db.init_app(app)
     """
-    db.init_app(app)
-    
-    with app.app_context():
-        try:
-            # Crear todas las tablas si no existen
-            db.create_all()
-            print("✅ Tablas creadas correctamente en la base de datos")
-            
-            # Verificar conexión
-            db.session.execute(db.text('SELECT 1'))
-            print(f"✅ Conexión exitosa a la base de datos: {os.getenv('DB_NAME', 'SpeakLexi')}")
-            
-        except Exception as e:
-            print(f"❌ Error al conectar con la base de datos: {str(e)}")
-            raise
+    try:
+        # Crear todas las tablas si no existen
+        db.create_all()
+        print("✅ Tablas creadas correctamente en la base de datos")
+        
+        # Verificar conexión
+        db.session.execute(db.text('SELECT 1'))
+        print(f"✅ Conexión exitosa a la base de datos: {os.getenv('DB_NAME', 'SpeakLexi')}")
+        
+    except Exception as e:
+        print(f"❌ Error al conectar con la base de datos: {str(e)}")
+        raise
 
 
 def get_db():

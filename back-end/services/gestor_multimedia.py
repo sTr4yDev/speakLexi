@@ -23,7 +23,13 @@ class GestorMultimedia:
     
     def __init__(self):
         """Inicializa el gestor con configuraciones por defecto"""
-        self._inicializar_configuracion()
+        self._configuracion_inicializada = False
+    
+    def _asegurar_configuracion(self):
+        """Inicializa la configuración solo cuando se necesita (lazy initialization)"""
+        if not self._configuracion_inicializada:
+            self._inicializar_configuracion()
+            self._configuracion_inicializada = True
     
     def _inicializar_configuracion(self):
         """Carga configuración o crea valores por defecto"""
@@ -55,6 +61,8 @@ class GestorMultimedia:
         Returns:
             tuple: (dict con recurso creado, código HTTP)
         """
+        self._asegurar_configuracion()
+        
         try:
             # Validar archivo
             if not archivo:
@@ -126,7 +134,7 @@ class GestorMultimedia:
                 alt_text=datos_adicionales.get('alt_text'),
                 transcripcion=datos_adicionales.get('transcripcion'),
                 etiquetas=datos_adicionales.get('etiquetas', []),
-                metadata={},
+                meta_data={},
                 subido_por=usuario_id
             )
             
@@ -617,5 +625,5 @@ class GestorMultimedia:
             return {"error": f"Error al obtener estadísticas: {str(e)}"}, 500
 
 
-# Instancia global del gestor
+# Instancia global del gestor (SIN inicializar configuración hasta que se use)
 gestor_multimedia = GestorMultimedia()

@@ -65,8 +65,8 @@ class Multimedia(db.Model):
     transcripcion = db.Column(db.Text)  # Para audio/video
     etiquetas = db.Column(db.JSON, default=list)
 
-    # NOTE: `metadata` is reserved in Declarative; use `meta` column name internally
-    meta = db.Column('meta', db.JSON, default=dict)  # Metadata adicional flexible
+    # Usar meta_data en Python, columna 'meta' en DB (metadata es reservado)
+    meta_data = db.Column('meta', db.JSON, default=dict)
 
     # Uso y estadísticas
     veces_usado = db.Column(db.Integer, default=0)
@@ -120,8 +120,7 @@ class Multimedia(db.Model):
         }
 
         if incluir_metadata:
-            # Exponer con la clave 'metadata' por compatibilidad externa
-            data['metadata'] = self.meta
+            data['metadata'] = self.meta_data or {}
             data['nombre_almacenado'] = self.nombre_almacenado
             data['ruta_local'] = self.ruta_local
             data['mensaje_error'] = self.mensaje_error

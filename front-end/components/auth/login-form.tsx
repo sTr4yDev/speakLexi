@@ -10,7 +10,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, ChevronDown, ChevronUp, User, AlertCircle, RefreshCw } from "lucide-react"
-import { authStorage } from "@/lib/auth"
+// Importa la función setAuthData de tu librería auth.ts
+import { authStorage } from "@/lib/auth" 
+// Importar authAPI (opcional, pero buena práctica)
+// import { authAPI } from "@/lib/api" // No necesitas importar authAPI si usas fetch directo aquí
 
 const TEST_USERS = [
   {
@@ -61,7 +64,7 @@ export function LoginForm() {
 
   const [cuentaDesactivada, setCuentaDesactivada] = useState(false)
   const [diasRestantes, setDiasRestantes] = useState(0)
-  const [userId, setUserId] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null) // Para reactivación
   const [error, setError] = useState("")
 
   const handleTestUserClick = (user: (typeof TEST_USERS)[0]) => {
@@ -83,7 +86,7 @@ export function LoginForm() {
     if (!userId) {
       toast({
         title: "Error",
-        description: "No se pudo identificar el usuario",
+        description: "No se pudo identificar el usuario para reactivar",
         variant: "destructive",
       })
       return
@@ -93,18 +96,18 @@ export function LoginForm() {
     setError("")
     
     try {
+      // Considera mover esta lógica a userAPI en api.ts si la usas en otro lugar
       const res = await fetch(`http://localhost:5000/api/usuario/reactivar/${userId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: formData.password }),
       })
 
+      const data = await res.json() // Intenta parsear siempre
+
       if (!res.ok) {
-        const data = await res.json()
         throw new Error(data.error || "Error al reactivar la cuenta")
       }
-
-      const data = await res.json()
 
       toast({
         title: "¡Cuenta reactivada!",
@@ -114,27 +117,20 @@ export function LoginForm() {
       setCuentaDesactivada(false)
       setError("")
       
+      // Intenta hacer login automáticamente después de reactivar
       setTimeout(() => {
-        handleSubmit(new Event('submit') as any)
+        // Simula un evento submit para reusar la lógica de handleSubmit
+        handleSubmit({ preventDefault: () => {} } as React.FormEvent) 
       }, 1000)
 
     } catch (error: any) {
       console.error("Error al reactivar:", error)
-      
-      let errorMessage = "Error al reactivar la cuenta"
-      
+      let errorMessage = error.message || "Error desconocido al reactivar"
       if (error.message === "Failed to fetch") {
-        errorMessage = "No se pudo conectar con el servidor. Verifica que esté corriendo."
-      } else if (error.message) {
-        errorMessage = error.message
+        errorMessage = "No se pudo conectar con el servidor."
       }
-      
       setError(errorMessage)
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: errorMessage, variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
@@ -143,152 +139,103 @@ export function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setCuentaDesactivada(false)
-    setError("")
+    setCuentaDesactivada(false) // Resetea estado de cuenta desactivada
+    setError("") // Limpia errores previos
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          correo: formData.email,
-          password: formData.password,
-        }),
-      })
+      // Usa el fetch directo como lo tenías, ya que manejas errores específicos aquí
+       const res = await fetch("http://localhost:5000/api/auth/login", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+           correo: formData.email,
+           password: formData.password,
+         }),
+       })
 
-      const data = await res.json()
-      
+      const data = await res.json() // Intenta parsear la respuesta siempre
       console.log("📦 Respuesta completa del backend:", data)
 
       if (!res.ok) {
-        // CUENTA DESACTIVADA
+        // --- Manejo de errores específicos ---
         if (data.codigo === "CUENTA_DESACTIVADA") {
-          const id = data.usuario_id || data.usuario?.id
-          
-          if (id) {
-            setUserId(id.toString())
-          }
-          
+          setUserId(data.usuario_id?.toString() || null) // Guarda el ID para reactivar
           setCuentaDesactivada(true)
           setDiasRestantes(data.dias_restantes || 0)
-          
           toast({
             title: "Cuenta desactivada",
-            description: `Tienes ${data.dias_restantes || 0} días para reactivarla`,
+            description: `Tienes ${data.dias_restantes || 0} días para reactivarla.`,
             variant: "destructive",
           })
-          
-          setIsLoading(false)
-          return
+          // No lances error aquí, muestra el botón de reactivar
+        } else if (data.codigo === "CUENTA_ELIMINADA") {
+          setError("Esta cuenta ha sido eliminada permanentemente.")
+          toast({ title: "Cuenta eliminada", description: "Esta cuenta ya no existe.", variant: "destructive"})
+        } else if (data.codigo === "EMAIL_NOT_VERIFIED") {
+          toast({ title: "Email no verificado", description: "Revisa tu correo o reenvía el código.", variant: "destructive" })
+          setTimeout(() => router.push(`/verificar-email?email=${encodeURIComponent(formData.email)}`), 1500)
+        } else {
+          // Error genérico de login (credenciales inválidas, etc.)
+          throw new Error(data.error || `Error ${res.status}: ${res.statusText}`)
         }
-
-        // CUENTA ELIMINADA
-        if (data.codigo === "CUENTA_ELIMINADA") {
-          setError("Esta cuenta ha sido eliminada permanentemente")
-          toast({
-            title: "Cuenta eliminada",
-            description: "Esta cuenta ha sido eliminada permanentemente",
-            variant: "destructive",
-          })
-          
-          setIsLoading(false)
-          return
-        }
-
-        // EMAIL NO VERIFICADO
-        if (data.codigo === "EMAIL_NOT_VERIFIED") {
-          toast({
-            title: "Email no verificado",
-            description: "Redirigiendo a verificación...",
-            variant: "destructive",
-          })
-          
-          setTimeout(() => {
-            router.push(`/verificar-email?email=${encodeURIComponent(formData.email)}`)
-          }, 1500)
-          
-          setIsLoading(false)
-          return
-        }
-
-        throw new Error(data.error || "Error al iniciar sesión")
+         setIsLoading(false); // Detiene el loading en caso de error manejado
+         return; // Detiene la ejecución si hubo un error manejado
       }
 
-      // ✅ LOGIN EXITOSO - Usar authStorage (guarda localStorage + cookies)
+      // ✅ LOGIN EXITOSO
       const usuario = data.usuario
+      const access_token = data.access_token 
 
-      if (!usuario) {
-        throw new Error("Respuesta del servidor inválida: falta información del usuario")
+      // Validar que ambos datos existen antes de proceder
+      if (!usuario || typeof usuario !== 'object' || !access_token || typeof access_token !== 'string') {
+        console.error("Respuesta inválida del servidor:", data); 
+        throw new Error("Respuesta inválida del servidor tras login exitoso.");
       }
 
-      console.log("✅ Usuario recibido del backend:", usuario)
+      console.log("✅ Usuario recibido:", usuario)
+      console.log("🔑 Token recibido:", access_token ? 'Sí' : 'No') // Verifica si el token llegó
 
-      // ✅ GUARDAR CON authStorage (esto guarda localStorage Y cookies automáticamente)
-      authStorage.setUser({
-        id: usuario.id,
-        id_publico: usuario.id_publico || "",
-        nombre: usuario.nombre,
-        correo: usuario.correo,
-        rol: usuario.rol,
-        idioma: usuario.idioma || null,
-        nivel_actual: usuario.nivel_actual || null,
-      })
+      // --- USA authStorage PARA GUARDAR TODO ---
+      authStorage.setAuthData(usuario, access_token) 
+      // Verifica que se guardó correctamente
+      console.log("🔍 Verificando localStorage - Token:", localStorage.getItem('token') ? 'Guardado' : 'NO Guardado');
+      console.log("🔍 Verificando localStorage - UserID:", localStorage.getItem('userId') ? 'Guardado' : 'NO Guardado');
 
-      console.log("✅ Usuario guardado en authStorage (localStorage + cookies):", authStorage.getUser())
-      console.log("🍪 Cookies creadas - authenticated:", document.cookie.includes('authenticated=true'))
 
-      toast({
-        title: "✅ Inicio de sesión exitoso",
-        description: `Bienvenido ${usuario.nombre}`,
-      })
+      toast({ title: "✅ Inicio de sesión exitoso", description: `Bienvenido ${usuario.nombre}` })
 
-      // Redirigir según el rol
-      const rol = usuario.rol.toLowerCase()
+      // --- Redirección ---
+      const rol = usuario.rol?.toLowerCase() || 'estudiante' // Asegura que rol exista y sea string
       console.log("🔀 Rol detectado:", rol)
       
-      let redirectPath = "/dashboard"
-
-      if (rol === "profesor" || rol === "teacher") {
-        redirectPath = "/profesor/dashboard"
-      } else if (rol === "admin" || rol === "administrador") {
-        redirectPath = "/admin/dashboard"
-      } else if (rol === "mantenimiento" || rol === "maintenance") {
-        redirectPath = "/mantenimiento/dashboard"
-      } else {
-        redirectPath = "/dashboard"
-      }
+      let redirectPath = "/dashboard" // Default para estudiante
+      if (rol === "profesor" || rol === "teacher") redirectPath = "/profesor/dashboard"
+      else if (rol === "admin" || rol === "administrador") redirectPath = "/admin/dashboard"
+      else if (rol === "mantenimiento" || rol === "maintenance") redirectPath = "/mantenimiento/dashboard"
 
       console.log("🚀 Redirigiendo a:", redirectPath)
       
-      // Usar window.location.href para forzar recarga completa
-      // Esto asegura que el middleware detecte las cookies recién creadas
+      // Forzar recarga para que el middleware/layout detecte los nuevos datos de sesión
       window.location.href = redirectPath
+      // No necesitas setIsLoading(false) aquí porque la página recargará
 
     } catch (error: any) {
-      console.error("❌ Error en login:", error)
-      
-      let errorMessage = "Error al iniciar sesión"
-      
-      if (error.message === "Failed to fetch" || error.name === "TypeError") {
-        errorMessage = "No se pudo conectar con el servidor. Verifica que esté corriendo en http://localhost:5000"
-      } else if (error.message) {
-        errorMessage = error.message
+      console.error("❌ Error en handleSubmit:", error)
+      let errorMessage = error.message || "Ocurrió un error inesperado."
+      if (error.message === "Failed to fetch") {
+        errorMessage = "No se pudo conectar al servidor. Intenta más tarde."
       }
-      
       setError(errorMessage)
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+      toast({ title: "Error de inicio de sesión", description: errorMessage, variant: "destructive" })
+      setIsLoading(false); // Asegúrate de detener el loading en el catch
+    } 
+    // No necesitas finally si la redirección ocurre en el try
   }
 
+  // --- El JSX (la parte visual del formulario) ---
   return (
     <div className="space-y-4">
-      {/* ALERTA DE ERRORES GENERALES */}
+      {/* ALERTA DE ERRORES GENERALES (excluyendo cuenta desactivada) */}
       {error && !cuentaDesactivada && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -308,29 +255,23 @@ export function LoginForm() {
               {diasRestantes > 0 ? (
                 <>
                   Tienes <strong>{diasRestantes} días</strong> para reactivarla. 
-                  Después de ese período será eliminada permanentemente.
+                  Después será eliminada permanentemente.
                 </>
               ) : (
-                "El período de recuperación ha expirado. La cuenta será eliminada pronto."
+                "El período de recuperación ha expirado. La cuenta será eliminada."
               )}
             </p>
+            {/* Botón de reactivar solo si hay días restantes */}
             {diasRestantes > 0 && (
               <Button
                 onClick={handleReactivar}
                 disabled={isLoading}
-                className="mt-3 w-full"
-                variant="default"
+                className="mt-3 w-full bg-orange-600 hover:bg-orange-700 text-white" // Estilo naranja
               >
                 {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Reactivando...
-                  </>
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reactivando...</>
                 ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Reactivar mi cuenta
-                  </>
+                  <><RefreshCw className="mr-2 h-4 w-4" /> Reactivar mi cuenta</>
                 )}
               </Button>
             )}
@@ -338,20 +279,16 @@ export function LoginForm() {
         </Alert>
       )}
 
-      {/* USUARIOS DE PRUEBA */}
-      <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+      {/* SECCIÓN USUARIOS DE PRUEBA */}
+      <div className="rounded-lg border bg-muted/30 overflow-hidden">
         <button
           type="button"
           onClick={() => setShowTestUsers(!showTestUsers)}
-          className="w-full flex items-center justify-between p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+          className="w-full flex items-center justify-between p-3 text-sm font-medium hover:bg-muted/50"
         >
-          <span className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Usuarios de Prueba
-          </span>
+          <span className="flex items-center gap-2"><User className="h-4 w-4" /> Usuarios de Prueba</span>
           {showTestUsers ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
-
         {showTestUsers && (
           <div className="p-3 pt-0 space-y-2">
             {TEST_USERS.map((user) => (
@@ -359,7 +296,7 @@ export function LoginForm() {
                 key={user.email}
                 type="button"
                 onClick={() => handleTestUserClick(user)}
-                className="w-full text-left p-3 rounded-md border border-border bg-background hover:bg-accent hover:border-primary transition-colors"
+                className="w-full text-left p-3 rounded-md border bg-background hover:bg-accent hover:border-primary"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
@@ -377,64 +314,50 @@ export function LoginForm() {
         )}
       </div>
 
-      {/* FORMULARIO DE LOGIN */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Correo Electrónico</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="tu@email.com"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            required
-            disabled={isLoading}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Contraseña</Label>
-            <Link 
-              href="/recuperar-contrasena" 
-              className="text-sm text-primary hover:underline"
-              tabIndex={-1}
-            >
-              ¿Olvidaste tu contraseña?
-            </Link>
-          </div>
-          <div className="relative">
+      {/* FORMULARIO PRINCIPAL DE LOGIN */}
+      {/* No mostrar si la cuenta está desactivada y no se puede reactivar */}
+      {!(cuentaDesactivada && diasRestantes <= 0) && (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Correo Electrónico</Label>
             <Input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-              disabled={isLoading}
+              id="email" type="email" placeholder="tu@email.com"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required disabled={isLoading || cuentaDesactivada} // Deshabilitar si está desactivada
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              disabled={isLoading}
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
           </div>
-        </div>
-
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Iniciando sesión...
-            </>
-          ) : (
-            "Iniciar Sesión"
-          )}
-        </Button>
-      </form>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Contraseña</Label>
+              <Link href="/recuperar-contrasena" className="text-sm text-primary hover:underline" tabIndex={-1}>
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+            <div className="relative">
+              <Input
+                id="password" type={showPassword ? "text" : "password"} placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required disabled={isLoading || cuentaDesactivada} // Deshabilitar si está desactivada
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                disabled={isLoading || cuentaDesactivada}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={isLoading || cuentaDesactivada}>
+            {isLoading ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Iniciando sesión...</>
+            ) : ( "Iniciar Sesión" )}
+          </Button>
+        </form>
+      )}
 
       {/* ENLACE A REGISTRO */}
       <div className="text-center text-sm text-muted-foreground">
@@ -446,3 +369,4 @@ export function LoginForm() {
     </div>
   )
 }
+

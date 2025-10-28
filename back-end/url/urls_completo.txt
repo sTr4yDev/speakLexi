@@ -1,9 +1,9 @@
 # PROYECTO COMPLETO - SpeakLexi
-# Backend: 22 archivos
+# Backend: 23 archivos
 # Frontend: 147 archivos
 # Docs: 9 archivos
-# Total: 178 archivos
-# Generado: 2025-10-27 20:27:09
+# Total: 179 archivos
+# Generado: 2025-10-27 21:41:37
 
 # ==========================================================
 # BACKEND
@@ -28,6 +28,7 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gest
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_usuarios.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_password.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_routes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/generar_hashes.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls_opt.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_front_end.py
