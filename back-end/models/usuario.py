@@ -1,18 +1,25 @@
 from config.database import db
-from werkzeug.security import generate_password_hash, check_password_hash
+# IMPORTANTE: Asegúrate de importar estas funciones si las usas en los métodos
+from werkzeug.security import generate_password_hash, check_password_hash 
 from datetime import datetime
+# IMPORTANTE: Necesitas importar Date para usarlo
+from sqlalchemy import Date 
 
 class Usuario(db.Model):
     __tablename__ = "usuarios"
 
     id = db.Column(db.Integer, primary_key=True)
-    id_publico = db.Column(db.String(50), unique=True, nullable=False)
+    # Corrección: Longitud 20, nullable=True (aunque siempre lo insertas)
+    id_publico = db.Column(db.String(20), unique=True, nullable=True) 
     nombre = db.Column(db.String(100), nullable=False)
     primer_apellido = db.Column(db.String(100), nullable=False)
     segundo_apellido = db.Column(db.String(100), nullable=True)
-    correo = db.Column(db.String(120), unique=True, nullable=False)
-    contrasena_hash = db.Column(db.String(256), nullable=False)
-    rol = db.Column(db.String(20), default="estudiante")
+    # Corrección: Longitud 255
+    correo = db.Column(db.String(255), unique=True, nullable=False) 
+    # Corrección: Longitud 255
+    contrasena_hash = db.Column(db.String(255), nullable=False) 
+    # Corrección: Longitud 50, default='alumno'
+    rol = db.Column(db.String(50), default="alumno") 
     
     # Verificación de correo
     correo_verificado = db.Column(db.Boolean, default=False)
@@ -20,16 +27,18 @@ class Usuario(db.Model):
     expira_verificacion = db.Column(db.DateTime, nullable=True)
     
     # Recuperación de contraseña
-    token_recuperacion = db.Column(db.String(256), nullable=True, unique=True)
+    token_recuperacion = db.Column(db.String(256), nullable=True, unique=True) # Longitud 256 está bien aquí
     expira_token_recuperacion = db.Column(db.DateTime, nullable=True)
     
     # Estado de cuenta (soft delete)
-    estado_cuenta = db.Column(db.String(20), default="activo")
+    # Corrección: nullable=False según tu SQL
+    estado_cuenta = db.Column(db.String(20), default="activo", nullable=False) 
     fecha_desactivacion = db.Column(db.DateTime, nullable=True)
     
     # Timestamps
-    creado_en = db.Column(db.DateTime, default=datetime.utcnow)
-    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Corrección: Usar db.func.now() para defaults manejados por DB si prefieres
+    creado_en = db.Column(db.DateTime, default=db.func.now()) 
+    actualizado_en = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
 
     # Relación con PerfilUsuario
     perfil = db.relationship("PerfilUsuario", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
@@ -40,37 +49,46 @@ class Usuario(db.Model):
 
     def check_password(self, password):
         """Verifica la contraseña"""
+        # Añadir verificación de que contrasena_hash no sea None por si acaso
+        if not self.contrasena_hash:
+            return False
         return check_password_hash(self.contrasena_hash, password)
 
     def __repr__(self):
-        return f"<Usuario {self.nombre} {self.primer_apellido} - {self.correo}>"
+        return f"<Usuario {self.id}: {self.correo}>"
 
 
 class PerfilUsuario(db.Model):
-    # ✅ CORREGIDO: perfil_usuarios (sin la 'es' en perfiles)
-    __tablename__ = "perfil_usuarios"
+    __tablename__ = "perfil_usuarios" # ✅ Correcto
 
     id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
-    nombre_completo = db.Column(db.String(200), nullable=False)
-    id_publico = db.Column(db.String(50), unique=True, nullable=False)
+    # Corrección: Añadir unique=True para coincidir con SQL
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), unique=True, nullable=False) 
+    # Corrección: Longitud 255
+    nombre_completo = db.Column(db.String(255), nullable=False) 
+    # Corrección: Longitud 20, nullable=True, quitar unique
+    id_publico = db.Column(db.String(20), nullable=True) 
     
     # Información del curso
-    idioma = db.Column(db.String(50), nullable=False)
-    nivel_actual = db.Column(db.String(10), default="A1")
+    # Corrección: Longitud 100, nullable=True (según SQL)
+    idioma = db.Column(db.String(100), nullable=True) 
+    # Corrección: Longitud 50
+    nivel_actual = db.Column(db.String(50), default="A1") 
     curso_actual = db.Column(db.String(100), nullable=True)
     
     # Gamificación
     total_xp = db.Column(db.Integer, default=0)
     dias_racha = db.Column(db.Integer, default=0)
-    ultima_actividad = db.Column(db.DateTime, nullable=True)
+    # Corrección: Cambiar a db.Date
+    ultima_actividad = db.Column(db.Date, nullable=True) 
     
     # Timestamps
-    creado_en = db.Column(db.DateTime, default=datetime.utcnow)
-    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Corrección: Usar db.func.now() para defaults manejados por DB
+    creado_en = db.Column(db.DateTime, default=db.func.now()) 
+    actualizado_en = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
 
     # Relación inversa con Usuario
     usuario = db.relationship("Usuario", back_populates="perfil")
 
     def __repr__(self):
-        return f"<PerfilUsuario {self.nombre_completo} - {self.idioma} {self.nivel_actual}>"
+        return f"<PerfilUsuario para Usuario ID {self.usuario_id}>"

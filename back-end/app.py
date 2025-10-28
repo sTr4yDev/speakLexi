@@ -3,6 +3,7 @@ from flask_cors import CORS
 from config.settings import Config
 from config.database import init_db
 from extensions import db, bcrypt, jwt, mail
+from flask_jwt_extended import JWTManager  # ✅ Asegura que JWTManager esté disponible
 import logging
 from logging.handlers import RotatingFileHandler
 import os
@@ -21,25 +22,38 @@ def create_app(config_class=Config):
     # FIX CRÍTICO: Deshabilitar trailing slash redirect
     app.url_map.strict_slashes = False
     
-    # Configurar CORS (MEJORADO)
+    # ========================================
+    # CONFIGURACIÓN CORS
+    # ========================================
     CORS(app, resources={
         r"/api/*": {
             "origins": ["http://localhost:3000"],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-            # <-- SOLUCIÓN: Añadir 'x-user-id' (o el header personalizado que uses)
             "allow_headers": ["Content-Type", "Authorization", "x-user-id"],
             "supports_credentials": True,
             "expose_headers": ["Content-Type", "Authorization"]
         }
     })
     
-    # Inicializar extensiones
+    # ========================================
+    # INICIALIZAR EXTENSIONES
+    # ========================================
     db.init_app(app)
     bcrypt.init_app(app)
     jwt.init_app(app)
     mail.init_app(app)
-    
-    # Configurar logging
+
+    # ========================================
+    # CONFIGURAR JWT (EVITA "Subject must be a string")
+    # ========================================
+    @jwt.user_identity_loader
+    def user_identity_lookup(identity):
+        """Convierte cualquier identidad numérica en string para evitar errores con JWT"""
+        return str(identity)
+
+    # ========================================
+    # LOGGING
+    # ========================================
     if not app.debug:
         if not os.path.exists('logs'):
             os.mkdir('logs')
@@ -57,31 +71,34 @@ def create_app(config_class=Config):
         app.logger.setLevel(logging.INFO)
         app.logger.info('SpeakLexi startup')
     
-    # FIX: Manejador 'before_request' (MEJORADO)
+    # ========================================
+    # BEFORE REQUEST FIXES
+    # ========================================
     @app.before_request
     def handle_request_fixes():
         from flask import request
         
-        # --- BLOQUE OPTIONS ELIMINADO ---
-        # Se elimina el manejador manual 'if request.method == "OPTIONS":'
-        # La extensión flask_cors ya maneja las peticiones preflight (OPTIONS)
-        # de forma automática gracias a la configuración de 'CORS(app, ...)'
-        # Mantenerlo era redundante y causaba el problema de headers.
-        
-        # FIX: Eliminar trailing slash automático que causa redirects
+        # Flask-CORS ya maneja OPTIONS, no se necesita interceptar
         if request.path != '/' and request.path.endswith('/'):
             return redirect(request.path[:-1], code=308)
     
-    # Registrar blueprints SIN trailing slash
+    # ========================================
+    # REGISTRAR BLUEPRINTS
+    # ========================================
     app.register_blueprint(auth_bp)
     app.register_blueprint(usuario_bp)
     app.register_blueprint(leccion_bp)
     app.register_blueprint(multimedia_bp)
     
-    # Crear tablas y datos iniciales
+    # ========================================
+    # CREAR TABLAS Y DATOS INICIALES
+    # ========================================
     with app.app_context():
-        init_db()  # Ahora NO recibe app como parámetro
+        init_db()
     
+    # ========================================
+    # ENDPOINTS BÁSICOS
+    # ========================================
     @app.route('/')
     def index():
         return {
@@ -100,7 +117,6 @@ def create_app(config_class=Config):
         """Endpoint de health check"""
         return {'status': 'healthy', 'database': 'connected'}
     
-    # FIX: Manejar errores 404
     @app.errorhandler(404)
     def not_found(error):
         return {
