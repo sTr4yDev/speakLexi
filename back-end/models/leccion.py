@@ -67,9 +67,13 @@ class Leccion(db.Model, TimestampMixin, SerializableMixin):
     # Contenido
     contenido = db.Column(db.JSON, nullable=False, default=dict)
 
-    # Clasificación
+    # Clasificación - CAMBIO AQUÍ: agregar native_enum=False y values_callable
     nivel = db.Column(
-        SQLEnum(NivelDificultad),
+        SQLEnum(
+            NivelDificultad,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False
+        ),
         nullable=False,
         index=True,
         default=NivelDificultad.PRINCIPIANTE
@@ -86,9 +90,13 @@ class Leccion(db.Model, TimestampMixin, SerializableMixin):
     duracion_estimada = db.Column(db.Integer, default=10)  # En minutos
     puntos_xp = db.Column(db.Integer, default=50, nullable=False)
 
-    # Estado
+    # Estado - CAMBIO AQUÍ: agregar native_enum=False y values_callable
     estado = db.Column(
-        SQLEnum(EstadoLeccion),
+        SQLEnum(
+            EstadoLeccion,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False
+        ),
         nullable=False,
         default=EstadoLeccion.BORRADOR,
         index=True
@@ -145,7 +153,6 @@ class Leccion(db.Model, TimestampMixin, SerializableMixin):
         }
 
         if incluir_actividades:
-            # Forzamos a materializar la colección (si es lazy)
             data['actividades'] = [actividad.to_dict() for actividad in list(self.actividades)]
 
         if incluir_multimedia:
@@ -204,8 +211,15 @@ class Actividad(db.Model, TimestampMixin, SerializableMixin):
         index=True
     )
 
-    # Tipo y contenido
-    tipo = db.Column(SQLEnum(TipoActividad), nullable=False)
+    # Tipo y contenido - CAMBIO AQUÍ: agregar native_enum=False y values_callable
+    tipo = db.Column(
+        SQLEnum(
+            TipoActividad,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False
+        ),
+        nullable=False
+    )
     pregunta = db.Column(db.Text, nullable=False)
     instrucciones = db.Column(db.Text)
 

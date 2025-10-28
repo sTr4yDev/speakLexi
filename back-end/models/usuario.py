@@ -1,24 +1,22 @@
 from config.database import db
-# IMPORTANTE: Asegúrate de importar estas funciones si las usas en los métodos
 from werkzeug.security import generate_password_hash, check_password_hash 
 from datetime import datetime
-# IMPORTANTE: Necesitas importar Date para usarlo
-from sqlalchemy import Date 
+from sqlalchemy import Date, JSON, Numeric
+
+# ============================================================
+# MODELO USUARIO (SIN CAMBIOS)
+# ============================================================
 
 class Usuario(db.Model):
     __tablename__ = "usuarios"
 
     id = db.Column(db.Integer, primary_key=True)
-    # Corrección: Longitud 20, nullable=True (aunque siempre lo insertas)
     id_publico = db.Column(db.String(20), unique=True, nullable=True) 
     nombre = db.Column(db.String(100), nullable=False)
     primer_apellido = db.Column(db.String(100), nullable=False)
     segundo_apellido = db.Column(db.String(100), nullable=True)
-    # Corrección: Longitud 255
     correo = db.Column(db.String(255), unique=True, nullable=False) 
-    # Corrección: Longitud 255
     contrasena_hash = db.Column(db.String(255), nullable=False) 
-    # Corrección: Longitud 50, default='alumno'
     rol = db.Column(db.String(50), default="alumno") 
     
     # Verificación de correo
@@ -27,21 +25,22 @@ class Usuario(db.Model):
     expira_verificacion = db.Column(db.DateTime, nullable=True)
     
     # Recuperación de contraseña
-    token_recuperacion = db.Column(db.String(256), nullable=True, unique=True) # Longitud 256 está bien aquí
+    token_recuperacion = db.Column(db.String(256), nullable=True, unique=True)
     expira_token_recuperacion = db.Column(db.DateTime, nullable=True)
     
     # Estado de cuenta (soft delete)
-    # Corrección: nullable=False según tu SQL
     estado_cuenta = db.Column(db.String(20), default="activo", nullable=False) 
     fecha_desactivacion = db.Column(db.DateTime, nullable=True)
     
     # Timestamps
-    # Corrección: Usar db.func.now() para defaults manejados por DB si prefieres
     creado_en = db.Column(db.DateTime, default=db.func.now()) 
     actualizado_en = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
 
-    # Relación con PerfilUsuario
+    # Relaciones (ACTUALIZADAS)
     perfil = db.relationship("PerfilUsuario", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
+    perfil_estudiante = db.relationship("PerfilEstudiante", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
+    perfil_profesor = db.relationship("PerfilProfesor", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
+    perfil_admin = db.relationship("PerfilAdministrador", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
 
     def set_password(self, password):
         """Genera el hash de la contraseña"""
@@ -49,7 +48,6 @@ class Usuario(db.Model):
 
     def check_password(self, password):
         """Verifica la contraseña"""
-        # Añadir verificación de que contrasena_hash no sea None por si acaso
         if not self.contrasena_hash:
             return False
         return check_password_hash(self.contrasena_hash, password)
@@ -58,32 +56,26 @@ class Usuario(db.Model):
         return f"<Usuario {self.id}: {self.correo}>"
 
 
+# ============================================================
+# PERFIL BASE (MODIFICADO - SIN CAMPOS DE ESTUDIANTE)
+# ============================================================
+
 class PerfilUsuario(db.Model):
-    __tablename__ = "perfil_usuarios" # ✅ Correcto
+    __tablename__ = "perfil_usuarios"
 
     id = db.Column(db.Integer, primary_key=True)
-    # Corrección: Añadir unique=True para coincidir con SQL
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), unique=True, nullable=False) 
-    # Corrección: Longitud 255
     nombre_completo = db.Column(db.String(255), nullable=False) 
-    # Corrección: Longitud 20, nullable=True, quitar unique
-    id_publico = db.Column(db.String(20), nullable=True) 
+    id_publico = db.Column(db.String(20), nullable=True)
     
-    # Información del curso
-    # Corrección: Longitud 100, nullable=True (según SQL)
-    idioma = db.Column(db.String(100), nullable=True) 
-    # Corrección: Longitud 50
-    nivel_actual = db.Column(db.String(50), default="A1") 
-    curso_actual = db.Column(db.String(100), nullable=True)
+    # Información general (para todos los roles)
+    foto_perfil = db.Column(db.String(500), nullable=True)
+    biografia = db.Column(db.Text, nullable=True)
     
-    # Gamificación
-    total_xp = db.Column(db.Integer, default=0)
-    dias_racha = db.Column(db.Integer, default=0)
-    # Corrección: Cambiar a db.Date
-    ultima_actividad = db.Column(db.Date, nullable=True) 
+    # ELIMINADOS: idioma, nivel_actual, curso_actual, total_xp, dias_racha, ultima_actividad
+    # Esos campos ahora están en PerfilEstudiante
     
     # Timestamps
-    # Corrección: Usar db.func.now() para defaults manejados por DB
     creado_en = db.Column(db.DateTime, default=db.func.now()) 
     actualizado_en = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
 
@@ -91,4 +83,94 @@ class PerfilUsuario(db.Model):
     usuario = db.relationship("Usuario", back_populates="perfil")
 
     def __repr__(self):
-        return f"<PerfilUsuario para Usuario ID {self.usuario_id}>"
+        return f"<PerfilUsuario {self.nombre_completo}>"
+
+
+# ============================================================
+# PERFIL ESTUDIANTE (NUEVO)
+# ============================================================
+
+class PerfilEstudiante(db.Model):
+    __tablename__ = "perfil_estudiantes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), unique=True, nullable=False)
+    
+    # Información académica
+    nivel_actual = db.Column(db.String(50), nullable=True)
+    idioma_aprendizaje = db.Column(db.String(100), nullable=True)
+    
+    # Gamificación
+    total_xp = db.Column(db.Integer, default=0)
+    nivel_usuario = db.Column(db.Integer, default=1)
+    dias_racha = db.Column(db.Integer, default=0)
+    ultima_actividad = db.Column(db.Date, nullable=True)
+    racha_maxima = db.Column(db.Integer, default=0)
+    
+    # Progreso
+    lecciones_completadas = db.Column(db.Integer, default=0)
+    tiempo_estudio_total = db.Column(db.Integer, default=0)  # en minutos
+    
+    # Configuración
+    meta_diaria = db.Column(db.Integer, default=30)  # minutos
+    notificaciones_habilitadas = db.Column(db.Boolean, default=True)
+    
+    # Relación con Usuario
+    usuario = db.relationship("Usuario", back_populates="perfil_estudiante")
+
+    def __repr__(self):
+        return f"<PerfilEstudiante Usuario:{self.usuario_id}>"
+
+
+# ============================================================
+# PERFIL PROFESOR (NUEVO)
+# ============================================================
+
+class PerfilProfesor(db.Model):
+    __tablename__ = "perfil_profesores"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), unique=True, nullable=False)
+    
+    # Información profesional
+    especialidad = db.Column(db.String(200), nullable=True)
+    años_experiencia = db.Column(db.Integer, nullable=True)
+    idiomas_ensena = db.Column(JSON, nullable=True)  # Array: ["inglés", "francés"]
+    niveles_ensena = db.Column(JSON, nullable=True)  # Array: ["principiante", "intermedio"]
+    certificaciones = db.Column(db.Text, nullable=True)
+    descripcion_profesional = db.Column(db.Text, nullable=True)
+    
+    # Estadísticas
+    estudiantes_totales = db.Column(db.Integer, default=0)
+    cursos_creados = db.Column(db.Integer, default=0)
+    calificacion_promedio = db.Column(Numeric(3, 2), default=0.00)
+    total_resenas = db.Column(db.Integer, default=0)
+    
+    # Relación con Usuario
+    usuario = db.relationship("Usuario", back_populates="perfil_profesor")
+
+    def __repr__(self):
+        return f"<PerfilProfesor Usuario:{self.usuario_id}>"
+
+
+# ============================================================
+# PERFIL ADMINISTRADOR (NUEVO)
+# ============================================================
+
+class PerfilAdministrador(db.Model):
+    __tablename__ = "perfil_administradores"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), unique=True, nullable=False)
+    
+    # Información administrativa
+    departamento = db.Column(db.String(100), nullable=True)
+    nivel_acceso = db.Column(db.String(50), default="admin")  # admin, superadmin, mantenimiento
+    permisos = db.Column(JSON, nullable=True)  # Array de permisos
+    ultimo_acceso_admin = db.Column(db.DateTime, nullable=True)
+    
+    # Relación con Usuario
+    usuario = db.relationship("Usuario", back_populates="perfil_admin")
+
+    def __repr__(self):
+        return f"<PerfilAdministrador Usuario:{self.usuario_id}>"

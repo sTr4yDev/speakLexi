@@ -17,25 +17,81 @@ from datetime import datetime
 class GestorLecciones:
     """Gestiona operaciones CRUD y lógica de negocio de lecciones"""
     
+    @staticmethod
+    def _obtener_nivel_enum(nivel_str):
+        """
+        Convierte un string a enum NivelDificultad.
+        Acepta valores en mayúsculas o minúsculas.
+        """
+        if isinstance(nivel_str, NivelDificultad):
+            return nivel_str
+            
+        nivel_str = str(nivel_str).lower().strip()
+        
+        # Mapeo de valores string a enum
+        mapeo_niveles = {
+            'principiante': NivelDificultad.PRINCIPIANTE,
+            'intermedio': NivelDificultad.INTERMEDIO,
+            'avanzado': NivelDificultad.AVANZADO
+        }
+        
+        if nivel_str not in mapeo_niveles:
+            raise ValueError(f"Nivel inválido. Valores permitidos: {list(mapeo_niveles.keys())}")
+        
+        return mapeo_niveles[nivel_str]
+    
+    @staticmethod
+    def _obtener_estado_enum(estado_str):
+        """
+        Convierte un string a enum EstadoLeccion.
+        """
+        if isinstance(estado_str, EstadoLeccion):
+            return estado_str
+            
+        estado_str = str(estado_str).lower().strip()
+        
+        mapeo_estados = {
+            'borrador': EstadoLeccion.BORRADOR,
+            'publicada': EstadoLeccion.PUBLICADA,
+            'archivada': EstadoLeccion.ARCHIVADA
+        }
+        
+        if estado_str not in mapeo_estados:
+            raise ValueError(f"Estado inválido. Valores permitidos: {list(mapeo_estados.keys())}")
+        
+        return mapeo_estados[estado_str]
+    
+    @staticmethod
+    def _obtener_tipo_actividad_enum(tipo_str):
+        """
+        Convierte un string a enum TipoActividad.
+        """
+        if isinstance(tipo_str, TipoActividad):
+            return tipo_str
+            
+        tipo_str = str(tipo_str).lower().strip()
+        
+        mapeo_tipos = {
+            'multiple_choice': TipoActividad.MULTIPLE_CHOICE,
+            'fill_blank': TipoActividad.FILL_BLANK,
+            'matching': TipoActividad.MATCHING,
+            'translation': TipoActividad.TRANSLATION,
+            'listen_repeat': TipoActividad.LISTEN_REPEAT,
+            'true_false': TipoActividad.TRUE_FALSE,
+            'word_order': TipoActividad.WORD_ORDER
+        }
+        
+        if tipo_str not in mapeo_tipos:
+            raise ValueError(f"Tipo inválido. Valores permitidos: {list(mapeo_tipos.keys())}")
+        
+        return mapeo_tipos[tipo_str]
+    
     def crear_leccion(self, datos_leccion, usuario_id):
         """
         Crea una nueva lección en el sistema.
         
         Args:
             datos_leccion (dict): Datos de la lección
-                {
-                    'titulo': str,
-                    'descripcion': str,
-                    'contenido': dict,
-                    'nivel': str,
-                    'idioma': str,
-                    'categoria': str,
-                    'etiquetas': list,
-                    'orden': int,
-                    'requisitos': list,
-                    'duracion_estimada': int,
-                    'puntos_xp': int
-                }
             usuario_id (int): ID del usuario que crea la lección
         
         Returns:
@@ -49,14 +105,12 @@ class GestorLecciones:
             if not datos_leccion.get('contenido'):
                 return {"error": "El contenido es obligatorio"}, 400
             
-            # Validar nivel
+            # Validar y convertir nivel
             nivel_str = datos_leccion.get('nivel', 'principiante')
             try:
-                nivel = NivelDificultad[nivel_str.upper()]
-            except KeyError:
-                return {
-                    "error": f"Nivel inválido. Valores permitidos: {[n.value for n in NivelDificultad]}"
-                }, 400
+                nivel = self._obtener_nivel_enum(nivel_str)
+            except ValueError as e:
+                return {"error": str(e)}, 400
             
             # Crear nueva lección
             nueva_leccion = Leccion(
@@ -120,14 +174,6 @@ class GestorLecciones:
         
         Args:
             filtros (dict): Filtros opcionales
-                {
-                    'nivel': str,
-                    'idioma': str,
-                    'categoria': str,
-                    'estado': str,
-                    'buscar': str,
-                    'etiqueta': str
-                }
             pagina (int): Número de página
             por_pagina (int): Lecciones por página
         
@@ -141,10 +187,10 @@ class GestorLecciones:
             if filtros:
                 if filtros.get('nivel'):
                     try:
-                        nivel = NivelDificultad[filtros['nivel'].upper()]
+                        nivel = self._obtener_nivel_enum(filtros['nivel'])
                         query = query.filter_by(nivel=nivel)
-                    except KeyError:
-                        pass
+                    except ValueError:
+                        pass  # Ignorar nivel inválido
                 
                 if filtros.get('idioma'):
                     query = query.filter_by(idioma=filtros['idioma'])
@@ -154,10 +200,10 @@ class GestorLecciones:
                 
                 if filtros.get('estado'):
                     try:
-                        estado = EstadoLeccion[filtros['estado'].upper()]
+                        estado = self._obtener_estado_enum(filtros['estado'])
                         query = query.filter_by(estado=estado)
-                    except KeyError:
-                        pass
+                    except ValueError:
+                        pass  # Ignorar estado inválido
                 
                 if filtros.get('buscar'):
                     termino = f"%{filtros['buscar']}%"
@@ -169,7 +215,6 @@ class GestorLecciones:
                     )
                 
                 if filtros.get('etiqueta'):
-                    # Búsqueda en JSON array
                     query = query.filter(
                         Leccion.etiquetas.contains([filtros['etiqueta']])
                     )
@@ -197,26 +242,12 @@ class GestorLecciones:
             return {"error": f"Error al listar lecciones: {str(e)}"}, 500
     
     def actualizar_leccion(self, leccion_id, datos_actualizados, usuario_id):
-        """
-        Actualiza una lección existente.
-        
-        Args:
-            leccion_id (int): ID de la lección
-            datos_actualizados (dict): Datos a actualizar
-            usuario_id (int): ID del usuario que actualiza
-        
-        Returns:
-            tuple: (dict con lección actualizada, código HTTP)
-        """
+        """Actualiza una lección existente."""
         try:
             leccion = Leccion.query.get(leccion_id)
             
             if not leccion:
                 return {"error": "Lección no encontrada"}, 404
-            
-            # Validar permisos (opcional: solo el creador puede editar)
-            # if leccion.creado_por != usuario_id:
-            #     return {"error": "No tienes permiso para editar esta lección"}, 403
             
             # Actualizar campos permitidos
             campos_editables = [
@@ -232,12 +263,10 @@ class GestorLecciones:
             # Manejar nivel especialmente
             if 'nivel' in datos_actualizados:
                 try:
-                    nivel = NivelDificultad[datos_actualizados['nivel'].upper()]
+                    nivel = self._obtener_nivel_enum(datos_actualizados['nivel'])
                     leccion.nivel = nivel
-                except KeyError:
-                    return {
-                        "error": f"Nivel inválido. Valores: {[n.value for n in NivelDificultad]}"
-                    }, 400
+                except ValueError as e:
+                    return {"error": str(e)}, 400
             
             leccion.actualizado_en = datetime.utcnow()
             db.session.commit()
@@ -252,23 +281,13 @@ class GestorLecciones:
             return {"error": f"Error al actualizar lección: {str(e)}"}, 500
     
     def eliminar_leccion(self, leccion_id, usuario_id):
-        """
-        Elimina una lección (soft delete recomendado: archivar).
-        
-        Args:
-            leccion_id (int): ID de la lección
-            usuario_id (int): ID del usuario que elimina
-        
-        Returns:
-            tuple: (dict con resultado, código HTTP)
-        """
+        """Elimina una lección (soft delete: archivar)."""
         try:
             leccion = Leccion.query.get(leccion_id)
             
             if not leccion:
                 return {"error": "Lección no encontrada"}, 404
             
-            # Soft delete: archivar en lugar de eliminar
             leccion.archivar()
             db.session.commit()
             
@@ -282,16 +301,7 @@ class GestorLecciones:
             return {"error": f"Error al eliminar lección: {str(e)}"}, 500
     
     def publicar_leccion(self, leccion_id, usuario_id):
-        """
-        Publica una lección en borrador.
-        
-        Args:
-            leccion_id (int): ID de la lección
-            usuario_id (int): ID del usuario que publica
-        
-        Returns:
-            tuple: (dict con resultado, código HTTP)
-        """
+        """Publica una lección en borrador."""
         try:
             leccion = Leccion.query.get(leccion_id)
             
@@ -301,7 +311,6 @@ class GestorLecciones:
             if leccion.estado == EstadoLeccion.PUBLICADA:
                 return {"mensaje": "La lección ya está publicada"}, 200
             
-            # Validar que tenga al menos una actividad
             if leccion.actividades.count() == 0:
                 return {
                     "error": "La lección debe tener al menos una actividad para publicarse"
@@ -322,29 +331,7 @@ class GestorLecciones:
     # ========== GESTIÓN DE ACTIVIDADES ==========
     
     def agregar_actividad(self, leccion_id, datos_actividad):
-        """
-        Agrega una actividad a una lección.
-        
-        Args:
-            leccion_id (int): ID de la lección
-            datos_actividad (dict): Datos de la actividad
-                {
-                    'tipo': str,
-                    'pregunta': str,
-                    'instrucciones': str,
-                    'opciones': dict,
-                    'respuesta_correcta': any,
-                    'retroalimentacion': dict,
-                    'pista': str,
-                    'puntos': int,
-                    'orden': int,
-                    'tiempo_limite': int,
-                    'multimedia_id': int
-                }
-        
-        Returns:
-            tuple: (dict con actividad creada, código HTTP)
-        """
+        """Agrega una actividad a una lección."""
         try:
             leccion = Leccion.query.get(leccion_id)
             
@@ -353,11 +340,9 @@ class GestorLecciones:
             
             # Validar tipo de actividad
             try:
-                tipo = TipoActividad[datos_actividad['tipo'].upper()]
-            except KeyError:
-                return {
-                    "error": f"Tipo inválido. Valores: {[t.value for t in TipoActividad]}"
-                }, 400
+                tipo = self._obtener_tipo_actividad_enum(datos_actividad['tipo'])
+            except ValueError as e:
+                return {"error": str(e)}, 400
             
             # Determinar orden si no se especifica
             orden = datos_actividad.get('orden')
@@ -396,16 +381,7 @@ class GestorLecciones:
             return {"error": f"Error al agregar actividad: {str(e)}"}, 500
     
     def actualizar_actividad(self, actividad_id, datos_actualizados):
-        """
-        Actualiza una actividad existente.
-        
-        Args:
-            actividad_id (int): ID de la actividad
-            datos_actualizados (dict): Datos a actualizar
-        
-        Returns:
-            tuple: (dict con actividad actualizada, código HTTP)
-        """
+        """Actualiza una actividad existente."""
         try:
             actividad = Actividad.query.get(actividad_id)
             
@@ -426,12 +402,10 @@ class GestorLecciones:
             # Manejar tipo especialmente
             if 'tipo' in datos_actualizados:
                 try:
-                    tipo = TipoActividad[datos_actualizados['tipo'].upper()]
+                    tipo = self._obtener_tipo_actividad_enum(datos_actualizados['tipo'])
                     actividad.tipo = tipo
-                except KeyError:
-                    return {
-                        "error": f"Tipo inválido. Valores: {[t.value for t in TipoActividad]}"
-                    }, 400
+                except ValueError as e:
+                    return {"error": str(e)}, 400
             
             actividad.actualizado_en = datetime.utcnow()
             db.session.commit()
@@ -446,15 +420,7 @@ class GestorLecciones:
             return {"error": f"Error al actualizar actividad: {str(e)}"}, 500
     
     def eliminar_actividad(self, actividad_id):
-        """
-        Elimina una actividad.
-        
-        Args:
-            actividad_id (int): ID de la actividad
-        
-        Returns:
-            tuple: (dict con resultado, código HTTP)
-        """
+        """Elimina una actividad."""
         try:
             actividad = Actividad.query.get(actividad_id)
             
@@ -477,16 +443,7 @@ class GestorLecciones:
             return {"error": f"Error al eliminar actividad: {str(e)}"}, 500
     
     def verificar_respuesta_actividad(self, actividad_id, respuesta_usuario):
-        """
-        Verifica la respuesta de un usuario a una actividad.
-        
-        Args:
-            actividad_id (int): ID de la actividad
-            respuesta_usuario: Respuesta del usuario
-        
-        Returns:
-            tuple: (dict con resultado, código HTTP)
-        """
+        """Verifica la respuesta de un usuario a una actividad."""
         try:
             actividad = Actividad.query.get(actividad_id)
             
@@ -506,12 +463,7 @@ class GestorLecciones:
     # ========== ESTADÍSTICAS Y UTILIDADES ==========
     
     def obtener_estadisticas_leccion(self, leccion_id):
-        """
-        Obtiene estadísticas de una lección.
-        
-        Returns:
-            tuple: (dict con estadísticas, código HTTP)
-        """
+        """Obtiene estadísticas de una lección."""
         try:
             leccion = Leccion.query.get(leccion_id)
             
@@ -537,23 +489,12 @@ class GestorLecciones:
             return {"error": f"Error al obtener estadísticas: {str(e)}"}, 500
     
     def obtener_lecciones_por_nivel(self, nivel, idioma=None):
-        """
-        Obtiene lecciones filtradas por nivel y opcionalmente idioma.
-        
-        Args:
-            nivel (str): Nivel de dificultad
-            idioma (str): Idioma opcional
-        
-        Returns:
-            tuple: (dict con lecciones, código HTTP)
-        """
+        """Obtiene lecciones filtradas por nivel y opcionalmente idioma."""
         try:
             try:
-                nivel_enum = NivelDificultad[nivel.upper()]
-            except KeyError:
-                return {
-                    "error": f"Nivel inválido. Valores: {[n.value for n in NivelDificultad]}"
-                }, 400
+                nivel_enum = self._obtener_nivel_enum(nivel)
+            except ValueError as e:
+                return {"error": str(e)}, 400
             
             query = Leccion.query.filter_by(
                 nivel=nivel_enum,
