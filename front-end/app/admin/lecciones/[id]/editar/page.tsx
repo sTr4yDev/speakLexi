@@ -1,3 +1,5 @@
+"use client"
+
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -5,22 +7,132 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Loader2, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { leccionesAPI, type Leccion } from "@/lib/api"
+import { toast } from "sonner"
 
 export default function EditLessonPage({ params }: { params: { id: string } }) {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [leccion, setLeccion] = useState<Leccion | null>(null)
+
+  useEffect(() => {
+    cargarLeccion()
+  }, [params.id])
+
+  const cargarLeccion = async () => {
+    try {
+      setLoading(true)
+      const response = await leccionesAPI.obtener(parseInt(params.id), true, true)
+      setLeccion(response.leccion)
+    } catch (error: any) {
+      console.error("Error al cargar lección:", error)
+      toast.error(error.message || "Error al cargar lección")
+      router.push("/admin/lecciones")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!leccion) return
+
+    try {
+      setSaving(true)
+      
+      const datosActualizados = {
+        titulo: leccion.titulo,
+        descripcion: leccion.descripcion,
+        nivel: leccion.nivel,
+        idioma: leccion.idioma,
+        categoria: leccion.categoria,
+        duracion_estimada: leccion.duracion_estimada,
+        puntos_xp: leccion.puntos_xp,
+        estado: leccion.estado
+      }
+      
+      await leccionesAPI.actualizar(parseInt(params.id), datosActualizados)
+      
+      toast.success("Lección actualizada exitosamente")
+      router.push("/admin/lecciones")
+      
+    } catch (error: any) {
+      console.error("Error al actualizar:", error)
+      toast.error(error.message || "Error al actualizar lección")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handlePublicar = async () => {
+    if (!leccion) return
+
+    try {
+      await leccionesAPI.publicar(parseInt(params.id))
+      toast.success("Lección publicada exitosamente")
+      cargarLeccion() // Recargar para actualizar estado
+    } catch (error: any) {
+      console.error("Error al publicar:", error)
+      toast.error(error.message || "Error al publicar lección")
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+        <DashboardHeader />
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (!leccion) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+        <DashboardHeader />
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Lección no encontrada</p>
+            <Link href="/admin/lecciones">
+              <Button variant="outline" className="mt-4">
+                Volver a lecciones
+              </Button>
+            </Link>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <DashboardHeader />
 
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <Link href="/admin/lecciones">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver a Lecciones
             </Button>
           </Link>
+          
+          {leccion.estado === 'borrador' && (
+            <Button variant="outline" onClick={handlePublicar}>
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Publicar Lección
+            </Button>
+          )}
         </div>
 
         <div className="mb-8">
@@ -28,96 +140,175 @@ export default function EditLessonPage({ params }: { params: { id: string } }) {
           <p className="mt-1 text-muted-foreground">Modifica los detalles de la lección #{params.id}</p>
         </div>
 
-        <Card className="mx-auto max-w-3xl">
-          <CardHeader>
-            <CardTitle>Información de la Lección</CardTitle>
-            <CardDescription>Actualiza los campos que desees modificar</CardDescription>
-          </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <Card className="mx-auto max-w-3xl">
+            <CardHeader>
+              <CardTitle>Información de la Lección</CardTitle>
+              <CardDescription>Actualiza los campos que desees modificar</CardDescription>
+            </CardHeader>
 
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="title">Título de la Lección</Label>
-              <Input id="title" defaultValue="Introducción a los Verbos" />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
+            <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="course">Curso</Label>
-                <Select defaultValue="english-beginner">
+                <Label htmlFor="title">Título de la Lección</Label>
+                <Input 
+                  id="title" 
+                  value={leccion.titulo}
+                  onChange={(e) => setLeccion({...leccion, titulo: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="nivel">Nivel</Label>
+                  <Select 
+                    value={leccion.nivel}
+                    onValueChange={(value: any) => setLeccion({...leccion, nivel: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="principiante">Principiante</SelectItem>
+                      <SelectItem value="intermedio">Intermedio</SelectItem>
+                      <SelectItem value="avanzado">Avanzado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="idioma">Idioma</Label>
+                  <Select 
+                    value={leccion.idioma}
+                    onValueChange={(value) => setLeccion({...leccion, idioma: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ingles">Inglés</SelectItem>
+                      <SelectItem value="espanol">Español</SelectItem>
+                      <SelectItem value="frances">Francés</SelectItem>
+                      <SelectItem value="aleman">Alemán</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="categoria">Categoría</Label>
+                <Input 
+                  id="categoria" 
+                  value={leccion.categoria || ''}
+                  onChange={(e) => setLeccion({...leccion, categoria: e.target.value})}
+                  placeholder="vocabulario, gramatica, pronunciacion, etc."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Descripción</Label>
+                <Textarea
+                  id="description"
+                  value={leccion.descripcion}
+                  onChange={(e) => setLeccion({...leccion, descripcion: e.target.value})}
+                  rows={4}
+                  required
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="duration">Duración (minutos)</Label>
+                  <Input 
+                    id="duration" 
+                    type="number" 
+                    value={leccion.duracion_estimada}
+                    onChange={(e) => setLeccion({...leccion, duracion_estimada: parseInt(e.target.value)})}
+                    required
+                    min="1"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="xp">XP Otorgados</Label>
+                  <Input 
+                    id="xp" 
+                    type="number" 
+                    value={leccion.puntos_xp}
+                    onChange={(e) => setLeccion({...leccion, puntos_xp: parseInt(e.target.value)})}
+                    required
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Estado</Label>
+                <Select 
+                  value={leccion.estado}
+                  onValueChange={(value: any) => setLeccion({...leccion, estado: value})}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="english-beginner">Inglés Principiante</SelectItem>
-                    <SelectItem value="english-intermediate">Inglés Intermedio</SelectItem>
-                    <SelectItem value="english-advanced">Inglés Avanzado</SelectItem>
+                    <SelectItem value="borrador">Borrador</SelectItem>
+                    <SelectItem value="publicada">Publicada</SelectItem>
+                    <SelectItem value="archivada">Archivada</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="level">Nivel</Label>
-                <Select defaultValue="A1">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A1">A1 - Principiante</SelectItem>
-                    <SelectItem value="A2">A2 - Elemental</SelectItem>
-                    <SelectItem value="B1">B1 - Intermedio</SelectItem>
-                    <SelectItem value="B2">B2 - Intermedio Alto</SelectItem>
-                    <SelectItem value="C1">C1 - Avanzado</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex gap-3">
+                <Button type="submit" className="flex-1" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Guardar Cambios
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/admin/lecciones">Cancelar</Link>
+                </Button>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        </form>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Descripción</Label>
-              <Textarea
-                id="description"
-                defaultValue="Aprende los conceptos básicos de los verbos en inglés"
-                rows={4}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
+        {/* Sección de actividades */}
+        {leccion.actividades && leccion.actividades.length > 0 && (
+          <Card className="mx-auto max-w-3xl mt-6">
+            <CardHeader>
+              <CardTitle>Actividades ({leccion.actividades.length})</CardTitle>
+              <CardDescription>Actividades asociadas a esta lección</CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-2">
-                <Label htmlFor="duration">Duración (minutos)</Label>
-                <Input id="duration" type="number" defaultValue="30" />
+                {leccion.actividades.map((actividad, index) => (
+                  <div 
+                    key={actividad.id} 
+                    className="p-3 border rounded-lg flex items-center justify-between"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {index + 1}. {actividad.pregunta}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Tipo: {actividad.tipo} • {actividad.puntos} puntos
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="xp">XP Otorgados</Label>
-                <Input id="xp" type="number" defaultValue="50" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Estado</Label>
-              <Select defaultValue="publicada">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="borrador">Borrador</SelectItem>
-                  <SelectItem value="publicada">Publicada</SelectItem>
-                  <SelectItem value="archivada">Archivada</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex gap-3">
-              <Button className="flex-1">
-                <Save className="mr-2 h-4 w-4" />
-                Guardar Cambios
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/admin/lecciones">Cancelar</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   )

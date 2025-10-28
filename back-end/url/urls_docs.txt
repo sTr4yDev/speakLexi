@@ -1,0 +1,12 @@
+# DOCUMENTACIÓN - SpeakLexi
+# Total: 8 archivos
+# Generado: 2025-10-27 12:31:11
+
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/README.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/architecture.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/database.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/errores/bitacoras/ERRORES - 27 OCT 25.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/best-practices.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/naming-conventions.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/lession-creation.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/user-registration.md

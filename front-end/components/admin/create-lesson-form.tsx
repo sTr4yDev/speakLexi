@@ -2,165 +2,397 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, ArrowRight, Save } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { ArrowLeft, Save, Loader2, Plus, X } from "lucide-react"
+import Link from "next/link"
+import { leccionesAPI, type Leccion } from "@/lib/api"
+import { toast } from "sonner"
 
 export function CreateLessonForm() {
   const router = useRouter()
-  const { toast } = useToast()
+  const [saving, setSaving] = useState(false)
   const [step, setStep] = useState(1)
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    level: "A1",
-    language: "English",
-    xpReward: 10,
+  
+  const [formData, setFormData] = useState<Partial<Leccion>>({
+    titulo: "",
+    descripcion: "",
+    nivel: "principiante",
+    idioma: "ingles",
+    categoria: "",
+    etiquetas: [],
+    duracion_estimada: 10,
+    puntos_xp: 50,
+    contenido: {
+      objetivos: [],
+      vocabulario_clave: []
+    }
   })
 
-  const handleSubmit = () => {
-    toast({
-      title: "Lección creada",
-      description: "La lección ha sido guardada exitosamente",
+  const [objetivoTemp, setObjetivoTemp] = useState("")
+  const [vocabularioTemp, setVocabularioTemp] = useState("")
+  const [etiquetaTemp, setEtiquetaTemp] = useState("")
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    try {
+      setSaving(true)
+      
+      const leccionData: Omit<Leccion, 'id' | 'creado_en' | 'actualizado_en'> = {
+        titulo: formData.titulo!,
+        descripcion: formData.descripcion!,
+        contenido: formData.contenido || {},
+        nivel: formData.nivel as any,
+        idioma: formData.idioma!,
+        categoria: formData.categoria,
+        etiquetas: formData.etiquetas || [],
+        requisitos: [],
+        duracion_estimada: formData.duracion_estimada!,
+        puntos_xp: formData.puntos_xp!,
+        estado: 'borrador'
+      }
+      
+      const response = await leccionesAPI.crear(leccionData)
+      
+      toast.success("Lección creada exitosamente")
+      router.push(`/admin/lecciones/${response.leccion.id}/editar`)
+      
+    } catch (error: any) {
+      console.error("Error al crear lección:", error)
+      toast.error(error.message || "Error al crear lección")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const agregarObjetivo = () => {
+    if (objetivoTemp.trim()) {
+      const contenido = formData.contenido || {}
+      const objetivos = contenido.objetivos || []
+      
+      setFormData({
+        ...formData,
+        contenido: {
+          ...contenido,
+          objetivos: [...objetivos, objetivoTemp.trim()]
+        }
+      })
+      setObjetivoTemp("")
+    }
+  }
+
+  const eliminarObjetivo = (index: number) => {
+    const contenido = formData.contenido || {}
+    const objetivos = contenido.objetivos || []
+    
+    setFormData({
+      ...formData,
+      contenido: {
+        ...contenido,
+        objetivos: objetivos.filter((_ : string, i: number) => i !== index)
+      }
     })
-    router.push("/admin/lecciones")
+  }
+
+  const agregarVocabulario = () => {
+    if (vocabularioTemp.trim()) {
+      const contenido = formData.contenido || {}
+      const vocabulario = contenido.vocabulario_clave || []
+      
+      setFormData({
+        ...formData,
+        contenido: {
+          ...contenido,
+          vocabulario_clave: [...vocabulario, vocabularioTemp.trim()]
+        }
+      })
+      setVocabularioTemp("")
+    }
+  }
+
+  const eliminarVocabulario = (index: number) => {
+    const contenido = formData.contenido || {}
+    const vocabulario = contenido.vocabulario_clave || []
+    
+    setFormData({
+      ...formData,
+      contenido: {
+        ...contenido,
+        vocabulario_clave: vocabulario.filter((_ : string, i: number) => i !== index)
+      }
+    })
+  }
+
+  const agregarEtiqueta = () => {
+    if (etiquetaTemp.trim() && !formData.etiquetas?.includes(etiquetaTemp.trim())) {
+      setFormData({
+        ...formData,
+        etiquetas: [...(formData.etiquetas || []), etiquetaTemp.trim()]
+      })
+      setEtiquetaTemp("")
+    }
+  }
+
+  const eliminarEtiqueta = (etiqueta: string) => {
+    setFormData({
+      ...formData,
+      etiquetas: formData.etiquetas?.filter(e => e !== etiqueta)
+    })
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      {/* Progress Steps */}
-      <div className="mb-8 flex items-center justify-center gap-4">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className="flex items-center gap-2">
-            <div
-              className={`flex h-10 w-10 items-center justify-center rounded-full font-bold ${
-                s === step
-                  ? "bg-primary text-primary-foreground"
-                  : s < step
-                    ? "bg-success text-success-foreground"
-                    : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {s}
+    <form onSubmit={handleSubmit}>
+      {/* Paso 1: Información Básica */}
+      {step === 1 && (
+        <Card className="mx-auto max-w-3xl">
+          <CardHeader>
+            <CardTitle>Paso 1: Información Básica</CardTitle>
+            <CardDescription>Datos principales de la lección</CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="titulo">Título de la Lección *</Label>
+              <Input 
+                id="titulo" 
+                placeholder="Ej: Saludos y Presentaciones"
+                value={formData.titulo}
+                onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+                required
+              />
             </div>
-            <span className="text-sm font-medium">
-              {s === 1 ? "Datos Básicos" : s === 2 ? "Actividades" : "Multimedia"}
-            </span>
-            {s < 3 && <div className="h-0.5 w-12 bg-border" />}
-          </div>
-        ))}
-      </div>
 
-      <Card className="p-8">
-        {step === 1 && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Paso 1: Datos Básicos</h2>
-
-            <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="title">Título de la Lección</Label>
-                <Input
-                  id="title"
-                  placeholder="Ej: Greetings and Introductions"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                <Label htmlFor="nivel">Nivel *</Label>
+                <Select 
+                  value={formData.nivel}
+                  onValueChange={(value: any) => setFormData({...formData, nivel: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="principiante">Principiante</SelectItem>
+                    <SelectItem value="intermedio">Intermedio</SelectItem>
+                    <SelectItem value="avanzado">Avanzado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="idioma">Idioma *</Label>
+                <Select 
+                  value={formData.idioma}
+                  onValueChange={(value) => setFormData({...formData, idioma: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ingles">Inglés</SelectItem>
+                    <SelectItem value="espanol">Español</SelectItem>
+                    <SelectItem value="frances">Francés</SelectItem>
+                    <SelectItem value="aleman">Alemán</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="categoria">Categoría</Label>
+              <Input 
+                id="categoria" 
+                placeholder="vocabulario, gramatica, pronunciacion, etc."
+                value={formData.categoria}
+                onChange={(e) => setFormData({...formData, categoria: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="descripcion">Descripción *</Label>
+              <Textarea
+                id="descripcion"
+                placeholder="Describe brevemente de qué trata esta lección..."
+                value={formData.descripcion}
+                onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+                rows={4}
+                required
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="duracion">Duración estimada (minutos) *</Label>
+                <Input 
+                  id="duracion" 
+                  type="number" 
+                  min="1"
+                  value={formData.duracion_estimada}
+                  onChange={(e) => setFormData({...formData, duracion_estimada: parseInt(e.target.value)})}
+                  required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe el contenido de la lección..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={4}
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="level">Nivel</Label>
-                  <Input
-                    id="level"
-                    placeholder="A1, A2, B1..."
-                    value={formData.level}
-                    onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="language">Idioma</Label>
-                  <Input
-                    id="language"
-                    placeholder="English, Spanish..."
-                    value={formData.language}
-                    onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="xp">Recompensa XP</Label>
-                <Input
-                  id="xp"
+                <Label htmlFor="xp">Puntos XP *</Label>
+                <Input 
+                  id="xp" 
                   type="number"
-                  value={formData.xpReward}
-                  onChange={(e) => setFormData({ ...formData, xpReward: Number.parseInt(e.target.value) })}
+                  min="0"
+                  value={formData.puntos_xp}
+                  onChange={(e) => setFormData({...formData, puntos_xp: parseInt(e.target.value)})}
+                  required
                 />
               </div>
             </div>
-          </div>
-        )}
 
-        {step === 2 && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Paso 2: Actividades</h2>
-            <p className="text-muted-foreground">Agrega actividades interactivas a tu lección</p>
-
-            <div className="rounded-lg border-2 border-dashed border-border p-8 text-center">
-              <p className="text-muted-foreground">No hay actividades agregadas aún</p>
-              <Button className="mt-4">Agregar Actividad</Button>
+            <div className="flex gap-3">
+              <Button type="button" onClick={() => setStep(2)} className="flex-1">
+                Siguiente
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/admin/lecciones">Cancelar</Link>
+              </Button>
             </div>
-          </div>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        {step === 3 && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Paso 3: Multimedia</h2>
-            <p className="text-muted-foreground">Sube imágenes, audio o videos para tu lección</p>
+      {/* Paso 2: Contenido Detallado */}
+      {step === 2 && (
+        <Card className="mx-auto max-w-3xl">
+          <CardHeader>
+            <CardTitle>Paso 2: Contenido Detallado</CardTitle>
+            <CardDescription>Objetivos, vocabulario y etiquetas</CardDescription>
+          </CardHeader>
 
-            <div className="rounded-lg border-2 border-dashed border-border p-8 text-center">
-              <p className="text-muted-foreground">No hay archivos multimedia agregados</p>
-              <Button className="mt-4">Subir Archivos</Button>
+          <CardContent className="space-y-6">
+            {/* Objetivos */}
+            <div className="space-y-2">
+              <Label>Objetivos de Aprendizaje</Label>
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Ej: Aprender saludos formales"
+                  value={objetivoTemp}
+                  onChange={(e) => setObjetivoTemp(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarObjetivo())}
+                />
+                <Button type="button" onClick={agregarObjetivo} size="icon">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {formData.contenido?.objetivos && formData.contenido.objetivos.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  {formData.contenido.objetivos.map((obj: string, i: number) => (
+                    <div key={i} className="flex items-center gap-2 p-2 bg-secondary rounded">
+                      <span className="flex-1 text-sm">{obj}</span>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => eliminarObjetivo(i)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
 
-        {/* Navigation */}
-        <div className="mt-8 flex items-center justify-between">
-          <Button variant="outline" onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Anterior
-          </Button>
+            {/* Vocabulario Clave */}
+            <div className="space-y-2">
+              <Label>Vocabulario Clave</Label>
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Ej: Hello, Good morning"
+                  value={vocabularioTemp}
+                  onChange={(e) => setVocabularioTemp(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarVocabulario())}
+                />
+                <Button type="button" onClick={agregarVocabulario} size="icon">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {formData.contenido?.vocabulario_clave && formData.contenido.vocabulario_clave.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.contenido.vocabulario_clave.map((vocab: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="gap-1">
+                      {vocab}
+                      <button 
+                        type="button"
+                        onClick={() => eliminarVocabulario(i)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          {step < 3 ? (
-            <Button onClick={() => setStep(step + 1)}>
-              Siguiente
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          ) : (
-            <Button onClick={handleSubmit}>
-              <Save className="mr-2 h-4 w-4" />
-              Guardar Lección
-            </Button>
-          )}
-        </div>
-      </Card>
-    </div>
+            {/* Etiquetas */}
+            <div className="space-y-2">
+              <Label>Etiquetas</Label>
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Ej: saludos, presentaciones"
+                  value={etiquetaTemp}
+                  onChange={(e) => setEtiquetaTemp(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarEtiqueta())}
+                />
+                <Button type="button" onClick={agregarEtiqueta} size="icon">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {formData.etiquetas && formData.etiquetas.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.etiquetas.map((etiqueta, i) => (
+                    <Badge key={i} variant="outline" className="gap-1">
+                      {etiqueta}
+                      <button 
+                        type="button"
+                        onClick={() => eliminarEtiqueta(etiqueta)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Anterior
+              </Button>
+              <Button type="submit" className="flex-1" disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Crear Lección
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </form>
   )
 }

@@ -15,9 +15,21 @@ export function VerifyEmailForm() {
   const [code, setCode] = useState(["", "", "", "", "", ""])
   const [email, setEmail] = useState("")
 
-  // Recuperamos el correo que se guardó al registrarse
+  // ✅ Recuperamos correo y rol del localStorage
   useEffect(() => {
     const storedEmail = localStorage.getItem("correo")
+    const storedRole = localStorage.getItem("rol") || "estudiante"
+
+    // 🔒 Si el usuario es admin, profesor o mantenimiento → redirigir
+    if (["admin", "profesor", "mantenimiento"].includes(storedRole)) {
+      toast({
+        title: "Acceso no requerido",
+        description: "Tu cuenta no requiere verificación de correo.",
+      })
+      router.push("/dashboard") // o la ruta principal de admin
+      return
+    }
+
     if (storedEmail) {
       setEmail(storedEmail)
     } else {
@@ -79,9 +91,6 @@ export function VerifyEmailForm() {
         title: "Correo verificado",
         description: "Tu cuenta ha sido activada correctamente",
       })
-
-      // ✅ NO eliminamos el correo aquí, lo necesitamos para asignar nivel
-      // El correo se eliminará después de completar la asignación de nivel
 
       router.push("/asignar-nivel")
     } catch (error: any) {

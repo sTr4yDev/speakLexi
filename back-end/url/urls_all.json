@@ -655,6 +655,39 @@
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/styles/globals.css"
     }
   ],
-  "docs": [],
-  "generated": "2025-10-27 12:29:55"
+  "docs": [
+    {
+      "path": "docs/README.md",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/README.md"
+    },
+    {
+      "path": "docs/architecture.md",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/architecture.md"
+    },
+    {
+      "path": "docs/database.md",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/database.md"
+    },
+    {
+      "path": "docs/errores/bitacoras/ERRORES - 27 OCT 25.md",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/errores/bitacoras/ERRORES - 27 OCT 25.md"
+    },
+    {
+      "path": "docs/guidelines/best-practices.md",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/best-practices.md"
+    },
+    {
+      "path": "docs/guidelines/naming-conventions.md",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/naming-conventions.md"
+    },
+    {
+      "path": "docs/workflows/lession-creation.md",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/lession-creation.md"
+    },
+    {
+      "path": "docs/workflows/user-registration.md",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/user-registration.md"
+    }
+  ],
+  "generated": "2025-10-27 12:31:11"
 }

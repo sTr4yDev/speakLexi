@@ -1,33 +1,70 @@
+"use client"
+
 import { Card } from "@/components/ui/card"
 import { BookOpen, ImageIcon, Users, FileText } from "lucide-react"
+import { useState, useEffect } from "react"
+import { leccionesAPI, multimediaAPI } from "@/lib/api"
 
 export function AdminStats() {
-  const stats = [
+  const [stats, setStats] = useState({
+    totalLecciones: 0,
+    totalMultimedia: 0,
+    totalUsuarios: 0,
+    cursosActivos: 0,
+    loading: true
+  })
+
+  useEffect(() => {
+    cargarEstadisticas()
+  }, [])
+
+  const cargarEstadisticas = async () => {
+    try {
+      // Obtener estadísticas de lecciones
+      const leccionesRes = await leccionesAPI.listar({ por_pagina: 1 })
+      
+      // Obtener estadísticas de multimedia
+      const multimediaRes = await multimediaAPI.estadisticas()
+      
+      setStats({
+        totalLecciones: leccionesRes.total || 0,
+        totalMultimedia: multimediaRes.total_recursos || 0,
+        totalUsuarios: 0, // TODO: Implementar endpoint de usuarios
+        cursosActivos: 0, // TODO: Implementar endpoint de cursos
+        loading: false
+      })
+    } catch (error) {
+      console.error("Error al cargar estadísticas:", error)
+      setStats(prev => ({ ...prev, loading: false }))
+    }
+  }
+
+  const statsData = [
     {
       label: "Total Lecciones",
-      value: 156,
-      change: "+8 esta semana",
+      value: stats.totalLecciones,
+      change: stats.loading ? "Cargando..." : "Ver todas",
       icon: BookOpen,
       color: "text-primary",
     },
     {
       label: "Archivos Multimedia",
-      value: 342,
-      change: "+15 este mes",
+      value: stats.totalMultimedia,
+      change: stats.loading ? "Cargando..." : "Ver biblioteca",
       icon: ImageIcon,
       color: "text-secondary",
     },
     {
       label: "Usuarios Totales",
-      value: 1248,
-      change: "+52 este mes",
+      value: stats.totalUsuarios || "N/A",
+      change: "Próximamente",
       icon: Users,
       color: "text-accent",
     },
     {
       label: "Cursos Activos",
-      value: 12,
-      change: "+2 este mes",
+      value: stats.cursosActivos || "N/A",
+      change: "Próximamente",
       icon: FileText,
       color: "text-primary",
     },
@@ -38,7 +75,7 @@ export function AdminStats() {
       <h2 className="mb-4 text-xl font-bold">Estadísticas de Contenido</h2>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {stats.map((stat, index) => {
+        {statsData.map((stat, index) => {
           const Icon = stat.icon
           return (
             <div key={index} className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
@@ -48,7 +85,9 @@ export function AdminStats() {
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">{stat.value}</span>
+                  <span className="text-2xl font-bold">
+                    {stats.loading ? "..." : stat.value}
+                  </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{stat.change}</p>
               </div>

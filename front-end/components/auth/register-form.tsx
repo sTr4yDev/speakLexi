@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2, Shield } from "lucide-react"
 
 export function RegisterForm() {
   const router = useRouter()
@@ -22,13 +22,13 @@ export function RegisterForm() {
     confirmPassword: "",
     idioma: "",
     nivel: "",
+    rol: "estudiante", // 👈 nuevo campo por defecto
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Validar que las contraseñas coincidan
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Error",
@@ -39,7 +39,6 @@ export function RegisterForm() {
       return
     }
 
-    // Validar longitud mínima de contraseña
     if (formData.password.length < 8) {
       toast({
         title: "Error",
@@ -62,19 +61,22 @@ export function RegisterForm() {
           password: formData.password,
           idioma: formData.idioma,
           nivel_actual: formData.nivel,
+          rol: formData.rol, // 👈 se envía el rol temporal
         }),
       })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Error al registrar usuario")
 
-      // Guardar correo e idioma en localStorage para los siguientes pasos
       localStorage.setItem("correo", formData.correo)
       localStorage.setItem("idioma", formData.idioma)
 
       toast({
         title: "Cuenta creada exitosamente",
-        description: "Verifica tu correo electrónico para continuar",
+        description:
+          formData.rol === "admin"
+            ? "✅ Usuario admin creado (modo desarrollo)"
+            : "Verifica tu correo electrónico para continuar",
       })
 
       router.push("/verificar-email")
@@ -104,7 +106,7 @@ export function RegisterForm() {
         />
       </div>
 
-      {/* Primer apellido */}
+      {/* Primer Apellido */}
       <div className="space-y-2">
         <Label htmlFor="primerApellido">Primer Apellido</Label>
         <Input
@@ -112,12 +114,14 @@ export function RegisterForm() {
           type="text"
           placeholder="Pérez"
           value={formData.primerApellido}
-          onChange={(e) => setFormData({ ...formData, primerApellido: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, primerApellido: e.target.value })
+          }
           required
         />
       </div>
 
-      {/* Segundo apellido (opcional) */}
+      {/* Segundo Apellido */}
       <div className="space-y-2">
         <Label htmlFor="segundoApellido">Segundo Apellido (opcional)</Label>
         <Input
@@ -125,7 +129,9 @@ export function RegisterForm() {
           type="text"
           placeholder="Martínez"
           value={formData.segundoApellido}
-          onChange={(e) => setFormData({ ...formData, segundoApellido: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, segundoApellido: e.target.value })
+          }
         />
       </div>
 
@@ -137,7 +143,9 @@ export function RegisterForm() {
           type="email"
           placeholder="tu@email.com"
           value={formData.correo}
-          onChange={(e) => setFormData({ ...formData, correo: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, correo: e.target.value })
+          }
           required
         />
       </div>
@@ -151,7 +159,9 @@ export function RegisterForm() {
             type={showPassword ? "text" : "password"}
             placeholder="Mínimo 8 caracteres"
             value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, password: e.target.value })
+            }
             required
           />
           <button
@@ -159,7 +169,11 @@ export function RegisterForm() {
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>
@@ -172,7 +186,9 @@ export function RegisterForm() {
           type="password"
           placeholder="Repite tu contraseña"
           value={formData.confirmPassword}
-          onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, confirmPassword: e.target.value })
+          }
           required
         />
       </div>
@@ -182,9 +198,11 @@ export function RegisterForm() {
         <Label htmlFor="idioma">Idioma de aprendizaje</Label>
         <select
           id="idioma"
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={formData.idioma}
-          onChange={(e) => setFormData({ ...formData, idioma: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, idioma: e.target.value })
+          }
           required
         >
           <option value="">Selecciona un idioma</option>
@@ -195,7 +213,29 @@ export function RegisterForm() {
         </select>
       </div>
 
-      {/* Botón de submit */}
+      {/* ⚙️ Rol temporal (solo desarrollo) */}
+      <div className="space-y-2 border rounded-md p-3 bg-muted/30">
+        <Label htmlFor="rol" className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-primary" />
+          Rol temporal (solo desarrollo)
+        </Label>
+        <select
+          id="rol"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          value={formData.rol}
+          onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
+        >
+          <option value="estudiante">Estudiante</option>
+          <option value="profesor">Profesor</option>
+          <option value="admin">Admin</option>
+          <option value="mantenimiento">Mantenimiento</option>
+        </select>
+        <p className="text-xs text-muted-foreground mt-1">
+          🔐 Solo para pruebas locales. Este campo será removido en producción.
+        </p>
+      </div>
+
+      {/* Botón */}
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (
           <>

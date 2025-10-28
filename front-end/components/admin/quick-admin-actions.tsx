@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Plus, Upload, FileText, Settings } from "lucide-react"
+import { Plus, Upload, FileText, Settings, Users, BookOpen } from "lucide-react"
 
 export function QuickAdminActions() {
   const actions = [
@@ -10,24 +10,42 @@ export function QuickAdminActions() {
       href: "/admin/lecciones/crear",
       icon: Plus,
       color: "bg-primary/10 text-primary",
+      description: "Nueva lección educativa"
     },
     {
-      label: "Subir Multimedia",
-      href: "/admin/multimedia/subir",
+      label: "Ver Lecciones",
+      href: "/admin/lecciones",
+      icon: BookOpen,
+      color: "bg-blue-500/10 text-blue-600",
+      description: "Gestionar contenido"
+    },
+    {
+      label: "Biblioteca Multimedia",
+      href: "/admin/multimedia",
       icon: Upload,
       color: "bg-secondary/10 text-secondary",
+      description: "Archivos y recursos"
     },
     {
-      label: "Gestionar Cursos",
-      href: "/admin/cursos",
+      label: "Gestionar Usuarios",
+      href: "/admin/usuarios",
+      icon: Users,
+      color: "bg-green-500/10 text-green-600",
+      description: "Administrar usuarios"
+    },
+    {
+      label: "Reportes",
+      href: "/admin/reportes",
       icon: FileText,
       color: "bg-accent/10 text-accent",
+      description: "Estadísticas y análisis"
     },
     {
       label: "Configuración",
       href: "/admin/configuracion",
       icon: Settings,
       color: "bg-muted text-muted-foreground",
+      description: "Ajustes del sistema"
     },
   ]
 
@@ -39,11 +57,14 @@ export function QuickAdminActions() {
           const Icon = action.icon
           return (
             <Link key={index} href={action.href}>
-              <Button variant="ghost" className="w-full justify-start gap-3">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${action.color}`}>
-                  <Icon className="h-4 w-4" />
+              <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-3">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${action.color}`}>
+                  <Icon className="h-5 w-5" />
                 </div>
-                {action.label}
+                <div className="flex flex-col items-start">
+                  <span className="font-medium">{action.label}</span>
+                  <span className="text-xs text-muted-foreground">{action.description}</span>
+                </div>
               </Button>
             </Link>
           )

@@ -1,0 +1,580 @@
+"""
+Gestor de Lecciones - SpeakLexi
+Maneja toda la lógica de negocio relacionada con lecciones y actividades
+"""
+
+from config.database import db
+from models.leccion import (
+    Leccion, Actividad, NivelDificultad, 
+    TipoActividad, EstadoLeccion
+)
+from models.multimedia import Multimedia
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import or_, and_
+from datetime import datetime
+
+
+class GestorLecciones:
+    """Gestiona operaciones CRUD y lógica de negocio de lecciones"""
+    
+    def crear_leccion(self, datos_leccion, usuario_id):
+        """
+        Crea una nueva lección en el sistema.
+        
+        Args:
+            datos_leccion (dict): Datos de la lección
+                {
+                    'titulo': str,
+                    'descripcion': str,
+                    'contenido': dict,
+                    'nivel': str,
+                    'idioma': str,
+                    'categoria': str,
+                    'etiquetas': list,
+                    'orden': int,
+                    'requisitos': list,
+                    'duracion_estimada': int,
+                    'puntos_xp': int
+                }
+            usuario_id (int): ID del usuario que crea la lección
+        
+        Returns:
+            tuple: (dict con lección creada, código HTTP)
+        """
+        try:
+            # Validar datos obligatorios
+            if not datos_leccion.get('titulo'):
+                return {"error": "El título es obligatorio"}, 400
+            
+            if not datos_leccion.get('contenido'):
+                return {"error": "El contenido es obligatorio"}, 400
+            
+            # Validar nivel
+            nivel_str = datos_leccion.get('nivel', 'principiante')
+            try:
+                nivel = NivelDificultad[nivel_str.upper()]
+            except KeyError:
+                return {
+                    "error": f"Nivel inválido. Valores permitidos: {[n.value for n in NivelDificultad]}"
+                }, 400
+            
+            # Crear nueva lección
+            nueva_leccion = Leccion(
+                titulo=datos_leccion['titulo'],
+                descripcion=datos_leccion.get('descripcion', ''),
+                contenido=datos_leccion['contenido'],
+                nivel=nivel,
+                idioma=datos_leccion.get('idioma', 'ingles'),
+                categoria=datos_leccion.get('categoria'),
+                etiquetas=datos_leccion.get('etiquetas', []),
+                orden=datos_leccion.get('orden'),
+                requisitos=datos_leccion.get('requisitos', []),
+                duracion_estimada=datos_leccion.get('duracion_estimada', 10),
+                puntos_xp=datos_leccion.get('puntos_xp', 50),
+                estado=EstadoLeccion.BORRADOR,
+                creado_por=usuario_id
+            )
+            
+            db.session.add(nueva_leccion)
+            db.session.commit()
+            
+            return {
+                "mensaje": "Lección creada exitosamente",
+                "leccion": nueva_leccion.to_dict()
+            }, 201
+            
+        except IntegrityError as e:
+            db.session.rollback()
+            return {"error": f"Error de integridad: {str(e)}"}, 500
+        except Exception as e:
+            db.session.rollback()
+            return {"error": f"Error al crear lección: {str(e)}"}, 500
+    
+    def obtener_leccion(self, leccion_id, incluir_actividades=False, incluir_multimedia=False):
+        """
+        Obtiene una lección por su ID.
+        
+        Args:
+            leccion_id (int): ID de la lección
+            incluir_actividades (bool): Si incluir actividades
+            incluir_multimedia (bool): Si incluir recursos multimedia
+        
+        Returns:
+            tuple: (dict con lección o error, código HTTP)
+        """
+        leccion = Leccion.query.get(leccion_id)
+        
+        if not leccion:
+            return {"error": "Lección no encontrada"}, 404
+        
+        return {
+            "leccion": leccion.to_dict(
+                incluir_actividades=incluir_actividades,
+                incluir_multimedia=incluir_multimedia
+            )
+        }, 200
+    
+    def listar_lecciones(self, filtros=None, pagina=1, por_pagina=20):
+        """
+        Lista lecciones con filtros opcionales y paginación.
+        
+        Args:
+            filtros (dict): Filtros opcionales
+                {
+                    'nivel': str,
+                    'idioma': str,
+                    'categoria': str,
+                    'estado': str,
+                    'buscar': str,
+                    'etiqueta': str
+                }
+            pagina (int): Número de página
+            por_pagina (int): Lecciones por página
+        
+        Returns:
+            tuple: (dict con lecciones paginadas, código HTTP)
+        """
+        try:
+            query = Leccion.query
+            
+            # Aplicar filtros si existen
+            if filtros:
+                if filtros.get('nivel'):
+                    try:
+                        nivel = NivelDificultad[filtros['nivel'].upper()]
+                        query = query.filter_by(nivel=nivel)
+                    except KeyError:
+                        pass
+                
+                if filtros.get('idioma'):
+                    query = query.filter_by(idioma=filtros['idioma'])
+                
+                if filtros.get('categoria'):
+                    query = query.filter_by(categoria=filtros['categoria'])
+                
+                if filtros.get('estado'):
+                    try:
+                        estado = EstadoLeccion[filtros['estado'].upper()]
+                        query = query.filter_by(estado=estado)
+                    except KeyError:
+                        pass
+                
+                if filtros.get('buscar'):
+                    termino = f"%{filtros['buscar']}%"
+                    query = query.filter(
+                        or_(
+                            Leccion.titulo.ilike(termino),
+                            Leccion.descripcion.ilike(termino)
+                        )
+                    )
+                
+                if filtros.get('etiqueta'):
+                    # Búsqueda en JSON array
+                    query = query.filter(
+                        Leccion.etiquetas.contains([filtros['etiqueta']])
+                    )
+            
+            # Ordenar por orden y fecha de creación
+            query = query.order_by(Leccion.orden.asc(), Leccion.creado_en.desc())
+            
+            # Paginar resultados
+            paginacion = query.paginate(
+                page=pagina,
+                per_page=por_pagina,
+                error_out=False
+            )
+            
+            return {
+                "lecciones": [leccion.to_dict() for leccion in paginacion.items],
+                "total": paginacion.total,
+                "pagina": paginacion.page,
+                "paginas_totales": paginacion.pages,
+                "tiene_siguiente": paginacion.has_next,
+                "tiene_anterior": paginacion.has_prev
+            }, 200
+            
+        except Exception as e:
+            return {"error": f"Error al listar lecciones: {str(e)}"}, 500
+    
+    def actualizar_leccion(self, leccion_id, datos_actualizados, usuario_id):
+        """
+        Actualiza una lección existente.
+        
+        Args:
+            leccion_id (int): ID de la lección
+            datos_actualizados (dict): Datos a actualizar
+            usuario_id (int): ID del usuario que actualiza
+        
+        Returns:
+            tuple: (dict con lección actualizada, código HTTP)
+        """
+        try:
+            leccion = Leccion.query.get(leccion_id)
+            
+            if not leccion:
+                return {"error": "Lección no encontrada"}, 404
+            
+            # Validar permisos (opcional: solo el creador puede editar)
+            # if leccion.creado_por != usuario_id:
+            #     return {"error": "No tienes permiso para editar esta lección"}, 403
+            
+            # Actualizar campos permitidos
+            campos_editables = [
+                'titulo', 'descripcion', 'contenido', 'categoria',
+                'etiquetas', 'orden', 'requisitos', 'duracion_estimada',
+                'puntos_xp', 'idioma'
+            ]
+            
+            for campo in campos_editables:
+                if campo in datos_actualizados:
+                    setattr(leccion, campo, datos_actualizados[campo])
+            
+            # Manejar nivel especialmente
+            if 'nivel' in datos_actualizados:
+                try:
+                    nivel = NivelDificultad[datos_actualizados['nivel'].upper()]
+                    leccion.nivel = nivel
+                except KeyError:
+                    return {
+                        "error": f"Nivel inválido. Valores: {[n.value for n in NivelDificultad]}"
+                    }, 400
+            
+            leccion.actualizado_en = datetime.utcnow()
+            db.session.commit()
+            
+            return {
+                "mensaje": "Lección actualizada exitosamente",
+                "leccion": leccion.to_dict()
+            }, 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return {"error": f"Error al actualizar lección: {str(e)}"}, 500
+    
+    def eliminar_leccion(self, leccion_id, usuario_id):
+        """
+        Elimina una lección (soft delete recomendado: archivar).
+        
+        Args:
+            leccion_id (int): ID de la lección
+            usuario_id (int): ID del usuario que elimina
+        
+        Returns:
+            tuple: (dict con resultado, código HTTP)
+        """
+        try:
+            leccion = Leccion.query.get(leccion_id)
+            
+            if not leccion:
+                return {"error": "Lección no encontrada"}, 404
+            
+            # Soft delete: archivar en lugar de eliminar
+            leccion.archivar()
+            db.session.commit()
+            
+            return {
+                "mensaje": "Lección archivada exitosamente",
+                "leccion_id": leccion_id
+            }, 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return {"error": f"Error al eliminar lección: {str(e)}"}, 500
+    
+    def publicar_leccion(self, leccion_id, usuario_id):
+        """
+        Publica una lección en borrador.
+        
+        Args:
+            leccion_id (int): ID de la lección
+            usuario_id (int): ID del usuario que publica
+        
+        Returns:
+            tuple: (dict con resultado, código HTTP)
+        """
+        try:
+            leccion = Leccion.query.get(leccion_id)
+            
+            if not leccion:
+                return {"error": "Lección no encontrada"}, 404
+            
+            if leccion.estado == EstadoLeccion.PUBLICADA:
+                return {"mensaje": "La lección ya está publicada"}, 200
+            
+            # Validar que tenga al menos una actividad
+            if leccion.actividades.count() == 0:
+                return {
+                    "error": "La lección debe tener al menos una actividad para publicarse"
+                }, 400
+            
+            leccion.publicar()
+            db.session.commit()
+            
+            return {
+                "mensaje": "Lección publicada exitosamente",
+                "leccion": leccion.to_dict()
+            }, 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return {"error": f"Error al publicar lección: {str(e)}"}, 500
+    
+    # ========== GESTIÓN DE ACTIVIDADES ==========
+    
+    def agregar_actividad(self, leccion_id, datos_actividad):
+        """
+        Agrega una actividad a una lección.
+        
+        Args:
+            leccion_id (int): ID de la lección
+            datos_actividad (dict): Datos de la actividad
+                {
+                    'tipo': str,
+                    'pregunta': str,
+                    'instrucciones': str,
+                    'opciones': dict,
+                    'respuesta_correcta': any,
+                    'retroalimentacion': dict,
+                    'pista': str,
+                    'puntos': int,
+                    'orden': int,
+                    'tiempo_limite': int,
+                    'multimedia_id': int
+                }
+        
+        Returns:
+            tuple: (dict con actividad creada, código HTTP)
+        """
+        try:
+            leccion = Leccion.query.get(leccion_id)
+            
+            if not leccion:
+                return {"error": "Lección no encontrada"}, 404
+            
+            # Validar tipo de actividad
+            try:
+                tipo = TipoActividad[datos_actividad['tipo'].upper()]
+            except KeyError:
+                return {
+                    "error": f"Tipo inválido. Valores: {[t.value for t in TipoActividad]}"
+                }, 400
+            
+            # Determinar orden si no se especifica
+            orden = datos_actividad.get('orden')
+            if orden is None:
+                max_orden = db.session.query(
+                    db.func.max(Actividad.orden)
+                ).filter_by(leccion_id=leccion_id).scalar()
+                orden = (max_orden or 0) + 1
+            
+            # Crear actividad
+            nueva_actividad = Actividad(
+                leccion_id=leccion_id,
+                tipo=tipo,
+                pregunta=datos_actividad['pregunta'],
+                instrucciones=datos_actividad.get('instrucciones'),
+                opciones=datos_actividad.get('opciones', {}),
+                respuesta_correcta=datos_actividad['respuesta_correcta'],
+                retroalimentacion=datos_actividad.get('retroalimentacion', {}),
+                pista=datos_actividad.get('pista'),
+                puntos=datos_actividad.get('puntos', 10),
+                orden=orden,
+                tiempo_limite=datos_actividad.get('tiempo_limite'),
+                multimedia_id=datos_actividad.get('multimedia_id')
+            )
+            
+            db.session.add(nueva_actividad)
+            db.session.commit()
+            
+            return {
+                "mensaje": "Actividad agregada exitosamente",
+                "actividad": nueva_actividad.to_dict()
+            }, 201
+            
+        except Exception as e:
+            db.session.rollback()
+            return {"error": f"Error al agregar actividad: {str(e)}"}, 500
+    
+    def actualizar_actividad(self, actividad_id, datos_actualizados):
+        """
+        Actualiza una actividad existente.
+        
+        Args:
+            actividad_id (int): ID de la actividad
+            datos_actualizados (dict): Datos a actualizar
+        
+        Returns:
+            tuple: (dict con actividad actualizada, código HTTP)
+        """
+        try:
+            actividad = Actividad.query.get(actividad_id)
+            
+            if not actividad:
+                return {"error": "Actividad no encontrada"}, 404
+            
+            # Actualizar campos permitidos
+            campos_editables = [
+                'pregunta', 'instrucciones', 'opciones', 'respuesta_correcta',
+                'retroalimentacion', 'pista', 'puntos', 'orden',
+                'tiempo_limite', 'multimedia_id'
+            ]
+            
+            for campo in campos_editables:
+                if campo in datos_actualizados:
+                    setattr(actividad, campo, datos_actualizados[campo])
+            
+            # Manejar tipo especialmente
+            if 'tipo' in datos_actualizados:
+                try:
+                    tipo = TipoActividad[datos_actualizados['tipo'].upper()]
+                    actividad.tipo = tipo
+                except KeyError:
+                    return {
+                        "error": f"Tipo inválido. Valores: {[t.value for t in TipoActividad]}"
+                    }, 400
+            
+            actividad.actualizado_en = datetime.utcnow()
+            db.session.commit()
+            
+            return {
+                "mensaje": "Actividad actualizada exitosamente",
+                "actividad": actividad.to_dict()
+            }, 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return {"error": f"Error al actualizar actividad: {str(e)}"}, 500
+    
+    def eliminar_actividad(self, actividad_id):
+        """
+        Elimina una actividad.
+        
+        Args:
+            actividad_id (int): ID de la actividad
+        
+        Returns:
+            tuple: (dict con resultado, código HTTP)
+        """
+        try:
+            actividad = Actividad.query.get(actividad_id)
+            
+            if not actividad:
+                return {"error": "Actividad no encontrada"}, 404
+            
+            leccion_id = actividad.leccion_id
+            
+            db.session.delete(actividad)
+            db.session.commit()
+            
+            return {
+                "mensaje": "Actividad eliminada exitosamente",
+                "actividad_id": actividad_id,
+                "leccion_id": leccion_id
+            }, 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return {"error": f"Error al eliminar actividad: {str(e)}"}, 500
+    
+    def verificar_respuesta_actividad(self, actividad_id, respuesta_usuario):
+        """
+        Verifica la respuesta de un usuario a una actividad.
+        
+        Args:
+            actividad_id (int): ID de la actividad
+            respuesta_usuario: Respuesta del usuario
+        
+        Returns:
+            tuple: (dict con resultado, código HTTP)
+        """
+        try:
+            actividad = Actividad.query.get(actividad_id)
+            
+            if not actividad:
+                return {"error": "Actividad no encontrada"}, 404
+            
+            resultado = actividad.verificar_respuesta(respuesta_usuario)
+            
+            return {
+                "actividad_id": actividad_id,
+                **resultado
+            }, 200
+            
+        except Exception as e:
+            return {"error": f"Error al verificar respuesta: {str(e)}"}, 500
+    
+    # ========== ESTADÍSTICAS Y UTILIDADES ==========
+    
+    def obtener_estadisticas_leccion(self, leccion_id):
+        """
+        Obtiene estadísticas de una lección.
+        
+        Returns:
+            tuple: (dict con estadísticas, código HTTP)
+        """
+        try:
+            leccion = Leccion.query.get(leccion_id)
+            
+            if not leccion:
+                return {"error": "Lección no encontrada"}, 404
+            
+            total_actividades = leccion.actividades.count()
+            total_puntos = db.session.query(
+                db.func.sum(Actividad.puntos)
+            ).filter_by(leccion_id=leccion_id).scalar() or 0
+            
+            return {
+                "leccion_id": leccion_id,
+                "titulo": leccion.titulo,
+                "total_actividades": total_actividades,
+                "total_puntos": total_puntos,
+                "duracion_estimada": leccion.duracion_estimada,
+                "estado": leccion.estado.value,
+                "recursos_multimedia": len(leccion.recursos_multimedia)
+            }, 200
+            
+        except Exception as e:
+            return {"error": f"Error al obtener estadísticas: {str(e)}"}, 500
+    
+    def obtener_lecciones_por_nivel(self, nivel, idioma=None):
+        """
+        Obtiene lecciones filtradas por nivel y opcionalmente idioma.
+        
+        Args:
+            nivel (str): Nivel de dificultad
+            idioma (str): Idioma opcional
+        
+        Returns:
+            tuple: (dict con lecciones, código HTTP)
+        """
+        try:
+            try:
+                nivel_enum = NivelDificultad[nivel.upper()]
+            except KeyError:
+                return {
+                    "error": f"Nivel inválido. Valores: {[n.value for n in NivelDificultad]}"
+                }, 400
+            
+            query = Leccion.query.filter_by(
+                nivel=nivel_enum,
+                estado=EstadoLeccion.PUBLICADA
+            )
+            
+            if idioma:
+                query = query.filter_by(idioma=idioma)
+            
+            lecciones = query.order_by(Leccion.orden.asc()).all()
+            
+            return {
+                "nivel": nivel,
+                "idioma": idioma,
+                "total": len(lecciones),
+                "lecciones": [leccion.to_dict() for leccion in lecciones]
+            }, 200
+            
+        except Exception as e:
+            return {"error": f"Error al obtener lecciones: {str(e)}"}, 500
+
+
+# Instancia global del gestor
+gestor_lecciones = GestorLecciones()

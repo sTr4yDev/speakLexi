@@ -1,5 +1,10 @@
+"use client"
+
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { CreateLessonForm } from "@/components/admin/create-lesson-form"
+import { ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export default function CreateLessonPage() {
   return (
@@ -7,6 +12,15 @@ export default function CreateLessonPage() {
       <DashboardHeader />
 
       <main className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Link href="/admin/lecciones">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver a Lecciones
+            </Button>
+          </Link>
+        </div>
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-balance">Crear Nueva Lección</h1>
           <p className="mt-1 text-muted-foreground">Completa los pasos para crear una lección</p>
