@@ -1,0 +1,8 @@
+# ARCHIVO: front-end/app/profesor/estadisticas/loading.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/estadisticas/loading.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:12
+# ==================================================
+
+export default function Loading() {
+  return null
+}

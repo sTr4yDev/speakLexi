@@ -4,7 +4,10 @@ Endpoints REST para el módulo de lecciones
 """
 
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from services.gestor_lecciones import gestor_lecciones
+from models.usuario import Usuario
+from models.cursos import Curso
 from functools import wraps
 
 # Crear blueprint
@@ -13,37 +16,69 @@ leccion_bp = Blueprint('lecciones', __name__, url_prefix='/api/lecciones')
 
 # ========== DECORADORES ==========
 
-def validar_usuario_id(f):
-    """Decorador para validar que exista usuario_id en la sesión/headers"""
+def validar_permisos_admin_profesor(f):
+    """Decorador para validar permisos de admin o profesor"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        # TODO: Implementar autenticación real con JWT o sesiones
-        # Por ahora asumimos usuario_id = 1 para desarrollo
-        usuario_id = request.headers.get('X-User-ID', 1)
-        request.usuario_id = int(usuario_id)
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if not usuario or usuario.rol not in ['admin', 'profesor']:
+            return jsonify({
+                'success': False,
+                'error': 'No autorizado. Se requiere rol de administrador o profesor.'
+            }), 403
+        
         return f(*args, **kwargs)
     return decorated
 
 
-def validar_permisos_admin(f):
-    """Decorador para validar permisos de administrador"""
+def validar_profesor_curso(f):
+    """Decorador para validar que el profesor sea dueño del curso"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        # TODO: Implementar verificación real de roles
-        # Por ahora permite todas las operaciones
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        # Admin puede todo
+        if usuario.rol == 'admin':
+            return f(*args, **kwargs)
+        
+        # Profesor debe ser dueño del curso
+        if usuario.rol == 'profesor':
+            # Obtener curso_id del body o de la lección
+            data = request.get_json()
+            curso_id = data.get('curso_id') if data else None
+            
+            # Si no hay curso_id en el body, obtenerlo de la lección
+            if not curso_id and 'leccion_id' in kwargs:
+                from models.leccion import Leccion
+                leccion = Leccion.query.get(kwargs['leccion_id'])
+                if leccion:
+                    curso_id = leccion.curso_id
+            
+            if curso_id:
+                curso = Curso.query.get(curso_id)
+                if curso and curso.profesor_id != usuario_id:
+                    return jsonify({
+                        'success': False,
+                        'error': 'No puedes gestionar lecciones de cursos que no son tuyos'
+                    }), 403
+        
         return f(*args, **kwargs)
     return decorated
 
 
 # ========== ENDPOINTS DE LECCIONES ==========
 
-@leccion_bp.route('/', methods=['GET'])
+@leccion_bp.route('', methods=['GET'])
 def listar_lecciones():
     """
     GET /api/lecciones
     Lista todas las lecciones con filtros opcionales
     
     Query params:
+        - curso_id: filtrar por curso
         - nivel: principiante|intermedio|avanzado
         - idioma: ingles|espanol|etc
         - categoria: vocabulario|gramatica|etc
@@ -56,6 +91,7 @@ def listar_lecciones():
     try:
         # Obtener parámetros de consulta
         filtros = {
+            'curso_id': request.args.get('curso_id', type=int),
             'nivel': request.args.get('nivel'),
             'idioma': request.args.get('idioma'),
             'categoria': request.args.get('categoria'),
@@ -76,10 +112,16 @@ def listar_lecciones():
             por_pagina=por_pagina
         )
         
-        return jsonify(resultado), codigo
+        return jsonify({
+            'success': True,
+            **resultado
+        }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al listar lecciones: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al listar lecciones: {str(e)}"
+        }), 500
 
 
 @leccion_bp.route('/<int:leccion_id>', methods=['GET'])
@@ -102,15 +144,22 @@ def obtener_leccion(leccion_id):
             incluir_multimedia=incluir_multimedia
         )
         
-        return jsonify(resultado), codigo
+        return jsonify({
+            'success': True,
+            **resultado
+        }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al obtener lección: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al obtener lección: {str(e)}"
+        }), 500
 
 
-@leccion_bp.route('/', methods=['POST'])
-@validar_usuario_id
-@validar_permisos_admin
+@leccion_bp.route('', methods=['POST'])
+@jwt_required()
+@validar_permisos_admin_profesor
+@validar_profesor_curso
 def crear_leccion():
     """
     POST /api/lecciones
@@ -118,6 +167,7 @@ def crear_leccion():
     
     Body JSON:
     {
+        "curso_id": int (requerido),
         "titulo": "string (requerido)",
         "descripcion": "string",
         "contenido": {}, // JSON con contenido estructurado
@@ -132,25 +182,46 @@ def crear_leccion():
     }
     """
     try:
+        usuario_id = get_jwt_identity()
         datos = request.get_json()
         
         if not datos:
-            return jsonify({"error": "No se proporcionaron datos"}), 400
+            return jsonify({
+                'success': False,
+                'error': "No se proporcionaron datos"
+            }), 400
         
-        resultado, codigo = gestor_lecciones.crear_leccion(
-            datos,
-            request.usuario_id
-        )
+        # Validar curso_id
+        if not datos.get('curso_id'):
+            return jsonify({
+                'success': False,
+                'error': 'El curso_id es obligatorio'
+            }), 400
         
-        return jsonify(resultado), codigo
+        resultado, codigo = gestor_lecciones.crear_leccion(datos, usuario_id)
+        
+        if codigo == 201:
+            return jsonify({
+                'success': True,
+                **resultado
+            }), codigo
+        else:
+            return jsonify({
+                'success': False,
+                **resultado
+            }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al crear lección: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al crear lección: {str(e)}"
+        }), 500
 
 
 @leccion_bp.route('/<int:leccion_id>', methods=['PUT', 'PATCH'])
-@validar_usuario_id
-@validar_permisos_admin
+@jwt_required()
+@validar_permisos_admin_profesor
+@validar_profesor_curso
 def actualizar_leccion(leccion_id):
     """
     PUT/PATCH /api/lecciones/<id>
@@ -159,64 +230,97 @@ def actualizar_leccion(leccion_id):
     Body JSON: Campos a actualizar (mismos que POST)
     """
     try:
+        usuario_id = get_jwt_identity()
         datos = request.get_json()
         
         if not datos:
-            return jsonify({"error": "No se proporcionaron datos"}), 400
+            return jsonify({
+                'success': False,
+                'error': "No se proporcionaron datos"
+            }), 400
         
         resultado, codigo = gestor_lecciones.actualizar_leccion(
             leccion_id,
             datos,
-            request.usuario_id
+            usuario_id
         )
         
-        return jsonify(resultado), codigo
+        if codigo == 200:
+            return jsonify({
+                'success': True,
+                **resultado
+            }), codigo
+        else:
+            return jsonify({
+                'success': False,
+                **resultado
+            }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al actualizar lección: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al actualizar lección: {str(e)}"
+        }), 500
 
 
 @leccion_bp.route('/<int:leccion_id>', methods=['DELETE'])
-@validar_usuario_id
-@validar_permisos_admin
+@jwt_required()
+@validar_permisos_admin_profesor
+@validar_profesor_curso
 def eliminar_leccion(leccion_id):
     """
     DELETE /api/lecciones/<id>
     Elimina (archiva) una lección
     """
     try:
-        resultado, codigo = gestor_lecciones.eliminar_leccion(
-            leccion_id,
-            request.usuario_id
-        )
+        usuario_id = get_jwt_identity()
+        resultado, codigo = gestor_lecciones.eliminar_leccion(leccion_id, usuario_id)
         
-        return jsonify(resultado), codigo
+        return jsonify({
+            'success': True,
+            **resultado
+        }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al eliminar lección: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al eliminar lección: {str(e)}"
+        }), 500
 
 
 @leccion_bp.route('/<int:leccion_id>/publicar', methods=['POST'])
-@validar_usuario_id
-@validar_permisos_admin
+@jwt_required()
+@validar_permisos_admin_profesor
+@validar_profesor_curso
 def publicar_leccion(leccion_id):
     """
     POST /api/lecciones/<id>/publicar
     Publica una lección (cambia estado de borrador a publicada)
     """
     try:
-        resultado, codigo = gestor_lecciones.publicar_leccion(
-            leccion_id,
-            request.usuario_id
-        )
+        usuario_id = get_jwt_identity()
+        resultado, codigo = gestor_lecciones.publicar_leccion(leccion_id, usuario_id)
         
-        return jsonify(resultado), codigo
+        if codigo == 200:
+            return jsonify({
+                'success': True,
+                **resultado
+            }), codigo
+        else:
+            return jsonify({
+                'success': False,
+                **resultado
+            }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al publicar lección: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al publicar lección: {str(e)}"
+        }), 500
 
 
 @leccion_bp.route('/<int:leccion_id>/estadisticas', methods=['GET'])
+@jwt_required()
 def obtener_estadisticas_leccion(leccion_id):
     """
     GET /api/lecciones/<id>/estadisticas
@@ -224,10 +328,17 @@ def obtener_estadisticas_leccion(leccion_id):
     """
     try:
         resultado, codigo = gestor_lecciones.obtener_estadisticas_leccion(leccion_id)
-        return jsonify(resultado), codigo
+        
+        return jsonify({
+            'success': True,
+            **resultado
+        }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al obtener estadísticas: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al obtener estadísticas: {str(e)}"
+        }), 500
 
 
 @leccion_bp.route('/nivel/<string:nivel>', methods=['GET'])
@@ -242,17 +353,50 @@ def obtener_lecciones_por_nivel(nivel):
     try:
         idioma = request.args.get('idioma')
         resultado, codigo = gestor_lecciones.obtener_lecciones_por_nivel(nivel, idioma)
-        return jsonify(resultado), codigo
+        
+        return jsonify({
+            'success': True,
+            **resultado
+        }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al obtener lecciones: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al obtener lecciones: {str(e)}"
+        }), 500
+
+
+@leccion_bp.route('/curso/<int:curso_id>', methods=['GET'])
+def obtener_lecciones_por_curso(curso_id):
+    """
+    GET /api/lecciones/curso/<curso_id>
+    Obtiene todas las lecciones de un curso
+    
+    Query params:
+        - solo_publicadas: true|false (default: true)
+    """
+    try:
+        solo_publicadas = request.args.get('solo_publicadas', 'true').lower() == 'true'
+        resultado, codigo = gestor_lecciones.obtener_lecciones_por_curso(curso_id, solo_publicadas)
+        
+        return jsonify({
+            'success': True,
+            **resultado
+        }), codigo
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f"Error al obtener lecciones del curso: {str(e)}"
+        }), 500
 
 
 # ========== ENDPOINTS DE ACTIVIDADES ==========
 
 @leccion_bp.route('/<int:leccion_id>/actividades', methods=['POST'])
-@validar_usuario_id
-@validar_permisos_admin
+@jwt_required()
+@validar_permisos_admin_profesor
+@validar_profesor_curso
 def agregar_actividad(leccion_id):
     """
     POST /api/lecciones/<id>/actividades
@@ -260,7 +404,7 @@ def agregar_actividad(leccion_id):
     
     Body JSON:
     {
-        "tipo": "multiple_choice|fill_blank|matching|translation|listen_repeat|true_false|word_order",
+        "tipo": "multiple_choice|fill_blank|matching|translation|true_false|word_order",
         "pregunta": "string (requerido)",
         "instrucciones": "string",
         "opciones": {}, // Estructura varía según tipo
@@ -280,18 +424,35 @@ def agregar_actividad(leccion_id):
         datos = request.get_json()
         
         if not datos:
-            return jsonify({"error": "No se proporcionaron datos"}), 400
+            return jsonify({
+                'success': False,
+                'error': "No se proporcionaron datos"
+            }), 400
         
         resultado, codigo = gestor_lecciones.agregar_actividad(leccion_id, datos)
-        return jsonify(resultado), codigo
+        
+        if codigo == 201:
+            return jsonify({
+                'success': True,
+                **resultado
+            }), codigo
+        else:
+            return jsonify({
+                'success': False,
+                **resultado
+            }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al agregar actividad: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al agregar actividad: {str(e)}"
+        }), 500
 
 
 @leccion_bp.route('/<int:leccion_id>/actividades/<int:actividad_id>', methods=['PUT', 'PATCH'])
-@validar_usuario_id
-@validar_permisos_admin
+@jwt_required()
+@validar_permisos_admin_profesor
+@validar_profesor_curso
 def actualizar_actividad(leccion_id, actividad_id):
     """
     PUT/PATCH /api/lecciones/<leccion_id>/actividades/<actividad_id>
@@ -303,18 +464,35 @@ def actualizar_actividad(leccion_id, actividad_id):
         datos = request.get_json()
         
         if not datos:
-            return jsonify({"error": "No se proporcionaron datos"}), 400
+            return jsonify({
+                'success': False,
+                'error': "No se proporcionaron datos"
+            }), 400
         
         resultado, codigo = gestor_lecciones.actualizar_actividad(actividad_id, datos)
-        return jsonify(resultado), codigo
+        
+        if codigo == 200:
+            return jsonify({
+                'success': True,
+                **resultado
+            }), codigo
+        else:
+            return jsonify({
+                'success': False,
+                **resultado
+            }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al actualizar actividad: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al actualizar actividad: {str(e)}"
+        }), 500
 
 
 @leccion_bp.route('/<int:leccion_id>/actividades/<int:actividad_id>', methods=['DELETE'])
-@validar_usuario_id
-@validar_permisos_admin
+@jwt_required()
+@validar_permisos_admin_profesor
+@validar_profesor_curso
 def eliminar_actividad(leccion_id, actividad_id):
     """
     DELETE /api/lecciones/<leccion_id>/actividades/<actividad_id>
@@ -322,14 +500,21 @@ def eliminar_actividad(leccion_id, actividad_id):
     """
     try:
         resultado, codigo = gestor_lecciones.eliminar_actividad(actividad_id)
-        return jsonify(resultado), codigo
+        
+        return jsonify({
+            'success': True,
+            **resultado
+        }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al eliminar actividad: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al eliminar actividad: {str(e)}"
+        }), 500
 
 
 @leccion_bp.route('/<int:leccion_id>/actividades/<int:actividad_id>/verificar', methods=['POST'])
-@validar_usuario_id
+@jwt_required()
 def verificar_respuesta(leccion_id, actividad_id):
     """
     POST /api/lecciones/<leccion_id>/actividades/<actividad_id>/verificar
@@ -344,29 +529,44 @@ def verificar_respuesta(leccion_id, actividad_id):
         datos = request.get_json()
         
         if not datos or 'respuesta' not in datos:
-            return jsonify({"error": "Debe proporcionar una respuesta"}), 400
+            return jsonify({
+                'success': False,
+                'error': "Debe proporcionar una respuesta"
+            }), 400
         
         resultado, codigo = gestor_lecciones.verificar_respuesta_actividad(
             actividad_id,
             datos['respuesta']
         )
         
-        return jsonify(resultado), codigo
+        return jsonify({
+            'success': True,
+            **resultado
+        }), codigo
         
     except Exception as e:
-        return jsonify({"error": f"Error al verificar respuesta: {str(e)}"}), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error al verificar respuesta: {str(e)}"
+        }), 500
 
 
 # ========== MANEJO DE ERRORES ==========
 
 @leccion_bp.errorhandler(404)
 def not_found(error):
-    return jsonify({"error": "Recurso no encontrado"}), 404
+    return jsonify({
+        'success': False,
+        'error': "Recurso no encontrado"
+    }), 404
 
 
 @leccion_bp.errorhandler(500)
 def internal_error(error):
-    return jsonify({"error": "Error interno del servidor"}), 500
+    return jsonify({
+        'success': False,
+        'error': "Error interno del servidor"
+    }), 500
 
 
 # ========== INFORMACIÓN DEL BLUEPRINT ==========
@@ -376,17 +576,18 @@ def info():
     """Información sobre los endpoints disponibles"""
     return jsonify({
         "nombre": "API de Lecciones - SpeakLexi",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "endpoints": {
             "lecciones": {
-                "GET /api/lecciones": "Listar lecciones con filtros",
+                "GET /api/lecciones": "Listar lecciones con filtros (incluye curso_id)",
                 "GET /api/lecciones/<id>": "Obtener lección específica",
-                "POST /api/lecciones": "Crear nueva lección",
+                "POST /api/lecciones": "Crear nueva lección (requiere curso_id)",
                 "PUT /api/lecciones/<id>": "Actualizar lección",
                 "DELETE /api/lecciones/<id>": "Eliminar lección",
                 "POST /api/lecciones/<id>/publicar": "Publicar lección",
                 "GET /api/lecciones/<id>/estadisticas": "Estadísticas de lección",
-                "GET /api/lecciones/nivel/<nivel>": "Lecciones por nivel"
+                "GET /api/lecciones/nivel/<nivel>": "Lecciones por nivel",
+                "GET /api/lecciones/curso/<curso_id>": "Lecciones por curso"
             },
             "actividades": {
                 "POST /api/lecciones/<id>/actividades": "Agregar actividad",
@@ -394,5 +595,11 @@ def info():
                 "DELETE /api/lecciones/<id>/actividades/<aid>": "Eliminar actividad",
                 "POST /api/lecciones/<id>/actividades/<aid>/verificar": "Verificar respuesta"
             }
+        },
+        "autenticacion": "Requiere JWT token en header: Authorization: Bearer <token>",
+        "roles": {
+            "admin": "Acceso completo a todas las operaciones",
+            "profesor": "Solo puede gestionar lecciones de sus propios cursos",
+            "alumno": "Solo puede ver lecciones publicadas y verificar respuestas"
         }
     }), 200

@@ -1,0 +1,160 @@
+# ARCHIVO: front-end/components/gamification/leaderboard-table.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/gamification/leaderboard-table.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:51
+# ==================================================
+
+import { Card } from "@/components/ui/card"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Trophy, TrendingUp, TrendingDown, Minus } from "lucide-react"
+import Link from "next/link"
+
+export function LeaderboardTable() {
+  const leaderboard = [
+    {
+      rank: 1,
+      name: "María García",
+      initials: "MG",
+      xp: 5420,
+      level: 12,
+      streak: 45,
+      change: "up",
+    },
+    {
+      rank: 2,
+      name: "Carlos Rodríguez",
+      initials: "CR",
+      xp: 4890,
+      level: 11,
+      streak: 32,
+      change: "down",
+    },
+    {
+      rank: 3,
+      name: "Ana Martínez",
+      initials: "AM",
+      xp: 4560,
+      level: 11,
+      streak: 28,
+      change: "up",
+    },
+    {
+      rank: 4,
+      name: "Luis Fernández",
+      initials: "LF",
+      xp: 3920,
+      level: 10,
+      streak: 21,
+      change: "same",
+    },
+    {
+      rank: 5,
+      name: "Elena López",
+      initials: "EL",
+      xp: 3450,
+      level: 9,
+      streak: 18,
+      change: "up",
+    },
+    {
+      rank: 6,
+      name: "Juan Pérez",
+      initials: "JP",
+      xp: 1250,
+      level: 5,
+      streak: 7,
+      change: "up",
+      isCurrentUser: true,
+    },
+    {
+      rank: 7,
+      name: "Sofia Torres",
+      initials: "ST",
+      xp: 980,
+      level: 4,
+      streak: 5,
+      change: "down",
+    },
+  ]
+
+  const getTrendIcon = (change: string) => {
+    if (change === "up") return <TrendingUp className="h-4 w-4 text-success" />
+    if (change === "down") return <TrendingDown className="h-4 w-4 text-destructive" />
+    return <Minus className="h-4 w-4 text-muted-foreground" />
+  }
+
+  const getRankBadge = (rank: number) => {
+    if (rank === 1) return "🥇"
+    if (rank === 2) return "🥈"
+    if (rank === 3) return "🥉"
+    return null
+  }
+
+  return (
+    <Card className="p-6">
+      <div className="mb-6 flex items-center gap-2">
+        <Trophy className="h-5 w-5 text-primary" />
+        <h2 className="text-xl font-bold">Top Estudiantes</h2>
+        <Badge variant="secondary" className="ml-auto">
+          Esta Semana
+        </Badge>
+      </div>
+
+      <div className="space-y-2">
+        {leaderboard.map((user) => (
+          <Link key={user.rank} href="/perfil">
+            <div
+              className={`flex items-center gap-4 rounded-xl border-2 p-4 transition-all cursor-pointer ${
+                user.isCurrentUser
+                  ? "border-primary bg-primary/5"
+                  : user.rank <= 3
+                    ? "border-accent/30 bg-accent/5"
+                    : "border-border bg-card hover:border-primary/50"
+              }`}
+            >
+              {/* Rank */}
+              <div className="flex w-12 items-center justify-center">
+                {getRankBadge(user.rank) ? (
+                  <span className="text-2xl">{getRankBadge(user.rank)}</span>
+                ) : (
+                  <span className="text-lg font-bold text-muted-foreground">#{user.rank}</span>
+                )}
+              </div>
+
+              {/* Avatar */}
+              <Avatar className="h-12 w-12">
+                <AvatarFallback className="bg-primary text-primary-foreground">{user.initials}</AvatarFallback>
+              </Avatar>
+
+              {/* User Info */}
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold">{user.name}</p>
+                  {user.isCurrentUser && (
+                    <Badge variant="secondary" className="text-xs">
+                      Tú
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+                  <span>Nivel {user.level}</span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <span>🔥</span>
+                    {user.streak} días
+                  </span>
+                </div>
+              </div>
+
+              {/* XP and Trend */}
+              <div className="text-right">
+                <p className="text-lg font-bold text-primary">{user.xp.toLocaleString()} XP</p>
+                <div className="mt-1 flex items-center justify-end gap-1">{getTrendIcon(user.change)}</div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Card>
+  )
+}

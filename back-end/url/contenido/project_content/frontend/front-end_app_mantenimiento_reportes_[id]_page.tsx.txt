@@ -1,0 +1,186 @@
+# ARCHIVO: front-end/app/mantenimiento/reportes/[id]/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/mantenimiento/reportes/[id]/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:02
+# ==================================================
+
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { ArrowLeft, AlertCircle, User, Calendar, Tag } from "lucide-react"
+import Link from "next/link"
+
+export default function ReportDetailPage({ params }: { params: { id: string } }) {
+  const report = {
+    id: params.id,
+    title: "Error en carga de lecciones",
+    description: "Las lecciones no cargan correctamente en el módulo de estudiantes. Aparece un error 500.",
+    priority: "alta",
+    status: "en_revision",
+    category: "Backend",
+    reportedBy: "Juan Pérez",
+    reportedAt: "2025-01-18 14:30",
+    assignedTo: "Carlos Martínez",
+    steps: "1. Iniciar sesión\n2. Ir a Lecciones\n3. Intentar abrir cualquier lección\n4. Error aparece",
+    environment: "Producción - Chrome 120",
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Link href="/mantenimiento/reportes">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver a Reportes
+            </Button>
+          </Link>
+        </div>
+
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-balance">Reporte #{report.id}</h1>
+            <p className="mt-1 text-muted-foreground">{report.title}</p>
+          </div>
+          <Badge
+            variant={report.priority === "alta" ? "destructive" : report.priority === "media" ? "default" : "secondary"}
+          >
+            {report.priority}
+          </Badge>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Descripción del Problema</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-relaxed">{report.description}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Pasos para Reproducir</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="whitespace-pre-wrap text-sm font-mono bg-muted p-4 rounded-lg">{report.steps}</pre>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Actualizar Estado</CardTitle>
+                <CardDescription>Cambia el estado o asigna el reporte</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Estado</Label>
+                  <Select defaultValue={report.status}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendiente">Pendiente</SelectItem>
+                      <SelectItem value="en_revision">En Revisión</SelectItem>
+                      <SelectItem value="en_progreso">En Progreso</SelectItem>
+                      <SelectItem value="resuelto">Resuelto</SelectItem>
+                      <SelectItem value="cerrado">Cerrado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Asignar a</Label>
+                  <Select defaultValue={report.assignedTo}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Carlos Martínez">Carlos Martínez</SelectItem>
+                      <SelectItem value="Ana López">Ana López</SelectItem>
+                      <SelectItem value="Pedro Sánchez">Pedro Sánchez</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Comentarios</Label>
+                  <Textarea placeholder="Agrega notas o comentarios sobre el reporte..." rows={4} />
+                </div>
+
+                <Button className="w-full">Guardar Cambios</Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Información</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Estado</p>
+                    <Badge variant="secondary" className="mt-1">
+                      {report.status.replace("_", " ")}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Tag className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Categoría</p>
+                    <p className="text-sm text-muted-foreground mt-1">{report.category}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Reportado por</p>
+                    <p className="text-sm text-muted-foreground mt-1">{report.reportedBy}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Fecha</p>
+                    <p className="text-sm text-muted-foreground mt-1">{report.reportedAt}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Asignado a</p>
+                    <p className="text-sm text-muted-foreground mt-1">{report.assignedTo}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Entorno</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{report.environment}</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}

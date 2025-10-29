@@ -1,0 +1,90 @@
+# ARCHIVO: back-end/config/database.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/database.py
+# FECHA DESCARGA: 2025-10-28 22:54:13
+# ==================================================
+
+"""
+Configuración de la base de datos para SpeakLexi
+Inicializa SQLAlchemy y proporciona utilidades para la DB
+"""
+
+import os
+from dotenv import load_dotenv
+
+# Cargar variables de entorno
+load_dotenv()
+
+# Importar db desde extensions (instancia única)
+from extensions import db
+
+
+def init_db():
+    """
+    Crea todas las tablas y verifica la conexión
+    IMPORTANTE: Se debe llamar DESPUÉS de db.init_app(app)
+    """
+    try:
+        # Crear todas las tablas si no existen
+        db.create_all()
+        print("✅ Tablas creadas correctamente en la base de datos")
+        
+        # Verificar conexión
+        db.session.execute(db.text('SELECT 1'))
+        print(f"✅ Conexión exitosa a la base de datos: {os.getenv('DB_NAME', 'SpeakLexi')}")
+        
+    except Exception as e:
+        print(f"❌ Error al conectar con la base de datos: {str(e)}")
+        raise
+
+
+def get_db():
+    """
+    Obtiene la instancia de la base de datos
+    
+    Returns:
+        SQLAlchemy: Instancia de la base de datos
+    """
+    return db
+
+
+# Configuración de la base de datos desde variables de entorno
+DATABASE_CONFIG = {
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'port': int(os.getenv('DB_PORT', 3306)),
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'database': os.getenv('DB_NAME', 'SpeakLexi'),
+    'charset': 'utf8mb4',
+    'collation': 'utf8mb4_unicode_ci'
+}
+
+
+def get_database_uri():
+    """
+    Genera la URI de conexión a la base de datos
+    
+    Returns:
+        str: URI de conexión en formato SQLAlchemy
+    """
+    return (f"mysql+pymysql://{DATABASE_CONFIG['user']}:{DATABASE_CONFIG['password']}"
+            f"@{DATABASE_CONFIG['host']}:{DATABASE_CONFIG['port']}/{DATABASE_CONFIG['database']}"
+            f"?charset={DATABASE_CONFIG['charset']}")
+
+
+def test_connection():
+    """
+    Prueba la conexión a la base de datos
+    
+    Returns:
+        bool: True si la conexión es exitosa, False en caso contrario
+    """
+    try:
+        from sqlalchemy import create_engine
+        engine = create_engine(get_database_uri())
+        connection = engine.connect()
+        connection.close()
+        print("✅ Prueba de conexión exitosa")
+        return True
+    except Exception as e:
+        print(f"❌ Error en prueba de conexión: {str(e)}")
+        return False

@@ -1,0 +1,188 @@
+# ARCHIVO: front-end/components/lessons/lesson-viewer.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/lesson-viewer.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:06
+# ==================================================
+
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { useToast } from "@/hooks/use-toast"
+import { MultipleChoiceActivity } from "@/components/lessons/activities/multiple-choice-activity"
+import { FillBlankActivity } from "@/components/lessons/activities/fill-blank-activity"
+import { CompletionModal } from "@/components/lessons/completion-modal"
+import { AbandonLessonModal } from "@/components/lessons/abandon-lesson-modal"
+import { ArrowLeft, ArrowRight, X } from "lucide-react"
+import Link from "next/link"
+
+// Mock lesson data
+const LESSON_DATA = {
+  id: "1",
+  title: "Greetings and Introductions",
+  description: "Learn how to greet people and introduce yourself",
+  xpReward: 10,
+  activities: [
+    {
+      id: 1,
+      type: "multiple_choice",
+      question: "How do you say 'Hello' in English?",
+      options: ["Hello", "Goodbye", "Thank you", "Please"],
+      correctAnswer: 0,
+    },
+    {
+      id: 2,
+      type: "multiple_choice",
+      question: "What is the correct response to 'How are you?'",
+      options: ["I am fine, thank you", "My name is John", "Goodbye", "Yes, please"],
+      correctAnswer: 0,
+    },
+    {
+      id: 3,
+      type: "fill_blank",
+      question: "Complete: 'Nice to ___ you'",
+      correctAnswer: "meet",
+    },
+    {
+      id: 4,
+      type: "multiple_choice",
+      question: "How do you introduce yourself?",
+      options: ["My name is...", "How are you?", "Goodbye", "Thank you"],
+      correctAnswer: 0,
+    },
+  ],
+}
+
+export function LessonViewer({ lessonId }: { lessonId: string }) {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [currentActivity, setCurrentActivity] = useState(0)
+  const [completedActivities, setCompletedActivities] = useState<number[]>([])
+  const [showCompletion, setShowCompletion] = useState(false)
+  const [showAbandonModal, setShowAbandonModal] = useState(false)
+
+  const activity = LESSON_DATA.activities[currentActivity]
+  const progress = ((currentActivity + 1) / LESSON_DATA.activities.length) * 100
+  const isLastActivity = currentActivity === LESSON_DATA.activities.length - 1
+
+  const handleActivityComplete = (correct: boolean) => {
+    if (correct) {
+      setCompletedActivities([...completedActivities, activity.id])
+
+      if (isLastActivity) {
+        // Show completion modal
+        setShowCompletion(true)
+      } else {
+        toast({
+          title: "Correcto",
+          description: "Excelente trabajo",
+        })
+        // Move to next activity after a short delay
+        setTimeout(() => {
+          setCurrentActivity(currentActivity + 1)
+        }, 1000)
+      }
+    } else {
+      toast({
+        title: "Incorrecto",
+        description: "Intenta de nuevo",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleNext = () => {
+    if (!isLastActivity) {
+      setCurrentActivity(currentActivity + 1)
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentActivity > 0) {
+      setCurrentActivity(currentActivity - 1)
+    }
+  }
+
+  return (
+    <>
+      <main className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link href="/lecciones">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver a Lecciones
+            </Button>
+          </Link>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-muted-foreground">
+              Actividad {currentActivity + 1} de {LESSON_DATA.activities.length}
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setShowAbandonModal(true)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="mb-8">
+          <div className="mb-2 flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-balance">{LESSON_DATA.title}</h1>
+            <span className="text-sm font-medium">{Math.round(progress)}%</span>
+          </div>
+          <Progress value={progress} className="h-3" />
+        </div>
+
+        {/* Activity Content */}
+        <div className="mx-auto max-w-3xl">
+          <Card className="p-8">
+            {activity.type === "multiple_choice" && (
+              <MultipleChoiceActivity
+                question={activity.question}
+                options={activity.options}
+                correctAnswer={activity.correctAnswer}
+                onComplete={handleActivityComplete}
+              />
+            )}
+            {activity.type === "fill_blank" && (
+              <FillBlankActivity
+                question={activity.question}
+                correctAnswer={activity.correctAnswer}
+                onComplete={handleActivityComplete}
+              />
+            )}
+          </Card>
+
+          {/* Navigation */}
+          <div className="mt-6 flex items-center justify-between">
+            <Button variant="outline" onClick={handlePrevious} disabled={currentActivity === 0}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Anterior
+            </Button>
+            <Button variant="outline" onClick={handleNext} disabled={isLastActivity}>
+              Siguiente
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </main>
+
+      <AbandonLessonModal
+        open={showAbandonModal}
+        onOpenChange={setShowAbandonModal}
+        lessonTitle={LESSON_DATA.title}
+        progress={Math.round(progress)}
+      />
+
+      {showCompletion && (
+        <CompletionModal
+          lessonTitle={LESSON_DATA.title}
+          xpEarned={LESSON_DATA.xpReward}
+          onClose={() => router.push("/lecciones")}
+        />
+      )}
+    </>
+  )
+}

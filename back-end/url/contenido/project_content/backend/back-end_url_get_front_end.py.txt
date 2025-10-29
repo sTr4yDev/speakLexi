@@ -1,0 +1,5 @@
+# ARCHIVO: back-end/url/get_front_end.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_front_end.py
+# FECHA DESCARGA: 2025-10-28 22:54:34
+# ==================================================
+

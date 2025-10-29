@@ -1,0 +1,25 @@
+# ARCHIVO: front-end/app/perfil/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/perfil/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:08
+# ==================================================
+
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { ProfileSettings } from "@/components/profile/profile-settings"
+
+export default function ProfilePage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      {/* Header con botón de regreso habilitado */}
+      <DashboardHeader showBackButton={true} />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-balance">Mi Perfil</h1>
+          <p className="mt-1 text-muted-foreground">Gestiona tu información personal y preferencias</p>
+        </div>
+
+        <ProfileSettings />
+      </main>
+    </div>
+  )
+}

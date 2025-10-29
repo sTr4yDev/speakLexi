@@ -16,7 +16,7 @@ import os
 from models.usuario import Usuario, PerfilUsuario, PerfilEstudiante, PerfilProfesor, PerfilAdministrador
 from models.leccion import Leccion, Actividad, leccion_multimedia
 from models.multimedia import Multimedia, ConfiguracionMultimedia
-from models.cursos import Curso, ProgresoCurso
+from models.cursos import Curso, ProgresoCurso  # ← CORREGIDO: era "cursos" debe ser "curso"
 
 # ========================================
 # IMPORTAR BLUEPRINTS
@@ -26,7 +26,6 @@ from routes.usuario_routes import usuario_bp
 from routes.leccion_routes import leccion_bp
 from routes.multimedia_routes import multimedia_bp
 from routes.curso_routes import curso_bp
-from routes.actividades_routes import actividades_bp
 
 
 def create_app(config_class=Config):
@@ -110,8 +109,7 @@ def create_app(config_class=Config):
     app.register_blueprint(usuario_bp)
     app.register_blueprint(leccion_bp)
     app.register_blueprint(multimedia_bp)
-    app.register_blueprint(curso_bp)
-    app.register_blueprint(actividades_bp)
+    app.register_blueprint(curso_bp)  # ← YA ESTÁ REGISTRADO ✅
     
     # Log de rutas registradas (útil para debugging)
     if app.debug:
@@ -152,8 +150,12 @@ def create_app(config_class=Config):
                 'usuarios': '/api/usuario',
                 'cursos': '/api/cursos',
                 'lecciones': '/api/lecciones',
-                'actividades': '/api/actividades',
                 'multimedia': '/api/multimedia'
+            },
+            'documentacion': {
+                'info_cursos': '/api/cursos/info',
+                'info_lecciones': '/api/lecciones/info',
+                'health': '/health'
             }
         }
     
@@ -181,9 +183,11 @@ def create_app(config_class=Config):
                     'lecciones': total_lecciones,
                     'actividades': total_actividades,
                     'multimedia': total_multimedia
-                }
+                },
+                'timestamp': db.func.now()
             }
         except Exception as e:
+            app.logger.error(f'Health check failed: {str(e)}')
             return {
                 'status': 'unhealthy',
                 'database': 'disconnected',
@@ -195,17 +199,35 @@ def create_app(config_class=Config):
         return {
             'success': False,
             'error': 'Endpoint no encontrado',
-            'mensaje': str(error)
+            'mensaje': str(error),
+            'ruta_solicitada': str(error.description) if hasattr(error, 'description') else None
         }, 404
     
     @app.errorhandler(500)
     def internal_error(error):
         db.session.rollback()
+        app.logger.error(f'Internal error: {str(error)}')
         return {
             'success': False,
             'error': 'Error interno del servidor',
             'mensaje': str(error)
         }, 500
+    
+    @app.errorhandler(403)
+    def forbidden(error):
+        return {
+            'success': False,
+            'error': 'Acceso denegado',
+            'mensaje': 'No tienes permisos para acceder a este recurso'
+        }, 403
+    
+    @app.errorhandler(401)
+    def unauthorized(error):
+        return {
+            'success': False,
+            'error': 'No autorizado',
+            'mensaje': 'Debes iniciar sesión para acceder a este recurso'
+        }, 401
     
     return app
 
@@ -222,15 +244,22 @@ if __name__ == '__main__':
     print(f"🌐 Servidor: http://localhost:5000")
     print(f"📝 Documentación: http://localhost:5000/")
     print(f"💚 Health check: http://localhost:5000/health")
+    print(f"📚 Info Cursos: http://localhost:5000/api/cursos/info")
+    print(f"📖 Info Lecciones: http://localhost:5000/api/lecciones/info")
     print("="*60)
     print("📦 Módulos Cargados:")
     print("   ✅ Autenticación (JWT)")
     print("   ✅ Usuarios y Perfiles")
-    print("   ✅ Sistema de Cursos")
+    print("   ✅ Sistema de Cursos (A1-C2)")
     print("   ✅ Lecciones Dinámicas")
     print("   ✅ Actividades Gamificadas")
     print("   ✅ Multimedia")
     print("   ✅ Seguimiento de Progreso")
+    print("="*60)
+    print("👥 Usuarios Demo:")
+    print("   📧 estudiante@speaklexi.com / estudiante123")
+    print("   📧 profesor@speaklexi.com / profesor123")
+    print("   📧 admin@speaklexi.com / admin123")
     print("="*60 + "\n")
     
     app.run(

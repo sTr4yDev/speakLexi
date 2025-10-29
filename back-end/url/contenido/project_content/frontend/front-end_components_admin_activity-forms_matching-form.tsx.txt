@@ -1,0 +1,195 @@
+# ARCHIVO: front-end/components/admin/activity-forms/matching-form.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/matching-form.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:25
+# ==================================================
+
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Save, X, Plus, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { Card, CardContent } from "@/components/ui/card"
+
+interface ActivityFormProps {
+  onGuardar: (actividad: any) => void
+  onCancelar: () => void
+  actividadEditar?: any
+}
+
+interface Par {
+  izquierda: string
+  derecha: string
+}
+
+export function MatchingForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
+  const [pregunta, setPregunta] = useState("")
+  const [instrucciones, setInstrucciones] = useState("")
+  const [pares, setPares] = useState<Par[]>([])
+  const [izquierda, setIzquierda] = useState("")
+  const [derecha, setDerecha] = useState("")
+  const [pista, setPista] = useState("")
+  const [puntos, setPuntos] = useState(10)
+
+  useEffect(() => {
+    if (actividadEditar) {
+      setPregunta(actividadEditar.pregunta || "")
+      setInstrucciones(actividadEditar.instrucciones || "")
+      setPares(actividadEditar.opciones?.pares || [])
+      setPista(actividadEditar.pista || "")
+      setPuntos(actividadEditar.puntos || 10)
+    }
+  }, [actividadEditar])
+
+  const agregarPar = () => {
+    if (!izquierda.trim() || !derecha.trim()) {
+      toast.error("Completa ambos campos del par")
+      return
+    }
+
+    setPares([...pares, { izquierda: izquierda.trim(), derecha: derecha.trim() }])
+    setIzquierda("")
+    setDerecha("")
+    toast.success("Par agregado")
+  }
+
+  const eliminarPar = (index: number) => {
+    setPares(pares.filter((_, i) => i !== index))
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!pregunta.trim()) {
+      toast.error("Agrega una instrucción/pregunta")
+      return
+    }
+
+    if (pares.length < 2) {
+      toast.error("Debes agregar al menos 2 pares")
+      return
+    }
+
+    const actividad = {
+      tipo: 'matching',
+      pregunta: pregunta.trim(),
+      instrucciones: instrucciones.trim() || "Empareja los elementos correctamente",
+      opciones: {
+        pares: pares
+      },
+      respuesta_correcta: pares.map((p, i) => ({ izquierda: i, derecha: i })),
+      pista: pista.trim(),
+      puntos,
+      orden: actividadEditar?.orden || 0
+    }
+
+    onGuardar(actividad)
+    toast.success("Actividad guardada")
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="pregunta">Título/Instrucción *</Label>
+        <Input
+          id="pregunta"
+          placeholder="Ej: Empareja las palabras con sus traducciones"
+          value={pregunta}
+          onChange={(e) => setPregunta(e.target.value)}
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="instrucciones">Instrucciones adicionales</Label>
+        <Input
+          id="instrucciones"
+          placeholder="Ej: Arrastra para conectar los pares"
+          value={instrucciones}
+          onChange={(e) => setInstrucciones(e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Label>Pares a emparejar * (mínimo 2)</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            placeholder="Columna izquierda (Ej: Apple)"
+            value={izquierda}
+            onChange={(e) => setIzquierda(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault())}
+          />
+          <Input
+            placeholder="Columna derecha (Ej: Manzana)"
+            value={derecha}
+            onChange={(e) => setDerecha(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault())}
+          />
+        </div>
+        <Button type="button" onClick={agregarPar} className="w-full" variant="outline">
+          <Plus className="mr-2 h-4 w-4" />
+          Agregar Par
+        </Button>
+
+        {pares.length > 0 && (
+          <div className="space-y-2 mt-4">
+            {pares.map((par, i) => (
+              <Card key={i}>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 grid grid-cols-2 gap-2 text-sm">
+                      <div className="font-medium">{par.izquierda}</div>
+                      <div className="text-muted-foreground">↔ {par.derecha}</div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => eliminarPar(i)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="pista">Pista (Opcional)</Label>
+        <Input
+          id="pista"
+          placeholder="Ej: Fíjate en las primeras letras..."
+          value={pista}
+          onChange={(e) => setPista(e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="puntos">Puntos</Label>
+        <Input
+          id="puntos"
+          type="number"
+          min="1"
+          value={puntos}
+          onChange={(e) => setPuntos(parseInt(e.target.value))}
+        />
+      </div>
+
+      <div className="flex gap-3 pt-4">
+        <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
+          <X className="mr-2 h-4 w-4" />
+          Cancelar
+        </Button>
+        <Button type="submit" className="flex-1" disabled={pares.length < 2}>
+          <Save className="mr-2 h-4 w-4" />
+          Guardar Actividad
+        </Button>
+      </div>
+    </form>
+  )
+}

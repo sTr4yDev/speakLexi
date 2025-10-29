@@ -1,0 +1,149 @@
+# ARCHIVO: front-end/components/lessons/lesson-list.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/lesson-list.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:05
+# ==================================================
+
+import { Card } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import { CheckCircle2, Lock, Play } from "lucide-react"
+
+export function LessonList() {
+  const lessons = [
+    {
+      id: 1,
+      title: "Greetings and Introductions",
+      description: "Learn how to greet people and introduce yourself in English",
+      level: "A1",
+      progress: 100,
+      completed: true,
+      xp: 10,
+      activities: 4,
+    },
+    {
+      id: 2,
+      title: "Numbers 1-20",
+      description: "Master counting from 1 to 20 with interactive exercises",
+      level: "A1",
+      progress: 75,
+      completed: false,
+      xp: 10,
+      activities: 5,
+    },
+    {
+      id: 3,
+      title: "Colors and Shapes",
+      description: "Learn basic colors and geometric shapes vocabulary",
+      level: "A1",
+      progress: 0,
+      completed: false,
+      xp: 10,
+      activities: 6,
+      locked: false,
+    },
+    {
+      id: 4,
+      title: "Family Members",
+      description: "Vocabulary and expressions about family relationships",
+      level: "A1",
+      progress: 0,
+      completed: false,
+      xp: 15,
+      activities: 7,
+      locked: true,
+    },
+    {
+      id: 5,
+      title: "Daily Routines",
+      description: "Learn to talk about your daily activities and schedule",
+      level: "A2",
+      progress: 0,
+      completed: false,
+      xp: 15,
+      activities: 8,
+      locked: true,
+    },
+  ]
+
+  return (
+    <div className="space-y-4">
+      {lessons.map((lesson) => (
+        <Link
+          key={lesson.id}
+          href={lesson.locked ? "#" : `/lecciones/${lesson.id}`}
+          className={`block ${lesson.locked ? "cursor-not-allowed" : ""}`}
+        >
+          <Card
+            className={`p-6 transition-all ${
+              lesson.locked
+                ? "opacity-60"
+                : lesson.completed
+                  ? "border-success/30 hover:border-success"
+                  : "hover:border-primary hover:shadow-md"
+            }`}
+          >
+            <div className="flex items-start gap-4">
+              {/* Icon */}
+              <div
+                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${
+                  lesson.locked
+                    ? "bg-muted"
+                    : lesson.completed
+                      ? "bg-success/10 text-success"
+                      : "bg-primary/10 text-primary"
+                }`}
+              >
+                {lesson.locked ? (
+                  <Lock className="h-6 w-6 text-muted-foreground" />
+                ) : lesson.completed ? (
+                  <CheckCircle2 className="h-6 w-6" />
+                ) : (
+                  <Play className="h-6 w-6" />
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1">
+                <div className="mb-2 flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-bold">{lesson.title}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{lesson.description}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <Badge variant="secondary">{lesson.level}</Badge>
+                    <div className="flex items-center gap-1 rounded-lg bg-accent/10 px-2 py-1 text-sm font-medium text-accent">
+                      <span>+{lesson.xp}</span>
+                      <span className="text-xs">XP</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress */}
+                {!lesson.locked && (
+                  <div className="mt-4 flex items-center gap-4">
+                    <div className="flex-1">
+                      <div className="mb-1 flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          {lesson.completed ? "Completada" : `${lesson.activities} actividades`}
+                        </span>
+                        <span className="font-medium">{lesson.progress}%</span>
+                      </div>
+                      <Progress value={lesson.progress} className="h-2" />
+                    </div>
+                  </div>
+                )}
+
+                {lesson.locked && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Completa las lecciones anteriores para desbloquear
+                  </p>
+                )}
+              </div>
+            </div>
+          </Card>
+        </Link>
+      ))}
+    </div>
+  )
+}

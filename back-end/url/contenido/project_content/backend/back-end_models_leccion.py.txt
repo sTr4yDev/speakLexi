@@ -1,0 +1,332 @@
+# ARCHIVO: back-end/models/leccion.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/leccion.py
+# FECHA DESCARGA: 2025-10-28 22:54:16
+# ==================================================
+
+# back-end/models/leccion.py
+from __future__ import annotations
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from config.database import db
+from sqlalchemy import Enum as SQLEnum
+import enum
+
+
+# -------------------- Mixins --------------------
+class TimestampMixin:
+    """Mixin para columnas de auditoría comunes."""
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class SerializableMixin:
+    """Mixin simple para exponer to_dict (puede ser sobreescrito)."""
+    def to_dict_base(self) -> Dict[str, Any]:
+        return {}
+
+
+# -------------------- Enums --------------------
+class NivelDificultad(enum.Enum):
+    """Enum para niveles de dificultad de lecciones"""
+    PRINCIPIANTE = "principiante"
+    INTERMEDIO = "intermedio"
+    AVANZADO = "avanzado"
+
+
+class TipoActividad(enum.Enum):
+    """Enum para tipos de actividades disponibles"""
+    MULTIPLE_CHOICE = "multiple_choice"
+    FILL_BLANK = "fill_blank"
+    MATCHING = "matching"
+    TRANSLATION = "translation"
+    LISTEN_REPEAT = "listen_repeat"
+    TRUE_FALSE = "true_false"
+    WORD_ORDER = "word_order"
+
+
+class EstadoLeccion(enum.Enum):
+    """Enum para estados de publicación de lecciones"""
+    BORRADOR = "borrador"
+    PUBLICADA = "publicada"
+    ARCHIVADA = "archivada"
+
+
+# -------------------- Models: Leccion + Actividad --------------------
+class Leccion(db.Model, TimestampMixin, SerializableMixin):
+    """
+    Modelo para almacenar lecciones del sistema.
+    """
+    __tablename__ = 'lecciones'
+
+    # Identificación
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    
+    # ⭐ AGREGAR: Foreign Key al curso
+    curso_id = db.Column(db.Integer, db.ForeignKey('cursos.id'), nullable=True, index=True)
+    
+    titulo = db.Column(db.String(200), nullable=False, index=True)
+    descripcion = db.Column(db.Text)
+
+    # Contenido
+    contenido = db.Column(db.JSON, nullable=False, default=dict)
+
+    # Clasificación
+    nivel = db.Column(
+        SQLEnum(
+            NivelDificultad,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False
+        ),
+        nullable=False,
+        index=True,
+        default=NivelDificultad.PRINCIPIANTE
+    )
+    idioma = db.Column(db.String(50), nullable=False, index=True, default='ingles')
+    categoria = db.Column(db.String(100), index=True)
+    etiquetas = db.Column(db.JSON, default=list)
+
+    # Orden y estructura
+    orden = db.Column(db.Integer, index=True)
+    requisitos = db.Column(db.JSON, default=list)
+
+    # Metadata de aprendizaje
+    duracion_estimada = db.Column(db.Integer, default=10)
+    puntos_xp = db.Column(db.Integer, default=50, nullable=False)
+
+    # Estado
+    estado = db.Column(
+        SQLEnum(
+            EstadoLeccion,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False
+        ),
+        nullable=False,
+        default=EstadoLeccion.BORRADOR,
+        index=True
+    )
+
+    # Auditoría
+    creado_por = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
+
+    # Relaciones
+    actividades = db.relationship(
+        'Actividad',
+        backref='leccion',
+        lazy='select',
+        cascade='all, delete-orphan',
+        order_by='Actividad.orden'
+    )
+
+    recursos_multimedia = db.relationship(
+        'Multimedia',
+        secondary='leccion_multimedia',
+        backref=db.backref('lecciones', lazy='select')
+    )
+
+    creador = db.relationship('Usuario', foreign_keys=[creado_por])
+    
+    # ⭐ NO definir relación de vuelta con Curso aquí, ya está en Curso.lecciones
+
+    # Índices compuestos
+    __table_args__ = (
+        db.Index('idx_leccion_nivel_idioma', 'nivel', 'idioma'),
+        db.Index('idx_leccion_estado_orden', 'estado', 'orden'),
+        db.Index('idx_leccion_curso_orden', 'curso_id', 'orden'),
+    )
+
+    def __repr__(self) -> str:
+        return f'<Leccion {self.id}: {self.titulo}>'
+
+    # -------------------- Serialización --------------------
+    def to_dict(self, incluir_actividades: bool = False, incluir_multimedia: bool = False) -> Dict[str, Any]:
+        data: Dict[str, Any] = {
+            'id': self.id,
+            'curso_id': self.curso_id,  # ⭐ Incluir curso_id
+            'titulo': self.titulo,
+            'descripcion': self.descripcion,
+            'contenido': self.contenido,
+            'nivel': self.nivel.value if isinstance(self.nivel, NivelDificultad) else self.nivel,
+            'idioma': self.idioma,
+            'categoria': self.categoria,
+            'etiquetas': self.etiquetas or [],
+            'orden': self.orden,
+            'requisitos': self.requisitos or [],
+            'duracion_estimada': self.duracion_estimada,
+            'puntos_xp': self.puntos_xp,
+            'estado': self.estado.value if isinstance(self.estado, EstadoLeccion) else self.estado,
+            'creado_por': self.creado_por,
+            'creado_en': self.creado_en.isoformat() if getattr(self, 'creado_en', None) else None,
+            'actualizado_en': self.actualizado_en.isoformat() if getattr(self, 'actualizado_en', None) else None,
+        }
+
+        if incluir_actividades:
+            data['actividades'] = [actividad.to_dict() for actividad in list(self.actividades)]
+
+        if incluir_multimedia:
+            data['multimedia'] = [recurso.to_dict() for recurso in self.recursos_multimedia]
+
+        return data
+
+    # -------------------- Utilidades --------------------
+    @classmethod
+    def get_by_id(cls, _id: int) -> Optional['Leccion']:
+        return cls.query.get(_id)
+
+    @classmethod
+    def search(cls, q: str, limit: int = 20) -> List['Leccion']:
+        """Búsqueda simple por título y descripción (case-insensitive)."""
+        like_q = f"%{q}%"
+        return (
+            cls.query.filter(
+                db.or_(cls.titulo.ilike(like_q), cls.descripcion.ilike(like_q))
+            )
+            .order_by(cls.orden)
+            .limit(limit)
+            .all()
+        )
+
+    @classmethod
+    def paginate(cls, page: int = 1, per_page: int = 20):
+        return cls.query.order_by(cls.orden).paginate(page=page, per_page=per_page, error_out=False)
+
+    def validar_requisitos_cumplidos(self, lecciones_completadas: List[int]) -> bool:
+        if not self.requisitos:
+            return True
+        return all(req_id in lecciones_completadas for req_id in (self.requisitos or []))
+
+    def publicar(self) -> None:
+        if self.estado == EstadoLeccion.BORRADOR:
+            self.estado = EstadoLeccion.PUBLICADA
+            self.actualizado_en = datetime.utcnow()
+
+    def archivar(self) -> None:
+        self.estado = EstadoLeccion.ARCHIVADA
+        self.actualizado_en = datetime.utcnow()
+
+
+class Actividad(db.Model, TimestampMixin, SerializableMixin):
+    """
+    Modelo para actividades dentro de las lecciones.
+    """
+    __tablename__ = 'actividades'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    leccion_id = db.Column(
+        db.Integer,
+        db.ForeignKey('lecciones.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    # Tipo y contenido
+    tipo = db.Column(
+        SQLEnum(
+            TipoActividad,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False
+        ),
+        nullable=False
+    )
+    pregunta = db.Column(db.Text, nullable=False)
+    instrucciones = db.Column(db.Text)
+
+    # Opciones y respuestas
+    opciones = db.Column(db.JSON, default=dict)
+    respuesta_correcta = db.Column(db.JSON, nullable=False)
+
+    # Retroalimentación
+    retroalimentacion = db.Column(db.JSON, default=dict)
+    pista = db.Column(db.Text)
+
+    # Metadata
+    puntos = db.Column(db.Integer, default=10, nullable=False)
+    orden = db.Column(db.Integer, nullable=False)
+    tiempo_limite = db.Column(db.Integer)
+
+    # Multimedia asociado
+    multimedia_id = db.Column(db.Integer, db.ForeignKey('multimedia.id'))
+
+    __table_args__ = (
+        db.Index('idx_actividad_leccion_orden', 'leccion_id', 'orden'),
+    )
+
+    def __repr__(self) -> str:
+        tipo_val = self.tipo.value if isinstance(self.tipo, TipoActividad) else self.tipo
+        return f'<Actividad {self.id} - {tipo_val}>'
+
+    def to_dict(self, incluir_respuesta: bool = False) -> Dict[str, Any]:
+        data: Dict[str, Any] = {
+            'id': self.id,
+            'leccion_id': self.leccion_id,
+            'tipo': self.tipo.value if isinstance(self.tipo, TipoActividad) else self.tipo,
+            'pregunta': self.pregunta,
+            'instrucciones': self.instrucciones,
+            'opciones': self.opciones,
+            'retroalimentacion': self.retroalimentacion,
+            'pista': self.pista,
+            'puntos': self.puntos,
+            'orden': self.orden,
+            'tiempo_limite': self.tiempo_limite,
+            'multimedia_id': self.multimedia_id,
+            'creado_en': self.creado_en.isoformat() if getattr(self, 'creado_en', None) else None,
+            'actualizado_en': self.actualizado_en.isoformat() if getattr(self, 'actualizado_en', None) else None,
+        }
+
+        if incluir_respuesta:
+            data['respuesta_correcta'] = self.respuesta_correcta
+
+        return data
+
+    def verificar_respuesta(self, respuesta_usuario: Any) -> Dict[str, Any]:
+        correcta = self._comparar_respuesta(respuesta_usuario)
+        retro = self.retroalimentacion.get('correcta' if correcta else 'incorrecta')
+        return {
+            'correcta': correcta,
+            'retroalimentacion': retro or ('Respuesta correcta' if correcta else 'Respuesta incorrecta'),
+            'puntos': self.puntos if correcta else 0
+        }
+
+    def _comparar_respuesta(self, respuesta_usuario: Any) -> bool:
+        """Compara respuesta del usuario con la correcta según el tipo."""
+        def _norm(x: Any) -> Any:
+            if x is None:
+                return x
+            if isinstance(x, str):
+                return x.strip().lower()
+            return x
+
+        if self.tipo == TipoActividad.MULTIPLE_CHOICE:
+            return _norm(str(respuesta_usuario)) == _norm(str(self.respuesta_correcta))
+
+        if self.tipo == TipoActividad.TRUE_FALSE:
+            return bool(respuesta_usuario) == bool(self.respuesta_correcta)
+
+        if self.tipo == TipoActividad.FILL_BLANK:
+            return _norm(str(respuesta_usuario)) == _norm(str(self.respuesta_correcta))
+
+        if self.tipo == TipoActividad.MATCHING:
+            return respuesta_usuario == self.respuesta_correcta
+
+        if self.tipo == TipoActividad.WORD_ORDER:
+            return respuesta_usuario == self.respuesta_correcta
+
+        if self.tipo == TipoActividad.TRANSLATION:
+            return _norm(str(respuesta_usuario)) == _norm(str(self.respuesta_correcta))
+
+        return respuesta_usuario == self.respuesta_correcta
+
+
+# Tabla de asociación para relación muchos-a-muchos
+leccion_multimedia = db.Table(
+    'leccion_multimedia',
+    db.Column('leccion_id', db.Integer, db.ForeignKey('lecciones.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('multimedia_id', db.Integer, db.ForeignKey('multimedia.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('orden', db.Integer, default=0),
+    db.Column('creado_en', db.DateTime, default=datetime.utcnow)
+)

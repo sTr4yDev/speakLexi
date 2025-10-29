@@ -1,0 +1,41 @@
+# ARCHIVO: back-end/requirements.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/requirements.txt
+# FECHA DESCARGA: 2025-10-28 22:54:18
+# ==================================================
+
+# ==========================================================
+# DEPENDENCIAS DE SPEAKLEXI BACKEND
+# ==========================================================
+
+# Framework principal
+Flask==2.3.3
+Werkzeug==2.3.7
+
+# Base de datos
+Flask-SQLAlchemy==3.0.5
+SQLAlchemy==2.0.20
+PyMySQL==1.1.0
+
+# Autenticación y seguridad
+Flask-JWT-Extended==4.5.2
+Flask-Bcrypt==1.0.1
+
+# Correo electrónico
+Flask-Mail==0.9.1
+
+# CORS (Cross-Origin Resource Sharing)
+Flask-CORS==4.0.0
+
+# Variables de entorno
+python-dotenv==1.0.0
+
+# Validación de datos
+Flask-WTF==1.1.1
+WTForms==3.0.1
+
+# Utilidades
+python-dateutil==2.8.2
+
+# Testing (opcional)
+pytest==7.4.2
+pytest-flask==1.2.0

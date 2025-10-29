@@ -1,0 +1,37 @@
+# ARCHIVO: front-end/app/profesor/dashboard/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/dashboard/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:09
+# ==================================================
+
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { TeacherStats } from "@/components/teacher/teacher-stats"
+import { StudentPerformance } from "@/components/teacher/student-performance"
+import { RecentFeedback } from "@/components/teacher/recent-feedback"
+import { QuickTeacherActions } from "@/components/teacher/quick-teacher-actions"
+
+export default function TeacherDashboardPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-balance">Panel del Profesor</h1>
+          <p className="mt-1 text-muted-foreground">Monitorea el progreso de tus estudiantes</p>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <TeacherStats />
+            <StudentPerformance />
+          </div>
+
+          <div className="space-y-6">
+            <QuickTeacherActions />
+            <RecentFeedback />
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}

@@ -1,0 +1,358 @@
+# ARCHIVO: back-end/routes/actividades_routes.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/actividades_routes.py
+# FECHA DESCARGA: 2025-10-28 22:54:21
+# ==================================================
+
+# back-end/routes/actividades_routes.py
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from models.leccion import Actividad, Leccion
+from models.usuario import Usuario
+from extensions import db
+
+actividades_bp = Blueprint('actividades', __name__, url_prefix='/api/actividades')
+
+
+@actividades_bp.route('', methods=['POST'])
+@jwt_required()
+def crear_actividad():
+    """
+    Crear nueva actividad para una lección
+    Body:
+    {
+        "leccion_id": 1,
+        "tipo": "multiple_choice",
+        "pregunta": "What is the capital of France?",
+        "instrucciones": "Select the correct answer",
+        "opciones": ["London", "Paris", "Berlin", "Madrid"],
+        "respuesta_correcta": "Paris",
+        "pista": "It's known as the City of Light",
+        "puntos": 10,
+        "orden": 1,
+        "multimedia_id": null
+    }
+    """
+    try:
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario.rol not in ['admin', 'profesor']:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        data = request.json
+        
+        # Validar campos requeridos
+        if 'leccion_id' not in data or 'tipo' not in data or 'pregunta' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Campos requeridos: leccion_id, tipo, pregunta'
+            }), 400
+        
+        # Validar que la lección existe
+        leccion = Leccion.query.get(data['leccion_id'])
+        if not leccion:
+            return jsonify({'success': False, 'error': 'Lección no encontrada'}), 404
+        
+        # Validar tipo de actividad
+        tipos_validos = ['multiple_choice', 'fill_blank', 'matching', 'translation', 
+                        'listen_repeat', 'true_false', 'word_order']
+        if data['tipo'] not in tipos_validos:
+            return jsonify({
+                'success': False,
+                'error': f'Tipo inválido. Use: {", ".join(tipos_validos)}'
+            }), 400
+        
+        # Si es profesor, verificar que sea su lección
+        if usuario.rol == 'profesor':
+            if leccion.curso_id:
+                from models.cursos import Curso
+                curso = Curso.query.get(leccion.curso_id)
+                if curso and curso.profesor_id != usuario_id:
+                    return jsonify({
+                        'success': False,
+                        'error': 'No puedes crear actividades en esta lección'
+                    }), 403
+        
+        # Determinar el siguiente orden si no se especifica
+        if 'orden' not in data:
+            ultima_actividad = Actividad.query.filter_by(
+                leccion_id=data['leccion_id']
+            ).order_by(Actividad.orden.desc()).first()
+            data['orden'] = (ultima_actividad.orden + 1) if ultima_actividad else 1
+        
+        # Crear actividad
+        nueva_actividad = Actividad(
+            leccion_id=data['leccion_id'],
+            tipo=data['tipo'],
+            pregunta=data['pregunta'],
+            instrucciones=data.get('instrucciones'),
+            opciones=data.get('opciones'),
+            respuesta_correcta=data.get('respuesta_correcta', {}),
+            retroalimentacion=data.get('retroalimentacion'),
+            pista=data.get('pista'),
+            puntos=data.get('puntos', 10),
+            orden=data['orden'],
+            tiempo_limite=data.get('tiempo_limite'),
+            multimedia_id=data.get('multimedia_id')
+        )
+        
+        db.session.add(nueva_actividad)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'mensaje': 'Actividad creada exitosamente',
+            'actividad': nueva_actividad.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@actividades_bp.route('/leccion/<int:leccion_id>', methods=['GET'])
+def obtener_actividades_leccion(leccion_id):
+    """Obtener todas las actividades de una lección"""
+    try:
+        leccion = Leccion.query.get_or_404(leccion_id)
+        
+        actividades = Actividad.query.filter_by(
+            leccion_id=leccion_id
+        ).order_by(Actividad.orden).all()
+        
+        return jsonify({
+            'success': True,
+            'leccion_id': leccion_id,
+            'actividades': [a.to_dict() for a in actividades],
+            'total': len(actividades)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@actividades_bp.route('/<int:actividad_id>', methods=['GET'])
+def obtener_actividad(actividad_id):
+    """Obtener una actividad específica"""
+    try:
+        actividad = Actividad.query.get_or_404(actividad_id)
+        
+        return jsonify({
+            'success': True,
+            'actividad': actividad.to_dict()
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@actividades_bp.route('/<int:actividad_id>', methods=['PUT'])
+@jwt_required()
+def actualizar_actividad(actividad_id):
+    """Actualizar una actividad"""
+    try:
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario.rol not in ['admin', 'profesor']:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        actividad = Actividad.query.get_or_404(actividad_id)
+        
+        # Si es profesor, verificar permisos
+        if usuario.rol == 'profesor':
+            leccion = Leccion.query.get(actividad.leccion_id)
+            if leccion.curso_id:
+                from models.cursos import Curso
+                curso = Curso.query.get(leccion.curso_id)
+                if curso and curso.profesor_id != usuario_id:
+                    return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        data = request.json
+        
+        # Actualizar campos permitidos
+        campos_permitidos = [
+            'pregunta', 'instrucciones', 'opciones', 'respuesta_correcta',
+            'retroalimentacion', 'pista', 'puntos', 'orden', 'tiempo_limite',
+            'multimedia_id'
+        ]
+        
+        for campo in campos_permitidos:
+            if campo in data:
+                setattr(actividad, campo, data[campo])
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'mensaje': 'Actividad actualizada',
+            'actividad': actividad.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@actividades_bp.route('/<int:actividad_id>', methods=['DELETE'])
+@jwt_required()
+def eliminar_actividad(actividad_id):
+    """Eliminar una actividad"""
+    try:
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario.rol not in ['admin', 'profesor']:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        actividad = Actividad.query.get_or_404(actividad_id)
+        
+        # Verificar permisos si es profesor
+        if usuario.rol == 'profesor':
+            leccion = Leccion.query.get(actividad.leccion_id)
+            if leccion.curso_id:
+                from models.cursos import Curso
+                curso = Curso.query.get(leccion.curso_id)
+                if curso and curso.profesor_id != usuario_id:
+                    return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        leccion_id = actividad.leccion_id
+        pregunta = actividad.pregunta
+        
+        db.session.delete(actividad)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'mensaje': f'Actividad eliminada: {pregunta}'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@actividades_bp.route('/<int:actividad_id>/validar', methods=['POST'])
+@jwt_required()
+def validar_respuesta(actividad_id):
+    """
+    Validar respuesta de estudiante
+    Body: {"respuesta": "..."}
+    """
+    try:
+        usuario_id = get_jwt_identity()
+        
+        actividad = Actividad.query.get_or_404(actividad_id)
+        data = request.json
+        
+        if 'respuesta' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Campo requerido: respuesta'
+            }), 400
+        
+        respuesta_usuario = data['respuesta']
+        respuesta_correcta = actividad.respuesta_correcta
+        
+        # Validar según tipo de actividad
+        es_correcta = False
+        
+        if actividad.tipo == 'multiple_choice':
+            es_correcta = str(respuesta_usuario).lower() == str(respuesta_correcta).lower()
+        
+        elif actividad.tipo == 'true_false':
+            es_correcta = bool(respuesta_usuario) == bool(respuesta_correcta)
+        
+        elif actividad.tipo == 'fill_blank':
+            # Normalizar y comparar
+            es_correcta = str(respuesta_usuario).strip().lower() == str(respuesta_correcta).strip().lower()
+        
+        elif actividad.tipo == 'matching':
+            # Comparar diccionarios o arrays
+            es_correcta = respuesta_usuario == respuesta_correcta
+        
+        elif actividad.tipo == 'word_order':
+            # Validar orden de palabras
+            es_correcta = respuesta_usuario == respuesta_correcta
+        
+        elif actividad.tipo == 'translation':
+            # Para traducciones, podría ser más flexible
+            es_correcta = str(respuesta_usuario).strip().lower() == str(respuesta_correcta).strip().lower()
+        
+        # Obtener retroalimentación
+        retroalimentacion = None
+        if actividad.retroalimentacion:
+            if isinstance(actividad.retroalimentacion, dict):
+                retroalimentacion = actividad.retroalimentacion.get(
+                    'correcta' if es_correcta else 'incorrecta'
+                )
+            else:
+                retroalimentacion = actividad.retroalimentacion
+        
+        puntos_ganados = actividad.puntos if es_correcta else 0
+        
+        return jsonify({
+            'success': True,
+            'correcta': es_correcta,
+            'puntos_ganados': puntos_ganados,
+            'respuesta_correcta': respuesta_correcta if not es_correcta else None,
+            'retroalimentacion': retroalimentacion,
+            'pista': actividad.pista if not es_correcta else None
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@actividades_bp.route('/tipos', methods=['GET'])
+def obtener_tipos_actividades():
+    """Obtener lista de tipos de actividades disponibles"""
+    tipos = [
+        {
+            'value': 'multiple_choice',
+            'label': 'Opción Múltiple',
+            'icon': '🎯',
+            'descripcion': 'Seleccionar la respuesta correcta entre varias opciones'
+        },
+        {
+            'value': 'fill_blank',
+            'label': 'Completar Espacios',
+            'icon': '✏️',
+            'descripcion': 'Llenar espacios en blanco en una oración'
+        },
+        {
+            'value': 'matching',
+            'label': 'Emparejar',
+            'icon': '🔗',
+            'descripcion': 'Conectar elementos relacionados'
+        },
+        {
+            'value': 'translation',
+            'label': 'Traducción',
+            'icon': '🌐',
+            'descripcion': 'Traducir palabras o frases'
+        },
+        {
+            'value': 'listen_repeat',
+            'label': 'Escuchar y Repetir',
+            'icon': '🎤',
+            'descripcion': 'Práctica de pronunciación con audio'
+        },
+        {
+            'value': 'true_false',
+            'label': 'Verdadero/Falso',
+            'icon': '✓✗',
+            'descripcion': 'Determinar si una afirmación es verdadera o falsa'
+        },
+        {
+            'value': 'word_order',
+            'label': 'Ordenar Palabras',
+            'icon': '📝',
+            'descripcion': 'Organizar palabras en el orden correcto'
+        }
+    ]
+    
+    return jsonify({
+        'success': True,
+        'tipos': tipos
+    }), 200

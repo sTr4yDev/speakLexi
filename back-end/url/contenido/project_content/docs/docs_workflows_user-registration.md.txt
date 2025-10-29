@@ -1,0 +1,5 @@
+# ARCHIVO: docs/workflows/user-registration.md
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/user-registration.md
+# FECHA DESCARGA: 2025-10-28 22:57:29
+# ==================================================
+

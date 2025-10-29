@@ -1,0 +1,589 @@
+# ARCHIVO: front-end/docs/MODULO-01-Gestion-de-Usuarios.md
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/docs/MODULO-01-Gestion-de-Usuarios.md
+# FECHA DESCARGA: 2025-10-28 22:57:06
+# ==================================================
+
+# MÓDULO 1: AUTENTICACIÓN Y GESTIÓN DE USUARIOS
+
+**Proyecto:** SpeakLexi  
+**Fecha de implementación:** Octubre 2025  
+**Estado:** ✅ COMPLETADO  
+**Versión:** 1.0
+
+---
+
+## 📋 ÍNDICE
+
+1. [Requerimientos Funcionales Implementados](#requerimientos-funcionales-implementados)
+2. [Arquitectura del Sistema](#arquitectura-del-sistema)
+3. [Convenciones y Estándares](#convenciones-y-estándares)
+4. [Problemas Encontrados y Soluciones](#problemas-encontrados-y-soluciones)
+5. [Endpoints del Backend](#endpoints-del-backend)
+6. [Flujo de Registro Completo](#flujo-de-registro-completo)
+7. [Configuración CORS](#configuración-cors)
+8. [Modelos de Base de Datos](#modelos-de-base-de-datos)
+9. [Próximos Pasos](#próximos-pasos)
+
+---
+
+## 🎯 REQUERIMIENTOS FUNCIONALES IMPLEMENTADOS
+
+### ✅ RF-1: Iniciar sesión
+- **Descripción:** El usuario puede acceder al sistema ingresando su correo electrónico y contraseña.
+- **Endpoint:** `POST /api/auth/login`
+- **Validaciones:**
+  - Verificación de correo electrónico
+  - Estado de cuenta (activo, desactivado, eliminado)
+  - Contraseña correcta
+- **Características adicionales:**
+  - Manejo de cuentas desactivadas con opción de reactivación
+  - Redirección según rol del usuario
+  - Usuarios de prueba para testing
+
+### ✅ RF-2: Recuperar contraseña
+- **Descripción:** El sistema permite recuperar la contraseña mediante un enlace enviado al correo electrónico.
+- **Endpoints:**
+  - `POST /api/auth/recuperar-password` - Solicitar recuperación
+  - `POST /api/auth/validar-token-recuperacion` - Validar token
+  - `POST /api/auth/restablecer-password` - Cambiar contraseña
+- **Características:**
+  - Token seguro de 32 bytes
+  - Expiración de 1 hora
+  - Correo con diseño HTML profesional
+
+### ✅ RF-3: Autenticar usuario
+- **Descripción:** El sistema envía automáticamente un mensaje de verificación al correo electrónico del usuario para validar su identidad.
+- **Endpoint:** `POST /api/auth/verificar-email`
+- **Características:**
+  - Código de 6 dígitos
+  - Expiración de 10 minutos
+  - Opción de reenvío de código
+  - Diseño de correo profesional
+
+### ✅ RF-4: Registrar usuario
+- **Descripción:** El usuario puede crear una cuenta proporcionando información básica.
+- **Endpoint:** `POST /api/auth/register`
+- **Datos requeridos:**
+  - Nombre
+  - Primer apellido
+  - Segundo apellido (opcional)
+  - Correo electrónico
+  - Contraseña (mínimo 8 caracteres)
+  - Idioma de aprendizaje
+- **Características:**
+  - Validación de correo único
+  - Hash de contraseñas con Werkzeug
+  - Generación de ID público único
+  - Creación automática de perfil
+
+### ✅ RF-5: Asignar nivel de usuario
+- **Descripción:** Después del registro, el sistema clasifica al usuario según su nivel de dominio del idioma.
+- **Endpoint:** `PATCH /api/usuario/actualizar-nivel`
+- **Métodos de asignación:**
+  1. **Evaluación automática:** 10 preguntas de nivel progresivo
+  2. **Selección manual:** El usuario elige su nivel
+- **Niveles disponibles:** A1, A2, B1, B2, C1, C2
+
+### ✅ RF-6: Cambiar curso
+- **Descripción:** El sistema permite al usuario cambiar el curso de idioma.
+- **Endpoint:** `PATCH /api/usuario/cambiar-curso`
+- **Estado:** ⚠️ Parcialmente implementado (backend listo, frontend pendiente)
+- **Características:**
+  - Validación de idiomas disponibles
+  - Reinicio de progreso (XP y racha)
+  - Reasignación de nivel
+
+### ✅ RF-7: Eliminar cuenta
+- **Descripción:** El usuario puede borrar su cuenta con un sistema de soft-delete.
+- **Endpoints:**
+  - `POST /api/usuario/desactivar/{usuario_id}` - Desactivar cuenta
+  - `POST /api/usuario/reactivar/{usuario_id}` - Reactivar cuenta
+  - `DELETE /api/usuario/eliminar-permanente/{usuario_id}` - Eliminar definitivamente
+- **Características:**
+  - Período de gracia de 30 días
+  - Reactivación con contraseña
+  - Eliminación permanente automática después de 30 días
+
+---
+
+## 🏗️ ARQUITECTURA DEL SISTEMA
+
+### Backend (Flask)
+```
+back-end/
+├── app.py                      # Punto de entrada, configuración CORS
+├── config/
+│   ├── database.py             # Configuración SQLAlchemy
+│   └── settings.py             # Variables de entorno y configuración
+├── models/
+│   └── usuario.py              # Modelos Usuario y PerfilUsuario
+├── routes/
+│   ├── auth.py                 # Rutas de autenticación
+│   └── usuario_routes.py       # Rutas de gestión de usuarios
+├── services/
+│   ├── gestor_usuarios.py      # Lógica de negocio
+│   └── correo_service.py       # Envío de correos
+└── extensions.py               # Extensiones Flask (Mail, DB)
+```
+
+### Frontend (Next.js + TypeScript)
+```
+front-end/
+├── app/
+│   ├── login/page.tsx
+│   ├── registro/page.tsx
+│   ├── verificar-email/page.tsx
+│   ├── asignar-nivel/page.tsx
+│   ├── recuperar-contrasena/page.tsx
+│   └── eliminar-cuenta/page.tsx
+└── components/
+    └── auth/
+        ├── login-form.tsx
+        ├── register-form.tsx
+        ├── verify-email-form.tsx
+        ├── level-assignment-flow.tsx
+        └── recover-password-form.tsx
+```
+
+---
+
+## 📐 CONVENCIONES Y ESTÁNDARES
+
+### ⚠️ IMPORTANTE: Nombres de Rutas Backend
+
+**SIEMPRE usar nombres en INGLÉS para las rutas del backend:**
+
+| ❌ INCORRECTO | ✅ CORRECTO |
+|---------------|-------------|
+| `/api/auth/registro` | `/api/auth/register` |
+| `/api/auth/iniciar-sesion` | `/api/auth/login` |
+| `/api/usuario/actualizar-perfil` | `/api/usuario/update-profile` |
+
+**Razón:** Las APIs REST estándar usan inglés universalmente. Esto evita confusiones y facilita la integración.
+
+### Nomenclatura de Campos
+
+**Backend (Python/SQL):**
+- Snake_case: `primer_apellido`, `correo_verificado`, `nivel_actual`
+- Modelos: PascalCase (`Usuario`, `PerfilUsuario`)
+
+**Frontend (TypeScript/JavaScript):**
+- CamelCase: `primerApellido`, `correoVerificado`, `nivelActual`
+- Componentes: PascalCase (`LoginForm`, `RegisterForm`)
+
+### Mapeo Backend ↔ Frontend
+```python
+# Backend envía:
+{
+  "primer_apellido": "Pérez",
+  "nivel_actual": "B1"
+}
+
+// Frontend recibe y transforma:
+{
+  primerApellido: "Pérez",
+  nivelActual: "B1"
+}
+```
+
+---
+
+## 🐛 PROBLEMAS ENCONTRADOS Y SOLUCIONES
+
+### 1. Error 404 en OPTIONS (CORS)
+**Problema:**
+```
+OPTIONS /api/auth/register HTTP/1.1" 404
+Failed to fetch
+```
+
+**Causa:** 
+- Falta configuración de CORS en Flask
+- Método PATCH no incluido en headers permitidos
+
+**Solución:**
+```python
+from flask_cors import CORS
+
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
+
+# Además, agregar manejo de preflight en cada blueprint:
+@auth_bp.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        return "", 204
+```
+
+### 2. Inconsistencia en nombres de rutas
+**Problema:**
+- Backend: `/api/auth/registro`
+- Frontend: `fetch('/api/auth/register')`
+
+**Solución:**
+Estandarizar TODO a inglés en el backend:
+```python
+# ❌ ANTES
+@auth_bp.route("/registro", methods=["POST"])
+
+# ✅ AHORA
+@auth_bp.route("/register", methods=["POST"])
+```
+
+### 3. ImportError: cannot import name 'Config'
+**Problema:**
+```python
+ImportError: cannot import name 'Config' from 'config.settings'
+```
+
+**Causa:** 
+El archivo `settings.py` no tenía la clase `Config` definida.
+
+**Solución:**
+```python
+# config/settings.py
+class Config:
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://..."
+    SECRET_KEY = "..."
+    MAIL_SERVER = "smtp.gmail.com"
+    # ...
+```
+
+### 4. Método PATCH bloqueado por CORS
+**Problema:**
+```
+Method PATCH is not allowed by Access-Control-Allow-Methods in preflight response
+```
+
+**Solución:**
+Agregar explícitamente `PATCH` en la lista de métodos permitidos:
+```python
+"methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+```
+
+### 5. Usuario no se guarda después de verificar email
+**Problema:**
+El nivel del usuario no se actualizaba después de la asignación.
+
+**Causa:**
+Faltaba el endpoint `PATCH /api/usuario/actualizar-nivel` con soporte CORS.
+
+**Solución:**
+Implementar el endpoint y agregar manejo de OPTIONS en `usuario_routes.py`.
+
+---
+
+## 🔌 ENDPOINTS DEL BACKEND
+
+### Autenticación (`/api/auth/`)
+
+| Método | Endpoint | Descripción | Body |
+|--------|----------|-------------|------|
+| POST | `/login` | Iniciar sesión | `{correo, password}` |
+| POST | `/register` | Registrar usuario | `{nombre, primer_apellido, segundo_apellido, correo, password, idioma, nivel_actual}` |
+| POST | `/verificar-email` | Verificar código | `{correo, codigo}` |
+| POST | `/reenviar-codigo` | Reenviar código de verificación | `{correo}` |
+| POST | `/recuperar-password` | Solicitar recuperación | `{correo}` |
+| POST | `/validar-token-recuperacion` | Validar token | `{token}` |
+| POST | `/restablecer-password` | Cambiar contraseña | `{token, nueva_password}` |
+
+### Gestión de Usuarios (`/api/usuario/`)
+
+| Método | Endpoint | Descripción | Body |
+|--------|----------|-------------|------|
+| GET | `/perfil/{usuario_id}` | Obtener perfil completo | - |
+| PUT | `/perfil/{usuario_id}` | Actualizar perfil | `{nombre?, primer_apellido?, correo?}` |
+| PATCH | `/actualizar-nivel` | Asignar nivel después del test | `{correo, nivel}` |
+| PATCH | `/cambiar-curso` | Cambiar idioma de aprendizaje | `{usuario_id, idioma, nivel}` |
+| POST | `/desactivar/{usuario_id}` | Desactivar cuenta | `{password, confirmacion}` |
+| POST | `/reactivar/{usuario_id}` | Reactivar cuenta | `{password}` |
+| DELETE | `/eliminar-permanente/{usuario_id}` | Eliminar definitivamente | - |
+
+---
+
+## 🔄 FLUJO DE REGISTRO COMPLETO
+
+```mermaid
+graph TD
+    A[Usuario llena formulario] --> B[POST /api/auth/register]
+    B --> C[Código de 6 dígitos enviado por correo]
+    C --> D[Usuario ingresa código]
+    D --> E[POST /api/auth/verificar-email]
+    E --> F[Correo verificado ✓]
+    F --> G[Redirige a /asignar-nivel]
+    G --> H{¿Método de asignación?}
+    H -->|Evaluación| I[Responde 10 preguntas]
+    H -->|Manual| J[Selecciona nivel]
+    I --> K[PATCH /api/usuario/actualizar-nivel]
+    J --> K
+    K --> L[Nivel asignado ✓]
+    L --> M[Redirige a /dashboard]
+```
+
+### Datos Persistentes en localStorage
+
+Durante el flujo de registro, se almacenan temporalmente:
+```javascript
+localStorage.setItem("correo", formData.correo)
+localStorage.setItem("idioma", formData.idioma)
+```
+
+**Se eliminan después de completar la asignación de nivel:**
+```javascript
+localStorage.removeItem("correo")
+localStorage.removeItem("idioma")
+```
+
+---
+
+## 🌐 CONFIGURACIÓN CORS
+
+### Backend (`app.py`)
+```python
+from flask_cors import CORS
+
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True,
+        "expose_headers": ["Content-Type", "Authorization"],
+        "max_age": 3600
+    }
+})
+
+# Refuerzo adicional con @app.after_request
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+```
+
+### Blueprints (Manejo de OPTIONS)
+```python
+@auth_bp.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        return "", 204
+```
+
+---
+
+## 🗄️ MODELOS DE BASE DE DATOS
+
+### Usuario
+```python
+class Usuario(db.Model):
+    __tablename__ = 'usuarios'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    id_publico = db.Column(db.String(50), unique=True, nullable=False)
+    nombre = db.Column(db.String(100), nullable=False)
+    primer_apellido = db.Column(db.String(100), nullable=False)
+    segundo_apellido = db.Column(db.String(100))
+    correo = db.Column(db.String(255), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    rol = db.Column(db.String(50), default='estudiante')
+    correo_verificado = db.Column(db.Boolean, default=False)
+    codigo_verificacion = db.Column(db.String(10))
+    expira_verificacion = db.Column(db.DateTime)
+    token_recuperacion = db.Column(db.String(255))
+    expira_token_recuperacion = db.Column(db.DateTime)
+    estado_cuenta = db.Column(db.String(50), default='activo')
+    fecha_desactivacion = db.Column(db.DateTime)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relación 1:1 con PerfilUsuario
+    perfil = db.relationship('PerfilUsuario', backref='usuario', uselist=False)
+```
+
+### PerfilUsuario
+```python
+class PerfilUsuario(db.Model):
+    __tablename__ = 'perfiles_usuarios'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), unique=True)
+    id_publico = db.Column(db.String(50), nullable=False)
+    nombre_completo = db.Column(db.String(255), nullable=False)
+    idioma = db.Column(db.String(50), default='Inglés')
+    nivel_actual = db.Column(db.String(10), default='A1')
+    curso_actual = db.Column(db.String(100))
+    total_xp = db.Column(db.Integer, default=0)
+    dias_racha = db.Column(db.Integer, default=0)
+    ultima_actividad = db.Column(db.DateTime)
+```
+
+### Generación de ID Público
+Patrón: `YY + IDIOMA + INICIALES + NIVEL`
+
+Ejemplo:
+```python
+# Usuario: Juan Pérez Martínez, Inglés, A1
+# Resultado: 25INGJPMA1
+
+año = "25"
+idioma_codigo = "ING"
+iniciales = "JPM"
+nivel = "A1"
+id_publico = "25INGJPMA1"
+```
+
+---
+
+## 📧 SERVICIOS DE CORREO
+
+### Configuración SMTP (Gmail)
+```python
+MAIL_SERVER = "smtp.gmail.com"
+MAIL_PORT = 587
+MAIL_USE_TLS = True
+MAIL_USERNAME = "tu-correo@gmail.com"
+MAIL_PASSWORD = "contraseña-de-aplicación"  # No usar contraseña real
+```
+
+### Plantillas de Correo
+
+#### Verificación de Email
+- Asunto: "Verifica tu cuenta en SpeakLexi"
+- Código: 6 dígitos
+- Expiración: 10 minutos
+- Diseño: HTML con gradiente morado
+
+#### Recuperación de Contraseña
+- Asunto: "Recuperación de contraseña - SpeakLexi"
+- Token: Enlace seguro con 32 bytes
+- Expiración: 1 hora
+- Diseño: HTML con botón de acción
+
+---
+
+## 🔐 SEGURIDAD IMPLEMENTADA
+
+### Contraseñas
+- Hash con `werkzeug.security.generate_password_hash`
+- Método: `pbkdf2:sha256`
+- Validación: Mínimo 8 caracteres
+
+### Tokens
+- Generación: `secrets.token_urlsafe(32)`
+- Longitud: 43 caracteres en base64
+- Almacenamiento: Hash en base de datos
+- Expiración: 1 hora para recuperación
+
+### Códigos de Verificación
+- Generación: `random.randint(100000, 999999)`
+- Longitud: 6 dígitos
+- Expiración: 10 minutos
+
+### Validaciones
+- Correo único en registro
+- Estado de cuenta en login
+- Verificación de correo obligatoria
+- Contraseña requerida para desactivación/reactivación
+
+---
+
+## ✅ CHECKLIST DE IMPLEMENTACIÓN
+
+- [x] RF-1: Iniciar sesión
+- [x] RF-2: Recuperar contraseña
+- [x] RF-3: Autenticar usuario (verificación de email)
+- [x] RF-4: Registrar usuario
+- [x] RF-5: Asignar nivel de usuario
+- [x] RF-6: Cambiar curso (backend completo, frontend pendiente)
+- [x] RF-7: Eliminar cuenta (soft-delete con período de gracia)
+- [x] Configuración CORS completa
+- [x] Manejo de errores estandarizado
+- [x] Validaciones de seguridad
+- [x] Documentación de endpoints
+- [x] Usuarios de prueba para testing
+
+---
+
+## 🚀 PRÓXIMOS PASOS
+
+### Módulo 2: Gestión de Lecciones (Pendiente)
+- RF-8: Ver lecciones disponibles
+- RF-9: Realizar lección
+- RF-10: Guardar progreso
+- RF-11: Sistema de XP y logros
+
+### Mejoras Pendientes del Módulo 1
+1. **RF-6 Cambiar Curso (Frontend):**
+   - Crear página `/cambiar-curso`
+   - Componente de selección de idioma
+   - Confirmación de reinicio de progreso
+   
+2. **Implementar JWT real:**
+   - Reemplazar token fake
+   - Middleware de autenticación
+   - Refresh tokens
+
+3. **Mejoras de seguridad:**
+   - Rate limiting para endpoints sensibles
+   - Validación de contraseñas robustas
+   - Logs de actividad sospechosa
+
+4. **Testing:**
+   - Unit tests para servicios
+   - Integration tests para endpoints
+   - E2E tests para flujos completos
+
+---
+
+## 📝 NOTAS PARA DESARROLLADORES
+
+### Para IAs/Asistentes que lean este documento:
+
+1. **SIEMPRE usar nombres de rutas en inglés** en el backend
+2. **Verificar que CORS incluya PATCH** cuando se agreguen nuevas rutas
+3. **Agregar `@bp.before_request` para OPTIONS** en cada nuevo blueprint
+4. **Seguir el patrón de nombres**: `primer_apellido` en backend, `primerApellido` en frontend
+5. **No duplicar enlaces** en componentes (verificar page.tsx y form.tsx)
+6. **Limpiar localStorage** después de completar flujos de registro
+7. **Usar `estado_cuenta`** para soft-delete, no eliminar directamente
+
+### Estructura de Respuestas del Backend
+```python
+# Éxito
+return jsonify({
+    "mensaje": "Operación exitosa",
+    "data": {...}
+}), 200
+
+# Error estándar
+return jsonify({
+    "error": "Descripción del error"
+}), 400
+
+# Error con código especial
+return jsonify({
+    "error": "Cuenta desactivada",
+    "codigo": "CUENTA_DESACTIVADA",
+    "dias_restantes": 15,
+    "usuario_id": 123
+}), 403
+```
+
+---
+
+## 📞 CONTACTO Y SOPORTE
+
+**Desarrollador Principal:** sTr4yDev  
+**Repositorio:** https://github.com/sTr4yDev/speakLexi  
+**Última actualización:** Octubre 2025
+
+---
+
+**FIN DEL DOCUMENTO**

@@ -1,0 +1,26 @@
+# ARCHIVO: front-end/components.json
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components.json
+# FECHA DESCARGA: 2025-10-28 22:55:23
+# ==================================================
+
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide"
+}

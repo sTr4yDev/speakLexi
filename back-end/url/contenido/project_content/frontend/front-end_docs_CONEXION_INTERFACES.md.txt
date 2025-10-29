@@ -1,0 +1,422 @@
+# ARCHIVO: front-end/docs/CONEXION_INTERFACES.md
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/docs/CONEXION_INTERFACES.md
+# FECHA DESCARGA: 2025-10-28 22:57:04
+# ==================================================
+
+# 🔗 Verificación de Conexión de Interfaces - SpeakLexi
+
+Este documento verifica que todas las interfaces estén correctamente conectadas y que la navegación fluya según lo especificado.
+
+---
+
+## 🔐 MÓDULO DE AUTENTICACIÓN
+
+### Flujo de Navegación Principal
+
+\`\`\`
+/ (Landing) → /login → /dashboard (según rol)
+                    ↓
+                /asignar-nivel → /dashboard
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/` | `/login` | Link/Button | ✅ CONECTADO | Botón "Iniciar Sesión" en landing |
+| `/` | `/registro` | Link/Button | ✅ CONECTADO | Botón "Registrarse" en landing |
+| `/login` | `/dashboard` | Form Submit (Estudiante) | ✅ CONECTADO | Redirección tras login exitoso |
+| `/login` | `/profesor/dashboard` | Form Submit (Profesor) | ✅ CONECTADO | Redirección basada en rol |
+| `/login` | `/admin/dashboard` | Form Submit (Admin) | ✅ CONECTADO | Redirección basada en rol |
+| `/login` | `/mantenimiento/dashboard` | Form Submit (Mantenimiento) | ✅ CONECTADO | Redirección basada en rol |
+| `/login` | `/recuperar-contrasena` | Link | ✅ CONECTADO | Link "¿Olvidaste tu contraseña?" |
+| `/login` | `/registro` | Link | ✅ CONECTADO | Link "Crear cuenta" en footer del form |
+
+### Flujo de Registro
+
+\`\`\`
+/registro → /verificar-email → /asignar-nivel → /dashboard
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/registro` | `/verificar-email` | Form Submit | ✅ CONECTADO | Tras registro exitoso |
+| `/registro` | `/login` | Link | ✅ CONECTADO | Link "Ya tengo cuenta" |
+| `/verificar-email` | `/asignar-nivel` | Code Verification | ✅ CONECTADO | Tras verificación exitosa |
+| `/verificar-email` | `/login` | Link | ✅ CONECTADO | Opción de volver a login |
+
+### Flujo de Recuperación de Contraseña
+
+\`\`\`
+/recuperar-contrasena → /correo-enviado → /restablecer-contrasena → /login
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/recuperar-contrasena` | `/correo-enviado` | Form Submit | ✅ CONECTADO | Tras solicitud exitosa |
+| `/recuperar-contrasena` | `/login` | Link | ✅ CONECTADO | Link "Volver a iniciar sesión" |
+| `/correo-enviado` | `/login` | Button | ✅ CONECTADO | Botón "Volver al inicio" |
+| `/restablecer-contrasena` | `/login` | Form Submit | ✅ CONECTADO | Tras cambio exitoso |
+
+### Flujo de Asignación de Nivel
+
+\`\`\`
+/asignar-nivel → [Evaluación] → /dashboard
+              ↓
+              [Selección Manual] → /dashboard
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/asignar-nivel` | `/dashboard` | Evaluation Complete | ✅ CONECTADO | Tras completar evaluación |
+| `/asignar-nivel` | `/dashboard` | Manual Selection | ✅ CONECTADO | Tras selección manual |
+
+---
+
+## 👨‍🎓 MÓDULO ALUMNO
+
+### Navegación Principal del Dashboard
+
+\`\`\`
+/dashboard → /lecciones
+          → /logros
+          → /clasificacion
+          → /perfil
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/dashboard` | `/lecciones` | Navigation Link | ✅ CONECTADO | Link en header y quick actions |
+| `/dashboard` | `/logros` | Navigation Link | ✅ CONECTADO | Link en header y cards |
+| `/dashboard` | `/clasificacion` | Navigation Link | ✅ CONECTADO | Link en header |
+| `/dashboard` | `/perfil` | User Menu | ⚠️ PENDIENTE | Requiere implementación de perfil |
+| `/dashboard` | `/login` | Logout | ✅ CONECTADO | Funciona correctamente desde header |
+
+### Flujo de Lecciones
+
+\`\`\`
+/lecciones → /lecciones/[id] → [Completar] → /dashboard
+                             ↓
+                             [Abandonar] → /lecciones
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/lecciones` | `/lecciones/[id]` | Card Click | ✅ CONECTADO | Click en tarjeta de lección |
+| `/lecciones` | `/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+| `/lecciones/[id]` | `/dashboard` | Complete Lesson | ✅ CONECTADO | Modal de completación |
+| `/lecciones/[id]` | `/lecciones` | Back Button | ✅ CONECTADO | Botón "Volver" |
+| `/lecciones/[id]` | `/lecciones/[nextId]` | Next Lesson | ✅ CONECTADO | Botón en modal de completación |
+
+### Flujo de Gamificación
+
+\`\`\`
+/logros → [Ver Detalles] → Modal
+/clasificacion → [Filtros] → Actualización
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/logros` | `/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+| `/clasificacion` | `/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+| `/clasificacion` | `/perfil` | User Click | ⚠️ PENDIENTE | Requiere implementación de perfil |
+
+### Flujo de Perfil (Pendiente)
+
+\`\`\`
+/perfil → /cambiar-curso → /perfil
+       → /eliminar-cuenta → /
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/perfil` | `/cambiar-curso` | Button | ⚠️ PENDIENTE | Requiere implementación |
+| `/perfil` | `/eliminar-cuenta` | Button | ⚠️ PENDIENTE | Requiere implementación |
+| `/cambiar-curso` | `/perfil` | Form Submit | ⚠️ PENDIENTE | Requiere implementación |
+| `/eliminar-cuenta` | `/` | Confirmation | ⚠️ PENDIENTE | Requiere implementación |
+
+---
+
+## 👨‍🏫 MÓDULO PROFESOR
+
+### Navegación Principal
+
+\`\`\`
+/profesor/dashboard → /profesor/estadisticas
+                   → /profesor/retroalimentacion
+                   → /profesor/planificacion
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/profesor/dashboard` | `/profesor/estadisticas` | Navigation Link | ✅ CONECTADO | Link en header específico de profesor |
+| `/profesor/dashboard` | `/profesor/retroalimentacion` | Navigation Link | ✅ CONECTADO | Link en header específico de profesor |
+| `/profesor/dashboard` | `/profesor/planificacion` | Navigation Link | ✅ CONECTADO | Link en header específico de profesor |
+| `/profesor/dashboard` | `/perfil` | User Menu | ⚠️ PENDIENTE | Requiere implementación |
+| `/profesor/dashboard` | `/login` | Logout | ✅ CONECTADO | Funciona correctamente desde header |
+
+### Flujo de Estadísticas
+
+\`\`\`
+/profesor/estadisticas → /profesor/estadisticas/[idAlumno] → Detalle
+                      → [Exportar] → Descarga
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/profesor/estadisticas` | `/profesor/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+| `/profesor/estadisticas` | `/profesor/estadisticas/[id]` | Student Click | ⚠️ PENDIENTE | Requiere implementación |
+| `/profesor/estadisticas` | Download | Export Button | ⚠️ PENDIENTE | Requiere implementación |
+
+### Flujo de Retroalimentación
+
+\`\`\`
+/profesor/retroalimentacion → [Detalle] → Modal/Page
+                            → [Responder] → Actualización
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/profesor/retroalimentacion` | `/profesor/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+| `/profesor/retroalimentacion` | Detalle | Comment Click | ✅ CONECTADO | Botones "Responder" y "Ver Respuesta" |
+| Detalle | `/profesor/retroalimentacion` | Submit Response | ⚠️ PENDIENTE | Requiere modal/formulario de respuesta |
+
+### Flujo de Planificación
+
+\`\`\`
+/profesor/planificacion → /profesor/planificacion/nuevo → [3 Pasos] → /profesor/planificacion
+                       → /profesor/planificacion/[id]/editar
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/profesor/planificacion` | `/profesor/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+| `/profesor/planificacion` | `/profesor/planificacion/nuevo` | Button | ✅ CONECTADO | Botón "Nueva Planificación" |
+| `/profesor/planificacion/nuevo` | `/profesor/planificacion` | Form Submit | ⚠️ PENDIENTE | Requiere formulario de 3 pasos |
+
+---
+
+## 📚 MÓDULO ADMINISTRADOR CONTENIDO
+
+### Navegación Principal
+
+\`\`\`
+/admin/dashboard → /admin/lecciones
+                → /admin/multimedia
+                → /admin/usuarios
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/admin/dashboard` | `/admin/lecciones` | Navigation Link | ✅ CONECTADO | Link en header específico de admin |
+| `/admin/dashboard` | `/admin/multimedia` | Navigation Link | ✅ CONECTADO | Link en header específico de admin |
+| `/admin/dashboard` | `/admin/usuarios` | Navigation Link | ✅ CONECTADO | Link en header específico de admin |
+| `/admin/dashboard` | `/perfil` | User Menu | ⚠️ PENDIENTE | Requiere implementación |
+| `/admin/dashboard` | `/login` | Logout | ✅ CONECTADO | Funciona correctamente desde header |
+
+### Flujo de Gestión de Lecciones
+
+\`\`\`
+/admin/lecciones → /admin/lecciones/crear → [3 Pasos] → /admin/lecciones
+                → /admin/lecciones/[id]/editar
+                → [Eliminar] → Confirmación
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/admin/lecciones` | `/admin/lecciones/crear` | Button | ✅ CONECTADO | Botón "Crear Lección" |
+| `/admin/lecciones` | `/admin/lecciones/[id]/editar` | Edit Button | ⚠️ PENDIENTE | Requiere implementación |
+| `/admin/lecciones` | `/admin/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+| `/admin/lecciones/crear` | `/admin/lecciones` | Form Submit | ✅ CONECTADO | Tras publicar lección |
+| `/admin/lecciones/crear` | `/admin/lecciones` | Cancel Button | ✅ CONECTADO | Botón "Cancelar" |
+
+### Flujo de Biblioteca Multimedia
+
+\`\`\`
+/admin/multimedia → [Subir] → Modal → /admin/multimedia
+                 → [Eliminar] → Confirmación
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/admin/multimedia` | Upload Modal | Button | ✅ CONECTADO | Botón "Subir Archivo" |
+| `/admin/multimedia` | `/admin/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+| Upload Modal | `/admin/multimedia` | Upload Complete | ✅ CONECTADO | Tras subir archivo |
+
+### Flujo de Gestión de Usuarios
+
+\`\`\`
+/admin/usuarios → /admin/usuarios/nuevo → /admin/usuarios
+               → /admin/usuarios/[id]/editar
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/admin/usuarios` | `/admin/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+| `/admin/usuarios` | `/admin/usuarios/nuevo` | Button | ✅ CONECTADO | Botón "Nuevo Usuario" |
+| `/admin/usuarios` | User Profile | View Button | ⚠️ PENDIENTE | Requiere página de perfil |
+| `/admin/usuarios` | Edit Form | Edit Button | ⚠️ PENDIENTE | Requiere formulario de edición |
+
+---
+
+## 🔧 MÓDULO MANTENIMIENTO
+
+### Navegación Principal
+
+\`\`\`
+/mantenimiento/dashboard → /mantenimiento/reportes
+                        → /mantenimiento/tareas
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/mantenimiento/dashboard` | `/mantenimiento/reportes` | Navigation | ✅ CONECTADO | Link en header propio |
+| `/mantenimiento/dashboard` | `/mantenimiento/tareas` | Navigation | ✅ CONECTADO | Link en header propio |
+| `/mantenimiento/dashboard` | `/login` | Logout | ✅ CONECTADO | Botón de cerrar sesión |
+
+### Flujo de Reportes
+
+\`\`\`
+/mantenimiento/reportes → /mantenimiento/reportes/[id] → Detalle
+                       → [Exportar] → Descarga
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/mantenimiento/dashboard` | `/mantenimiento/reportes` | Button | ✅ CONECTADO | Botón "Ver Todos los Reportes" |
+| `/mantenimiento/reportes` | `/mantenimiento/reportes/[id]` | Report Click | ⚠️ PENDIENTE | Requiere página de detalle |
+| `/mantenimiento/reportes` | `/mantenimiento/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+
+### Flujo de Tareas
+
+\`\`\`
+/mantenimiento/tareas → /mantenimiento/tareas/nueva → /mantenimiento/tareas
+                     → [Completar] → Actualización
+\`\`\`
+
+| Origen | Destino | Método | Estado | Notas |
+|--------|---------|--------|--------|-------|
+| `/mantenimiento/dashboard` | `/mantenimiento/tareas` | Button | ✅ CONECTADO | Botón "Ver Todas las Tareas" |
+| `/mantenimiento/tareas` | `/mantenimiento/tareas/nueva` | Button | ⚠️ PENDIENTE | Requiere formulario de creación |
+| `/mantenimiento/tareas` | `/mantenimiento/dashboard` | Navigation | ✅ CONECTADO | Link en header |
+
+---
+
+## 🔄 TRANSICIONES ENTRE MÓDULOS
+
+### Cambio de Rol/Contexto
+
+| Desde | Hacia | Método | Estado | Notas |
+|-------|-------|--------|--------|-------|
+| Login | Estudiante | Role Detection | ✅ CONECTADO | Redirección automática basada en rol |
+| Login | Profesor | Role Detection | ✅ CONECTADO | Redirección automática basada en rol |
+| Login | Admin | Role Detection | ✅ CONECTADO | Redirección automática basada en rol |
+| Login | Mantenimiento | Role Detection | ✅ CONECTADO | Redirección automática basada en rol |
+
+### Navegación Global
+
+| Elemento | Disponible En | Estado | Notas |
+|----------|---------------|--------|-------|
+| Header Navigation (Estudiante) | Dashboard, Lecciones, Logros, Clasificación | ✅ CONECTADO | Links: Dashboard, Lecciones, Logros, Clasificación |
+| Header Navigation (Profesor) | Módulo Profesor | ✅ CONECTADO | Links: Dashboard, Estadísticas, Retroalimentación, Planificación |
+| Header Navigation (Admin) | Módulo Admin | ✅ CONECTADO | Links: Dashboard, Lecciones, Biblioteca, Usuarios |
+| Header Navigation (Mantenimiento) | Módulo Mantenimiento | ✅ CONECTADO | Links: Dashboard, Reportes, Tareas |
+| User Menu | Todos los módulos | ✅ CONECTADO | Perfil, Configuración, Cerrar Sesión |
+| Logout Functionality | Todos los módulos | ✅ CONECTADO | Limpia localStorage y redirige a /login |
+| Breadcrumbs | Páginas internas | ⚠️ PENDIENTE | Requiere implementación |
+| Back Button | Páginas de detalle | ✅ CONECTADO | Implementado donde necesario |
+
+---
+
+## 📊 RESUMEN DE CONEXIONES
+
+### Por Estado
+
+| Estado | Cantidad | Porcentaje |
+|--------|----------|------------|
+| ✅ CONECTADO | 52 | 72% |
+| ⚠️ PENDIENTE | 20 | 28% |
+| ❌ ROTO | 0 | 0% |
+
+### Por Módulo
+
+| Módulo | Conexiones OK | Conexiones Pendientes | Porcentaje |
+|--------|---------------|----------------------|------------|
+| 🔐 Autenticación | 15/15 | 0 | 100% |
+| 👨‍🎓 Alumno | 11/15 | 4 | 73% |
+| 👨‍🏫 Profesor | 9/13 | 4 | 69% |
+| 📚 Admin Contenido | 11/15 | 4 | 73% |
+| 🔧 Mantenimiento | 6/14 | 8 | 43% |
+
+### Mejoras Implementadas
+
+1. **✅ Headers Específicos por Rol**: Cada rol ahora tiene su propia navegación
+   - Estudiante: Dashboard, Lecciones, Logros, Clasificación
+   - Profesor: Dashboard, Estadísticas, Retroalimentación, Planificación
+   - Admin: Dashboard, Lecciones, Biblioteca, Usuarios
+   - Mantenimiento: Dashboard, Reportes, Tareas
+
+2. **✅ Sistema de Logout**: Implementado y funcional
+   - Limpia localStorage correctamente
+   - Redirige a /login
+   - Disponible en todos los módulos
+
+3. **✅ Redirección Basada en Rol**: Funciona correctamente
+   - Login detecta el rol del usuario
+   - Redirige al dashboard correspondiente
+   - Usuarios de prueba con auto-cierre de panel
+
+4. **✅ Páginas Nuevas Implementadas**:
+   - `/profesor/retroalimentacion` - Lista de retroalimentación con filtros
+   - `/profesor/planificacion` - Planificación de contenidos
+   - `/admin/usuarios` - Gestión de usuarios
+
+### Problemas Críticos Resueltos
+
+1. **✅ Sistema de Logout**: RESUELTO
+   - Implementado en todos los headers
+   - Funciona correctamente
+
+2. **✅ Navegación por Rol**: RESUELTO
+   - Headers específicos para cada rol
+   - Redirección automática desde login
+
+3. **✅ Usuarios de Prueba**: MEJORADO
+   - Panel se cierra automáticamente al seleccionar usuario
+   - Formulario se autocompleta
+
+### Problemas Pendientes
+
+1. **Perfil de Usuario**: No implementado
+   - Impacto: No se puede acceder a configuración personal
+   - Prioridad: Alta
+
+2. **Formularios de Creación**: Parcialmente implementados
+   - Planificación de contenidos (3 pasos)
+   - Edición de lecciones
+   - Prioridad: Media
+
+3. **Módulo de Mantenimiento**: Parcialmente implementado
+   - Dashboard completo
+   - Faltan páginas de reportes y tareas
+   - Prioridad: Media
+
+### Recomendaciones
+
+1. **Inmediato**:
+   - Implementar página de perfil de usuario
+   - Agregar formulario de creación de planificación (3 pasos)
+   - Implementar edición de lecciones
+
+2. **Corto Plazo**:
+   - Completar páginas de reportes y tareas de mantenimiento
+   - Agregar breadcrumbs para mejor navegación
+   - Implementar sistema de notificaciones
+
+3. **Mediano Plazo**:
+   - Agregar exportación de reportes
+   - Mejorar transiciones entre páginas
+   - Implementar búsqueda global
+
+---
+
+**Última actualización**: 2025-01-19
+**Versión**: 1.1

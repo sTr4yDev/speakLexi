@@ -1,0 +1,28 @@
+# ARCHIVO: front-end/app/asignar-nivel/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/asignar-nivel/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:54:47
+# ==================================================
+
+import { LevelAssignmentFlow } from "@/components/auth/level-assignment-flow"
+import { BookOpen } from "lucide-react"
+import Link from "next/link"
+
+export default function AssignLevelPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+      <div className="container mx-auto flex min-h-screen flex-col items-center justify-center px-4 py-8">
+        <div className="w-full max-w-2xl">
+          {/* Logo */}
+          <Link href="/" className="mb-8 flex items-center justify-center gap-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <BookOpen className="h-7 w-7" />
+            </div>
+            <span className="text-3xl font-bold">SpeakLexi</span>
+          </Link>
+
+          <LevelAssignmentFlow />
+        </div>
+      </div>
+    </div>
+  )
+}

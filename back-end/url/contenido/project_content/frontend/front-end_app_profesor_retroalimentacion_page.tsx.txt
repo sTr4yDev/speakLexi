@@ -1,0 +1,198 @@
+# ARCHIVO: front-end/app/profesor/retroalimentacion/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/retroalimentacion/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:16
+# ==================================================
+
+"use client"
+
+import { useState } from "react"
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { MessageSquare, ThumbsUp, AlertCircle, Clock, User } from "lucide-react"
+import { ResponseModal } from "@/components/teacher/response-modal"
+
+export default function FeedbackPage() {
+  const [selectedFeedback, setSelectedFeedback] = useState<number | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const feedbackItems = [
+    {
+      id: 1,
+      student: "Juan Pérez",
+      type: "sugerencia",
+      message: "Sería genial tener más ejercicios de conversación",
+      date: "Hace 2 horas",
+      status: "pendiente",
+      response: null,
+    },
+    {
+      id: 2,
+      student: "María García",
+      type: "problema",
+      message: "No puedo acceder a la lección de gramática avanzada",
+      date: "Hace 5 horas",
+      status: "en_revision",
+      response: null,
+    },
+    {
+      id: 3,
+      student: "Carlos López",
+      type: "felicitacion",
+      message: "Excelente explicación en la última clase, muy clara",
+      date: "Hace 1 día",
+      status: "respondido",
+      response: "¡Muchas gracias por tu comentario! Me alegra que la explicación haya sido útil.",
+    },
+  ]
+
+  const handleRespond = (feedbackId: number) => {
+    setSelectedFeedback(feedbackId)
+    setIsModalOpen(true)
+  }
+
+  const selectedItem = feedbackItems.find((item) => item.id === selectedFeedback)
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-balance">Retroalimentación</h1>
+          <p className="mt-1 text-muted-foreground">Revisa y responde la retroalimentación de tus estudiantes</p>
+        </div>
+
+        {/* Stats */}
+        <div className="mb-6 grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Recibida</CardTitle>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">24</div>
+              <p className="text-xs text-muted-foreground">Este mes</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
+              <Clock className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">8</div>
+              <p className="text-xs text-muted-foreground">Por responder</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Felicitaciones</CardTitle>
+              <ThumbsUp className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">15</div>
+              <p className="text-xs text-muted-foreground">Feedback positivo</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Problemas</CardTitle>
+              <AlertCircle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">3</div>
+              <p className="text-xs text-muted-foreground">Requieren atención</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Feedback List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Retroalimentación Recibida</CardTitle>
+            <CardDescription>Filtra y responde la retroalimentación de tus estudiantes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="todas" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="todas">Todas</TabsTrigger>
+                <TabsTrigger value="pendientes">Pendientes</TabsTrigger>
+                <TabsTrigger value="revision">En Revisión</TabsTrigger>
+                <TabsTrigger value="respondidas">Respondidas</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="todas" className="mt-6 space-y-4">
+                {feedbackItems.map((item) => (
+                  <Card key={item.id}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="mb-2 flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{item.student}</span>
+                            <Badge
+                              variant={
+                                item.type === "problema"
+                                  ? "destructive"
+                                  : item.type === "felicitacion"
+                                    ? "default"
+                                    : "secondary"
+                              }
+                            >
+                              {item.type}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={
+                                item.status === "pendiente"
+                                  ? "border-orange-500 text-orange-500"
+                                  : item.status === "en_revision"
+                                    ? "border-blue-500 text-blue-500"
+                                    : "border-green-500 text-green-500"
+                              }
+                            >
+                              {item.status.replace("_", " ")}
+                            </Badge>
+                          </div>
+                          <p className="mb-2 text-sm text-muted-foreground">{item.message}</p>
+                          <p className="text-xs text-muted-foreground">{item.date}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={item.status === "respondido" ? "outline" : "default"}
+                          onClick={() => handleRespond(item.id)}
+                        >
+                          {item.status === "respondido" ? "Ver Respuesta" : "Responder"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </TabsContent>
+
+              <TabsContent value="pendientes" className="mt-6">
+                <p className="text-center text-muted-foreground">Filtrando retroalimentación pendiente...</p>
+              </TabsContent>
+
+              <TabsContent value="revision" className="mt-6">
+                <p className="text-center text-muted-foreground">Filtrando retroalimentación en revisión...</p>
+              </TabsContent>
+
+              <TabsContent value="respondidas" className="mt-6">
+                <p className="text-center text-muted-foreground">Filtrando retroalimentación respondida...</p>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </main>
+
+      <ResponseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} feedback={selectedItem} />
+    </div>
+  )
+}

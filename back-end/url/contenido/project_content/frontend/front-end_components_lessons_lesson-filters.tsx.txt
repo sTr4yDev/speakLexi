@@ -1,0 +1,77 @@
+# ARCHIVO: front-end/components/lessons/lesson-filters.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/lesson-filters.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:04
+# ==================================================
+
+"use client"
+
+import { Card } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
+
+export function LessonFilters() {
+  return (
+    <Card className="p-6">
+      <h3 className="mb-4 font-bold">Filtros</h3>
+
+      <div className="space-y-6">
+        {/* Level Filter */}
+        <div>
+          <Label className="mb-3 block text-sm font-semibold">Nivel</Label>
+          <RadioGroup defaultValue="all">
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="all" id="all" />
+              <Label htmlFor="all" className="font-normal">
+                Todos
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="A1" id="A1" />
+              <Label htmlFor="A1" className="font-normal">
+                A1 - Principiante
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="A2" id="A2" />
+              <Label htmlFor="A2" className="font-normal">
+                A2 - Elemental
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="B1" id="B1" />
+              <Label htmlFor="B1" className="font-normal">
+                B1 - Intermedio
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        {/* Progress Filter */}
+        <div>
+          <Label className="mb-3 block text-sm font-semibold">Progreso</Label>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox id="not-started" />
+              <Label htmlFor="not-started" className="font-normal">
+                No iniciadas
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="in-progress" />
+              <Label htmlFor="in-progress" className="font-normal">
+                En progreso
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="completed" />
+              <Label htmlFor="completed" className="font-normal">
+                Completadas
+              </Label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}

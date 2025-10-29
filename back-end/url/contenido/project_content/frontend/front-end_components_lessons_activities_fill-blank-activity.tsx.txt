@@ -1,0 +1,76 @@
+# ARCHIVO: front-end/components/lessons/activities/fill-blank-activity.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/activities/fill-blank-activity.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:56
+# ==================================================
+
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { CheckCircle2, XCircle } from "lucide-react"
+
+interface FillBlankActivityProps {
+  question: string
+  correctAnswer: string
+  onComplete: (correct: boolean) => void
+}
+
+export function FillBlankActivity({ question, correctAnswer, onComplete }: FillBlankActivityProps) {
+  const [answer, setAnswer] = useState("")
+  const [submitted, setSubmitted] = useState(false)
+  const [isCorrect, setIsCorrect] = useState(false)
+
+  const handleSubmit = () => {
+    if (!answer.trim()) return
+
+    const correct = answer.trim().toLowerCase() === correctAnswer.toLowerCase()
+    setIsCorrect(correct)
+    setSubmitted(true)
+
+    setTimeout(() => {
+      onComplete(correct)
+      setAnswer("")
+      setSubmitted(false)
+    }, 1500)
+  }
+
+  return (
+    <div>
+      <h2 className="mb-8 text-2xl font-bold text-balance">{question}</h2>
+
+      <div className="mb-8">
+        <div className="relative">
+          <Input
+            type="text"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            placeholder="Escribe tu respuesta aquí..."
+            disabled={submitted}
+            className={`text-lg ${
+              submitted ? (isCorrect ? "border-success bg-success/10" : "border-destructive bg-destructive/10") : ""
+            }`}
+          />
+          {submitted && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              {isCorrect ? (
+                <CheckCircle2 className="h-5 w-5 text-success" />
+              ) : (
+                <XCircle className="h-5 w-5 text-destructive" />
+              )}
+            </div>
+          )}
+        </div>
+
+        {submitted && !isCorrect && (
+          <p className="mt-2 text-sm text-destructive">La respuesta correcta es: {correctAnswer}</p>
+        )}
+      </div>
+
+      <Button onClick={handleSubmit} disabled={!answer.trim() || submitted} className="w-full">
+        {submitted ? "Verificando..." : "Verificar Respuesta"}
+      </Button>
+    </div>
+  )
+}

@@ -1,0 +1,196 @@
+# ARCHIVO: front-end/components/dashboard/dashboard-header.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/dashboard/dashboard-header.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:44
+# ==================================================
+
+"use client"
+
+import { useEffect, useState } from "react"
+import { Bell, Settings, LogOut, Languages, Home } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useRouter } from "next/navigation"
+// --- IMPORTACIÓN AÑADIDA ---
+import { userAPI } from "@/lib/api" // Importar la API centralizada
+
+interface DashboardHeaderProps {
+  nombre?: string
+  primerApellido?: string
+  showBackButton?: boolean // Nueva prop para mostrar botón de regreso
+}
+
+const IDIOMA_FLAGS: { [key: string]: string } = {
+  "Inglés": "🇺🇸",
+  "Francés": "🇫🇷",
+  "Alemán": "🇩🇪",
+  "Italiano": "🇮🇹",
+  "Español": "🇪🇸", // <-- Añadido por si acaso
+}
+
+export function DashboardHeader({ 
+  nombre = "Usuario", 
+  primerApellido = "",
+  showBackButton = false // Por defecto no se muestra
+}: DashboardHeaderProps) {
+  const router = useRouter()
+  const [idioma, setIdioma] = useState("Inglés")
+  const [nivel, setNivel] = useState("A1")
+  const [nombreUsuario, setNombreUsuario] = useState(nombre)
+  const [apellidoUsuario, setApellidoUsuario] = useState(primerApellido)
+
+  useEffect(() => {
+    cargarDatosUsuario()
+  }, [])
+
+  // --- FUNCIÓN 'handleLogout' MOVIDA ARRIBA ---
+  // Para poder llamarla en caso de error 401
+  const handleLogout = () => {
+    localStorage.clear()
+    router.push("/login")
+  }
+
+  const cargarDatosUsuario = async () => {
+    try {
+      // --- INICIO DE MODIFICACIÓN ---
+      // const userId = localStorage.getItem("userId") // No es necesario, userAPI.getPerfilCompleto lo maneja
+      // if (!userId) return
+
+      // const res = await fetch(`http://localhost:5000/api/usuario/perfil/${userId}`) // <-- NO USAR FETCH DIRECTO
+      // const data = await res.json()
+
+      // Usar la función centralizada de la API
+      // Esta función (getPerfilCompleto) ya usa el token gracias a la corrección en api.ts
+      const data = await userAPI.getPerfilCompleto()
+      // --- FIN DE MODIFICACIÓN ---
+
+
+      // if (res.ok) { // fetchAPI ya maneja las respuestas no-ok
+        // Actualizar nombre del usuario
+        if (data.usuario) {
+          setNombreUsuario(data.usuario.nombre)
+          setApellidoUsuario(data.usuario.primer_apellido)
+        }
+        
+        // Actualizar perfil
+        if (data.perfil) {
+          setIdioma(data.perfil.idioma || "Inglés")
+          setNivel(data.perfil.nivel_actual || "A1")
+        }
+      // }
+    } catch (error: any) {
+      console.error("Error al cargar datos del usuario:", error)
+      
+      // --- MANEJO DE ERROR 401 ---
+      // Si el token es inválido o expiró (error 401), desloguear al usuario
+      if (error.status === 401) {
+        console.warn("Token no válido o expirado. Deslogueando...")
+        handleLogout()
+      }
+    }
+  }
+
+  const handleBackToDashboard = () => {
+    router.push("/dashboard")
+  }
+
+  // Iniciales corregidas: Primer Apellido + Nombre (PH en lugar de HP)
+  const iniciales = nombreUsuario && apellidoUsuario 
+    ? `${apellidoUsuario[0]}${nombreUsuario[0]}`.toUpperCase()
+    : "U"
+
+  return (
+    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center justify-between px-4">
+        {/* Logo / Título con botón de regreso opcional */}
+        <div className="flex items-center gap-3">
+          {showBackButton && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleBackToDashboard}
+              title="Volver al dashboard"
+            >
+              <Home className="h-5 w-5" />
+            </Button>
+          )}
+          <h1 className="text-2xl font-bold cursor-pointer" onClick={handleBackToDashboard}>
+            SpeakLexi
+          </h1>
+        </div>
+
+        {/* Idioma Actual */}
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="flex items-center gap-2 px-3 py-1.5 text-sm">
+            <span className="text-xl">{IDIOMA_FLAGS[idioma] || "🌍"}</span>
+            <span className="font-medium">{idioma}</span>
+            <span className="text-muted-foreground">•</span>
+            <span className="font-semibold">{nivel}</span>
+          </Badge>
+        </div>
+
+        {/* Acciones */}
+        <div className="flex items-center gap-3">
+          {/* Notificaciones */}
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="h-5 w-5" />
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+              3
+            </span>
+          </Button>
+
+          {/* Menú de Usuario */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar>
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {iniciales}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  {/* Mostrar nombre completo del usuario */}
+                  <p className="text-sm font-medium">
+                    {nombreUsuario} {apellidoUsuario}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Estudiante</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              
+              {/* Solo Perfil y Configuración */}
+              <DropdownMenuItem onClick={() => router.push("/perfil")}>
+                <Settings className="mr-2 h-4 w-4" />
+                Perfil
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem onClick={() => router.push("/perfil")}>
+                <Settings className="mr-2 h-4 w-4" />
+                Configuración
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar sesión
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </header>
+  )
+}

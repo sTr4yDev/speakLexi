@@ -1,0 +1,135 @@
+# ARCHIVO: back-end/services/correo_service.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/correo_service.py
+# FECHA DESCARGA: 2025-10-28 22:54:25
+# ==================================================
+
+from flask_mail import Message
+from extensions import mail
+
+def enviar_codigo_verificacion(correo, codigo):
+    """Envía el código de verificación al correo del usuario"""
+    try:
+        msg = Message(
+            subject="Verifica tu cuenta en SpeakLexi",
+            recipients=[correo],
+            body=f"""
+            ¡Bienvenido a SpeakLexi!
+            
+            Tu código de verificación es: {codigo}
+            
+            Este código expirará en 24 horas.
+            
+            Si no solicitaste esta verificación, ignora este mensaje.
+            
+            Saludos,
+            Equipo SpeakLexi
+            """,
+            html=f"""
+            <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center;">
+                        <h1 style="color: white; margin: 0;">¡Bienvenido a SpeakLexi!</h1>
+                    </div>
+                    
+                    <div style="padding: 30px; background-color: #f9f9f9; border-radius: 10px; margin-top: 20px;">
+                        <p style="font-size: 16px; color: #333;">Tu código de verificación es:</p>
+                        <div style="background-color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+                            <h2 style="color: #667eea; letter-spacing: 5px; font-size: 32px; margin: 0;">{codigo}</h2>
+                        </div>
+                        <p style="font-size: 14px; color: #666;">Este código expirará en <strong>24 horas</strong>.</p>
+                        <p style="font-size: 14px; color: #666;">Si no solicitaste esta verificación, ignora este mensaje.</p>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+                        <p style="font-size: 12px; color: #999;">Equipo SpeakLexi</p>
+                    </div>
+                </body>
+            </html>
+            """
+        )
+        mail.send(msg)
+        print(f"✅ Código de verificación enviado a {correo}")
+    except Exception as e:
+        print(f"❌ Error al enviar correo de verificación: {str(e)}")
+        raise
+
+
+def enviar_recuperacion_password(correo, token):
+    """Envía el enlace de recuperación de contraseña con token seguro"""
+    # URL del frontend (ajusta según tu configuración)
+    FRONTEND_URL = "http://localhost:3000"
+    enlace_recuperacion = f"{FRONTEND_URL}/restablecer-contrasena?token={token}"
+    
+    try:
+        msg = Message(
+            subject="Recuperación de contraseña - SpeakLexi",
+            recipients=[correo],
+            body=f"""
+            Solicitud de recuperación de contraseña
+            
+            Haz clic en el siguiente enlace para restablecer tu contraseña:
+            {enlace_recuperacion}
+            
+            Este enlace expirará en 1 hora.
+            
+            Si no solicitaste restablecer tu contraseña, ignora este mensaje.
+            Tu contraseña permanecerá sin cambios.
+            
+            Saludos,
+            Equipo SpeakLexi
+            """,
+            html=f"""
+            <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center;">
+                        <h1 style="color: white; margin: 0;">Recuperación de Contraseña</h1>
+                    </div>
+                    
+                    <div style="padding: 30px; background-color: #f9f9f9; border-radius: 10px; margin-top: 20px;">
+                        <p style="font-size: 16px; color: #333;">Recibimos una solicitud para restablecer tu contraseña.</p>
+                        <p style="font-size: 16px; color: #333;">Haz clic en el siguiente botón para continuar:</p>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{enlace_recuperacion}" 
+                               style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                      color: white; 
+                                      padding: 15px 40px; 
+                                      text-decoration: none; 
+                                      border-radius: 8px; 
+                                      font-size: 16px; 
+                                      font-weight: bold;
+                                      display: inline-block;">
+                                Restablecer Contraseña
+                            </a>
+                        </div>
+                        
+                        <p style="font-size: 14px; color: #666;">O copia y pega este enlace en tu navegador:</p>
+                        <p style="font-size: 12px; color: #999; word-break: break-all; background-color: white; padding: 10px; border-radius: 4px;">
+                            {enlace_recuperacion}
+                        </p>
+                        
+                        <p style="font-size: 14px; color: #666; margin-top: 20px;">Este enlace expirará en <strong>1 hora</strong>.</p>
+                        
+                        <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                            <p style="font-size: 14px; color: #856404; margin: 0;">
+                                <strong>⚠️ Importante:</strong> Si no solicitaste restablecer tu contraseña, 
+                                ignora este mensaje. Tu contraseña permanecerá sin cambios.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+                        <p style="font-size: 12px; color: #999;">Equipo SpeakLexi</p>
+                        <p style="font-size: 11px; color: #ccc; margin-top: 10px;">
+                            Este correo fue enviado a {correo}
+                        </p>
+                    </div>
+                </body>
+            </html>
+            """
+        )
+        mail.send(msg)
+        print(f"✅ Correo de recuperación enviado a {correo}")
+    except Exception as e:
+        print(f"❌ Error al enviar correo de recuperación: {str(e)}")
+        raise
