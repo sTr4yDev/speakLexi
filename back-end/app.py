@@ -14,9 +14,9 @@ import os
 # ========================================
 # Importante: Importar ANTES de init_db() para que SQLAlchemy los registre
 from models.usuario import Usuario, PerfilUsuario, PerfilEstudiante, PerfilProfesor, PerfilAdministrador
-from models.leccion import Leccion, Actividad, leccion_multimedia  # ← AGREGAR Actividad
+from models.leccion import Leccion, Actividad, leccion_multimedia
 from models.multimedia import Multimedia, ConfiguracionMultimedia
-from models.cursos import Curso, ProgresoCurso  # ← AGREGAR modelos de cursos
+from models.cursos import Curso, ProgresoCurso
 
 # ========================================
 # IMPORTAR BLUEPRINTS
@@ -25,8 +25,8 @@ from routes.auth import auth_bp
 from routes.usuario_routes import usuario_bp
 from routes.leccion_routes import leccion_bp
 from routes.multimedia_routes import multimedia_bp
-from routes.curso_routes import curso_bp  # ← AGREGAR
-from routes.actividades_routes import actividades_bp  # ← AGREGAR
+from routes.curso_routes import curso_bp
+from routes.actividades_routes import actividades_bp
 
 
 def create_app(config_class=Config):
@@ -110,8 +110,8 @@ def create_app(config_class=Config):
     app.register_blueprint(usuario_bp)
     app.register_blueprint(leccion_bp)
     app.register_blueprint(multimedia_bp)
-    app.register_blueprint(curso_bp)  # ← AGREGAR
-    app.register_blueprint(actividades_bp)  # ← AGREGAR
+    app.register_blueprint(curso_bp)
+    app.register_blueprint(actividades_bp)
     
     # Log de rutas registradas (útil para debugging)
     if app.debug:
@@ -137,14 +137,23 @@ def create_app(config_class=Config):
     def index():
         return {
             'mensaje': 'API SpeakLexi funcionando correctamente',
-            'version': '2.0.0',
+            'version': '3.0.0',
+            'modulos': {
+                'autenticacion': '✅',
+                'usuarios': '✅',
+                'cursos': '✅',
+                'lecciones': '✅',
+                'actividades': '✅',
+                'multimedia': '✅',
+                'progreso': '✅'
+            },
             'endpoints': {
                 'auth': '/api/auth',
                 'usuarios': '/api/usuario',
+                'cursos': '/api/cursos',
                 'lecciones': '/api/lecciones',
-                'multimedia': '/api/multimedia',
-                'cursos': '/api/cursos',  # ← AGREGAR
-                'actividades': '/api/actividades'  # ← AGREGAR
+                'actividades': '/api/actividades',
+                'multimedia': '/api/multimedia'
             }
         }
     
@@ -154,10 +163,25 @@ def create_app(config_class=Config):
         try:
             # Verificar conexión a BD
             db.session.execute(db.text('SELECT 1'))
+            
+            # Contar recursos
+            total_usuarios = Usuario.query.count()
+            total_cursos = Curso.query.count()
+            total_lecciones = Leccion.query.count()
+            total_actividades = Actividad.query.count()
+            total_multimedia = Multimedia.query.count()
+            
             return {
                 'status': 'healthy',
                 'database': 'connected',
-                'version': '2.0.0'
+                'version': '3.0.0',
+                'recursos': {
+                    'usuarios': total_usuarios,
+                    'cursos': total_cursos,
+                    'lecciones': total_lecciones,
+                    'actividades': total_actividades,
+                    'multimedia': total_multimedia
+                }
             }
         except Exception as e:
             return {
@@ -193,11 +217,20 @@ app = create_app()
 
 if __name__ == '__main__':
     print("\n" + "="*60)
-    print("🚀 INICIANDO SPEAKLEXI")
+    print("🚀 INICIANDO SPEAKLEXI v3.0")
     print("="*60)
     print(f"🌐 Servidor: http://localhost:5000")
     print(f"📝 Documentación: http://localhost:5000/")
     print(f"💚 Health check: http://localhost:5000/health")
+    print("="*60)
+    print("📦 Módulos Cargados:")
+    print("   ✅ Autenticación (JWT)")
+    print("   ✅ Usuarios y Perfiles")
+    print("   ✅ Sistema de Cursos")
+    print("   ✅ Lecciones Dinámicas")
+    print("   ✅ Actividades Gamificadas")
+    print("   ✅ Multimedia")
+    print("   ✅ Seguimiento de Progreso")
     print("="*60 + "\n")
     
     app.run(

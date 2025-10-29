@@ -1,0 +1,182 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Save, X, ArrowRight } from "lucide-react"
+import { toast } from "sonner"
+
+interface ActivityFormProps {
+  onGuardar: (actividad: any) => void
+  onCancelar: () => void
+  actividadEditar?: any
+}
+
+export function TranslationForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
+  const [textoOrigen, setTextoOrigen] = useState("")
+  const [idiomaOrigen, setIdiomaOrigen] = useState("ingles")
+  const [textoDestino, setTextoDestino] = useState("")
+  const [idiomaDestino, setIdiomaDestino] = useState("espanol")
+  const [instrucciones, setInstrucciones] = useState("")
+  const [pista, setPista] = useState("")
+  const [puntos, setPuntos] = useState(15)
+
+  useEffect(() => {
+    if (actividadEditar) {
+      setTextoOrigen(actividadEditar.pregunta || "")
+      setIdiomaOrigen(actividadEditar.opciones?.idioma_origen || "ingles")
+      setTextoDestino(actividadEditar.respuesta_correcta || "")
+      setIdiomaDestino(actividadEditar.opciones?.idioma_destino || "espanol")
+      setInstrucciones(actividadEditar.instrucciones || "")
+      setPista(actividadEditar.pista || "")
+      setPuntos(actividadEditar.puntos || 15)
+    }
+  }, [actividadEditar])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!textoOrigen.trim()) {
+      toast.error("Escribe el texto a traducir")
+      return
+    }
+
+    if (!textoDestino.trim()) {
+      toast.error("Escribe la traducción correcta")
+      return
+    }
+
+    if (idiomaOrigen === idiomaDestino) {
+      toast.error("Los idiomas deben ser diferentes")
+      return
+    }
+
+    const actividad = {
+      tipo: 'translation',
+      pregunta: textoOrigen.trim(),
+      instrucciones: instrucciones.trim() || `Traduce del ${idiomaOrigen} al ${idiomaDestino}`,
+      opciones: {
+        idioma_origen: idiomaOrigen,
+        idioma_destino: idiomaDestino
+      },
+      respuesta_correcta: textoDestino.trim(),
+      pista: pista.trim(),
+      puntos,
+      orden: actividadEditar?.orden || 0
+    }
+
+    onGuardar(actividad)
+    toast.success("Actividad guardada")
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="instrucciones">Instrucciones</Label>
+        <Input
+          id="instrucciones"
+          placeholder="Ej: Traduce la siguiente frase al español"
+          value={instrucciones}
+          onChange={(e) => setInstrucciones(e.target.value)}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>Idioma Origen</Label>
+          <Select value={idiomaOrigen} onValueChange={setIdiomaOrigen}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ingles">🇬🇧 Inglés</SelectItem>
+              <SelectItem value="espanol">🇪🇸 Español</SelectItem>
+              <SelectItem value="frances">🇫🇷 Francés</SelectItem>
+              <SelectItem value="aleman">🇩🇪 Alemán</SelectItem>
+              <SelectItem value="italiano">🇮🇹 Italiano</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Idioma Destino</Label>
+          <Select value={idiomaDestino} onValueChange={setIdiomaDestino}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="espanol">🇪🇸 Español</SelectItem>
+              <SelectItem value="ingles">🇬🇧 Inglés</SelectItem>
+              <SelectItem value="frances">🇫🇷 Francés</SelectItem>
+              <SelectItem value="aleman">🇩🇪 Alemán</SelectItem>
+              <SelectItem value="italiano">🇮🇹 Italiano</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="textoOrigen">Texto a traducir *</Label>
+        <Textarea
+          id="textoOrigen"
+          placeholder="Ej: Hello, how are you?"
+          value={textoOrigen}
+          onChange={(e) => setTextoOrigen(e.target.value)}
+          rows={3}
+          required
+        />
+      </div>
+
+      <div className="flex justify-center">
+        <ArrowRight className="h-6 w-6 text-muted-foreground" />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="textoDestino">Traducción correcta *</Label>
+        <Textarea
+          id="textoDestino"
+          placeholder="Ej: Hola, ¿cómo estás?"
+          value={textoDestino}
+          onChange={(e) => setTextoDestino(e.target.value)}
+          rows={3}
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="pista">Pista (Opcional)</Label>
+        <Input
+          id="pista"
+          placeholder="Ej: Recuerda usar el pronombre correcto..."
+          value={pista}
+          onChange={(e) => setPista(e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="puntos">Puntos</Label>
+        <Input
+          id="puntos"
+          type="number"
+          min="1"
+          value={puntos}
+          onChange={(e) => setPuntos(parseInt(e.target.value))}
+        />
+      </div>
+
+      <div className="flex gap-3 pt-4">
+        <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
+          <X className="mr-2 h-4 w-4" />
+          Cancelar
+        </Button>
+        <Button type="submit" className="flex-1">
+          <Save className="mr-2 h-4 w-4" />
+          Guardar Actividad
+        </Button>
+      </div>
+    </form>
+  )
+}

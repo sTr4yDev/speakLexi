@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Save, Loader2, Plus, X, Upload, PlayCircle, Image as ImageIcon, Volume2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
+import { cursosAPI } from "@/lib/api" // ← ESTE ES EL CAMBIO CLAVE
 
 // Tipos de actividades gamificadas
 const TIPOS_ACTIVIDAD = [
@@ -89,22 +90,25 @@ export function CreateLessonForm() {
     cargarCursos()
   }, [])
 
+  // ← ESTE ES EL CAMBIO PRINCIPAL
   const cargarCursos = async () => {
     try {
       setLoadingCursos(true)
-      const response = await fetch('/api/cursos?activos=true', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      console.log('🔄 Cargando cursos con cursosAPI...')
       
-      if (!response.ok) throw new Error('Error al cargar cursos')
+      const data = await cursosAPI.listar({ activo: true })
       
-      const data = await response.json()
+      console.log('✅ Cursos recibidos:', data)
       setCursos(data.cursos || [])
-    } catch (error) {
-      console.error('Error:', error)
-      toast.error('Error al cargar cursos')
+      
+      if (data.cursos && data.cursos.length > 0) {
+        toast.success(`${data.cursos.length} cursos cargados`)
+      } else {
+        toast.warning('No hay cursos disponibles')
+      }
+    } catch (error: any) {
+      console.error('❌ Error al cargar cursos:', error)
+      toast.error(error.message || 'Error al cargar cursos')
     } finally {
       setLoadingCursos(false)
     }
@@ -571,7 +575,6 @@ export function CreateLessonForm() {
                     variant="outline"
                     className="justify-start h-auto p-4"
                     onClick={() => {
-                      // Navegar a creador de actividad específico
                       toast.info(`Creador de "${tipo.label}" próximamente`)
                     }}
                   >

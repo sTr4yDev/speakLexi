@@ -1,0 +1,176 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Save, X, Plus, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+
+interface ActivityFormProps {
+  onGuardar: (actividad: any) => void
+  onCancelar: () => void
+  actividadEditar?: any
+}
+
+export function FillBlankForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
+  const [instrucciones, setInstrucciones] = useState("")
+  const [oracion, setOracion] = useState("")
+  const [huecos, setHuecos] = useState<{ posicion: number; respuesta: string }[]>([])
+  const [palabraHueco, setPalabraHueco] = useState("")
+  const [pista, setPista] = useState("")
+  const [puntos, setPuntos] = useState(10)
+
+  useEffect(() => {
+    if (actividadEditar) {
+      setInstrucciones(actividadEditar.instrucciones || "")
+      setOracion(actividadEditar.pregunta || "")
+      setHuecos(actividadEditar.opciones?.huecos || [])
+      setPista(actividadEditar.pista || "")
+      setPuntos(actividadEditar.puntos || 10)
+    }
+  }, [actividadEditar])
+
+  const agregarHueco = () => {
+    if (!palabraHueco.trim()) {
+      toast.error("Escribe una palabra para el hueco")
+      return
+    }
+
+    const posicion = huecos.length
+    setHuecos([...huecos, { posicion, respuesta: palabraHueco.trim() }])
+    setPalabraHueco("")
+    toast.success(`Hueco #${posicion + 1} agregado`)
+  }
+
+  const eliminarHueco = (index: number) => {
+    setHuecos(huecos.filter((_, i) => i !== index))
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!oracion.trim()) {
+      toast.error("Escribe la oración")
+      return
+    }
+
+    if (huecos.length === 0) {
+      toast.error("Debes agregar al menos un hueco")
+      return
+    }
+
+    const actividad = {
+      tipo: 'fill_blank',
+      pregunta: oracion.trim(),
+      instrucciones: instrucciones.trim() || "Completa los espacios en blanco",
+      opciones: {
+        huecos: huecos
+      },
+      respuesta_correcta: huecos.map(h => h.respuesta),
+      pista: pista.trim(),
+      puntos,
+      orden: actividadEditar?.orden || 0
+    }
+
+    onGuardar(actividad)
+    toast.success("Actividad guardada")
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="oracion">Oración completa *</Label>
+        <Textarea
+          id="oracion"
+          placeholder="Ej: The cat is ____ the table"
+          value={oracion}
+          onChange={(e) => setOracion(e.target.value)}
+          rows={3}
+          required
+        />
+        <p className="text-xs text-muted-foreground">
+          💡 Usa ____ para indicar dónde irán los huecos
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Palabras para los huecos *</Label>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Escribe la palabra correcta"
+            value={palabraHueco}
+            onChange={(e) => setPalabraHueco(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarHueco())}
+          />
+          <Button type="button" onClick={agregarHueco} size="icon">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {huecos.length > 0 && (
+          <div className="space-y-2 mt-2">
+            {huecos.map((hueco, i) => (
+              <div key={i} className="flex items-center gap-2 p-2 bg-secondary rounded">
+                <Badge>Hueco #{i + 1}</Badge>
+                <span className="flex-1 font-mono">{hueco.respuesta}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => eliminarHueco(i)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="instrucciones">Instrucciones</Label>
+        <Input
+          id="instrucciones"
+          placeholder="Ej: Completa con la preposición correcta"
+          value={instrucciones}
+          onChange={(e) => setInstrucciones(e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="pista">Pista (Opcional)</Label>
+        <Input
+          id="pista"
+          placeholder="Ej: Piensa en posiciones espaciales..."
+          value={pista}
+          onChange={(e) => setPista(e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="puntos">Puntos</Label>
+        <Input
+          id="puntos"
+          type="number"
+          min="1"
+          value={puntos}
+          onChange={(e) => setPuntos(parseInt(e.target.value))}
+        />
+      </div>
+
+      <div className="flex gap-3 pt-4">
+        <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
+          <X className="mr-2 h-4 w-4" />
+          Cancelar
+        </Button>
+        <Button type="submit" className="flex-1">
+          <Save className="mr-2 h-4 w-4" />
+          Guardar Actividad
+        </Button>
+      </div>
+    </form>
+  )
+}
