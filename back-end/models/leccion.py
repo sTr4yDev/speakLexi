@@ -1,4 +1,4 @@
-# leccion.py
+# back-end/models/leccion.py
 from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -61,13 +61,17 @@ class Leccion(db.Model, TimestampMixin, SerializableMixin):
 
     # Identificación
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    
+    # ⭐ AGREGAR: Foreign Key al curso
+    curso_id = db.Column(db.Integer, db.ForeignKey('cursos.id'), nullable=True, index=True)
+    
     titulo = db.Column(db.String(200), nullable=False, index=True)
     descripcion = db.Column(db.Text)
 
     # Contenido
     contenido = db.Column(db.JSON, nullable=False, default=dict)
 
-    # Clasificación - CAMBIO AQUÍ: agregar native_enum=False y values_callable
+    # Clasificación
     nivel = db.Column(
         SQLEnum(
             NivelDificultad,
@@ -80,17 +84,17 @@ class Leccion(db.Model, TimestampMixin, SerializableMixin):
     )
     idioma = db.Column(db.String(50), nullable=False, index=True, default='ingles')
     categoria = db.Column(db.String(100), index=True)
-    etiquetas = db.Column(db.JSON, default=list)  # Lista de strings
+    etiquetas = db.Column(db.JSON, default=list)
 
     # Orden y estructura
     orden = db.Column(db.Integer, index=True)
-    requisitos = db.Column(db.JSON, default=list)  # IDs de lecciones previas
+    requisitos = db.Column(db.JSON, default=list)
 
     # Metadata de aprendizaje
-    duracion_estimada = db.Column(db.Integer, default=10)  # En minutos
+    duracion_estimada = db.Column(db.Integer, default=10)
     puntos_xp = db.Column(db.Integer, default=50, nullable=False)
 
-    # Estado - CAMBIO AQUÍ: agregar native_enum=False y values_callable
+    # Estado
     estado = db.Column(
         SQLEnum(
             EstadoLeccion,
@@ -121,11 +125,14 @@ class Leccion(db.Model, TimestampMixin, SerializableMixin):
     )
 
     creador = db.relationship('Usuario', foreign_keys=[creado_por])
+    
+    # ⭐ NO definir relación de vuelta con Curso aquí, ya está en Curso.lecciones
 
-    # Índices compuestos para búsquedas eficientes
+    # Índices compuestos
     __table_args__ = (
         db.Index('idx_leccion_nivel_idioma', 'nivel', 'idioma'),
         db.Index('idx_leccion_estado_orden', 'estado', 'orden'),
+        db.Index('idx_leccion_curso_orden', 'curso_id', 'orden'),
     )
 
     def __repr__(self) -> str:
@@ -135,6 +142,7 @@ class Leccion(db.Model, TimestampMixin, SerializableMixin):
     def to_dict(self, incluir_actividades: bool = False, incluir_multimedia: bool = False) -> Dict[str, Any]:
         data: Dict[str, Any] = {
             'id': self.id,
+            'curso_id': self.curso_id,  # ⭐ Incluir curso_id
             'titulo': self.titulo,
             'descripcion': self.descripcion,
             'contenido': self.contenido,
@@ -211,7 +219,7 @@ class Actividad(db.Model, TimestampMixin, SerializableMixin):
         index=True
     )
 
-    # Tipo y contenido - CAMBIO AQUÍ: agregar native_enum=False y values_callable
+    # Tipo y contenido
     tipo = db.Column(
         SQLEnum(
             TipoActividad,
@@ -223,7 +231,7 @@ class Actividad(db.Model, TimestampMixin, SerializableMixin):
     pregunta = db.Column(db.Text, nullable=False)
     instrucciones = db.Column(db.Text)
 
-    # Opciones y respuestas (estructura varía según tipo)
+    # Opciones y respuestas
     opciones = db.Column(db.JSON, default=dict)
     respuesta_correcta = db.Column(db.JSON, nullable=False)
 
@@ -234,7 +242,7 @@ class Actividad(db.Model, TimestampMixin, SerializableMixin):
     # Metadata
     puntos = db.Column(db.Integer, default=10, nullable=False)
     orden = db.Column(db.Integer, nullable=False)
-    tiempo_limite = db.Column(db.Integer)  # En segundos, opcional
+    tiempo_limite = db.Column(db.Integer)
 
     # Multimedia asociado
     multimedia_id = db.Column(db.Integer, db.ForeignKey('multimedia.id'))
@@ -250,6 +258,7 @@ class Actividad(db.Model, TimestampMixin, SerializableMixin):
     def to_dict(self, incluir_respuesta: bool = False) -> Dict[str, Any]:
         data: Dict[str, Any] = {
             'id': self.id,
+            'leccion_id': self.leccion_id,
             'tipo': self.tipo.value if isinstance(self.tipo, TipoActividad) else self.tipo,
             'pregunta': self.pregunta,
             'instrucciones': self.instrucciones,
@@ -279,9 +288,7 @@ class Actividad(db.Model, TimestampMixin, SerializableMixin):
         }
 
     def _comparar_respuesta(self, respuesta_usuario: Any) -> bool:
-        """
-        Compara respuesta del usuario con la correcta según el tipo de actividad.
-        """
+        """Compara respuesta del usuario con la correcta según el tipo."""
         def _norm(x: Any) -> Any:
             if x is None:
                 return x
@@ -307,7 +314,6 @@ class Actividad(db.Model, TimestampMixin, SerializableMixin):
         if self.tipo == TipoActividad.TRANSLATION:
             return _norm(str(respuesta_usuario)) == _norm(str(self.respuesta_correcta))
 
-        # LISTEN_REPEAT y otros: comparación simple
         return respuesta_usuario == self.respuesta_correcta
 
 

@@ -5,37 +5,97 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Edit, Eye, Trash2, Loader2 } from "lucide-react"
+import { Search, Plus, Edit, Eye, Trash2, Loader2, BookOpen, Award, Clock } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { leccionesAPI, type Leccion } from "@/lib/api"
 import { toast } from "sonner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+interface Curso {
+  id: number
+  nombre: string
+  nivel: string
+  codigo: string
+}
+
+interface Leccion {
+  id: number
+  curso_id?: number
+  titulo: string
+  descripcion: string
+  nivel: string
+  idioma: string
+  categoria?: string
+  duracion_estimada: number
+  puntos_xp: number
+  estado: string
+  orden?: number
+  // Datos del curso si está incluido
+  curso?: Curso
+}
 
 export default function AdminLessonsPage() {
   const [lessons, setLessons] = useState<Leccion[]>([])
+  const [cursos, setCursos] = useState<Curso[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [filtros, setFiltros] = useState({
+    curso_id: "",
     nivel: "",
     estado: "",
-    pagina: 1,
-    por_pagina: 20
+    categoria: ""
   })
 
-  // Cargar lecciones
   useEffect(() => {
+    cargarCursos()
     cargarLecciones()
   }, [filtros])
+
+  const cargarCursos = async () => {
+    try {
+      const response = await fetch('/api/cursos?activos=true', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (!response.ok) throw new Error('Error al cargar cursos')
+      
+      const data = await response.json()
+      setCursos(data.cursos || [])
+    } catch (error) {
+      console.error('Error:', error)
+    }
+  }
 
   const cargarLecciones = async () => {
     try {
       setLoading(true)
-      const response = await leccionesAPI.listar({
-        ...filtros,
-        buscar: searchTerm || undefined
+      
+      // Construir query params
+      const params = new URLSearchParams()
+      if (searchTerm) params.append('buscar', searchTerm)
+      if (filtros.curso_id) params.append('curso_id', filtros.curso_id)
+      if (filtros.nivel) params.append('nivel', filtros.nivel)
+      if (filtros.estado) params.append('estado', filtros.estado)
+      if (filtros.categoria) params.append('categoria', filtros.categoria)
+      
+      const response = await fetch(`/api/lecciones?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       })
       
-      setLessons(response.lecciones || [])
+      if (!response.ok) throw new Error('Error al cargar lecciones')
+      
+      const data = await response.json()
+      setLessons(data.lecciones || [])
     } catch (error: any) {
       console.error("Error al cargar lecciones:", error)
       toast.error(error.message || "Error al cargar lecciones")
@@ -55,9 +115,17 @@ export default function AdminLessonsPage() {
     }
 
     try {
-      await leccionesAPI.eliminar(id)
+      const response = await fetch(`/api/lecciones/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+
+      if (!response.ok) throw new Error('Error al eliminar')
+
       toast.success("Lección archivada exitosamente")
-      cargarLecciones() // Recargar lista
+      cargarLecciones()
     } catch (error: any) {
       console.error("Error al eliminar:", error)
       toast.error(error.message || "Error al archivar lección")
@@ -65,33 +133,43 @@ export default function AdminLessonsPage() {
   }
 
   const getEstadoBadge = (estado: string) => {
-    const variants = {
+    const variants: Record<string, any> = {
       publicada: "default",
       borrador: "secondary",
       archivada: "outline"
     }
     
-    const labels = {
-      publicada: "Publicada",
-      borrador: "Borrador",
-      archivada: "Archivada"
+    const labels: Record<string, string> = {
+      publicada: "✅ Publicada",
+      borrador: "📝 Borrador",
+      archivada: "📦 Archivada"
     }
     
     return (
-      <Badge variant={variants[estado as keyof typeof variants] as any}>
-        {labels[estado as keyof typeof labels] || estado}
+      <Badge variant={variants[estado] || "secondary"}>
+        {labels[estado] || estado}
       </Badge>
     )
   }
 
   const getNivelColor = (nivel: string) => {
-    const colors = {
-      principiante: "text-green-600",
-      intermedio: "text-blue-600",
-      avanzado: "text-purple-600"
+    const colors: Record<string, string> = {
+      principiante: "text-green-600 bg-green-50",
+      intermedio: "text-blue-600 bg-blue-50",
+      avanzado: "text-purple-600 bg-purple-50"
     }
-    return colors[nivel as keyof typeof colors] || "text-gray-600"
+    return colors[nivel] || "text-gray-600 bg-gray-50"
   }
+
+  // Agrupar lecciones por curso
+  const leccionesPorCurso = lessons.reduce((acc, leccion) => {
+    const cursoId = leccion.curso_id || 0
+    if (!acc[cursoId]) {
+      acc[cursoId] = []
+    }
+    acc[cursoId].push(leccion)
+    return acc
+  }, {} as Record<number, Leccion[]>)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
@@ -100,107 +178,231 @@ export default function AdminLessonsPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-balance">Gestión de Lecciones</h1>
+            <h1 className="text-3xl font-bold">📚 Gestión de Lecciones</h1>
             <p className="mt-1 text-muted-foreground">
               {loading ? "Cargando..." : `${lessons.length} lecciones encontradas`}
             </p>
           </div>
           <Link href="/admin/lecciones/crear">
-            <Button>
+            <Button size="lg">
               <Plus className="mr-2 h-4 w-4" />
-              Crear Lección
+              Crear Nueva Lección
             </Button>
           </Link>
         </div>
 
+        {/* Filtros */}
         <Card className="mb-6 p-6">
-          <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar lecciones..." 
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input 
+                placeholder="Buscar lecciones por título o descripción..." 
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-4">
+              <Select
+                value={filtros.curso_id}
+                onValueChange={(value) => setFiltros({...filtros, curso_id: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los cursos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos los cursos</SelectItem>
+                  {cursos.map((curso) => (
+                    <SelectItem key={curso.id} value={curso.id.toString()}>
+                      {curso.codigo} - {curso.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filtros.nivel}
+                onValueChange={(value) => setFiltros({...filtros, nivel: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los niveles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos los niveles</SelectItem>
+                  <SelectItem value="principiante">Principiante</SelectItem>
+                  <SelectItem value="intermedio">Intermedio</SelectItem>
+                  <SelectItem value="avanzado">Avanzado</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filtros.estado}
+                onValueChange={(value) => setFiltros({...filtros, estado: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los estados" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos los estados</SelectItem>
+                  <SelectItem value="publicada">Publicada</SelectItem>
+                  <SelectItem value="borrador">Borrador</SelectItem>
+                  <SelectItem value="archivada">Archivada</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filtros.categoria}
+                onValueChange={(value) => setFiltros({...filtros, categoria: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas las categorías" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todas las categorías</SelectItem>
+                  <SelectItem value="vocabulario">📚 Vocabulario</SelectItem>
+                  <SelectItem value="gramatica">📖 Gramática</SelectItem>
+                  <SelectItem value="pronunciacion">🗣️ Pronunciación</SelectItem>
+                  <SelectItem value="conversacion">💬 Conversación</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </form>
         </Card>
 
-        <Card className="p-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
+        {/* Lista de lecciones */}
+        {loading ? (
+          <Card className="p-12">
+            <div className="flex items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : lessons.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <p>No se encontraron lecciones</p>
+          </Card>
+        ) : lessons.length === 0 ? (
+          <Card className="p-12">
+            <div className="text-center text-muted-foreground">
+              <BookOpen className="mx-auto mb-4 h-12 w-12 opacity-50" />
+              <p className="mb-2 text-lg font-semibold">No se encontraron lecciones</p>
+              <p className="mb-4">Comienza creando tu primera lección</p>
               <Link href="/admin/lecciones/crear">
-                <Button variant="outline" className="mt-4">
+                <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  Crear primera lección
+                  Crear Primera Lección
                 </Button>
               </Link>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {lessons.map((lesson) => (
-                <div
-                  key={lesson.id}
-                  className="rounded-xl border-2 border-border bg-card p-4 transition-all hover:border-primary/50"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="mb-2 flex items-center gap-2">
-                        <h3 className="font-semibold">{lesson.titulo}</h3>
-                        {getEstadoBadge(lesson.estado || 'borrador')}
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {/* Mostrar lecciones agrupadas por curso */}
+            {Object.entries(leccionesPorCurso).map(([cursoId, leccionesCurso]) => {
+              const curso = cursos.find(c => c.id === parseInt(cursoId)) || null
+              
+              return (
+                <Card key={cursoId} className="overflow-hidden">
+                  <div className="border-b bg-muted/50 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-xl font-bold">
+                          {curso ? (
+                            <>
+                              🎓 {curso.codigo} - {curso.nombre}
+                              <Badge variant="outline" className="ml-2">
+                                {curso.nivel}
+                              </Badge>
+                            </>
+                          ) : (
+                            '📋 Sin curso asignado'
+                          )}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          {leccionesCurso.length} {leccionesCurso.length === 1 ? 'lección' : 'lecciones'}
+                        </p>
                       </div>
-                      <p className="mb-2 text-sm text-muted-foreground line-clamp-2">
-                        {lesson.descripcion}
-                      </p>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span className={getNivelColor(lesson.nivel)}>
-                          Nivel: {lesson.nivel}
-                        </span>
-                        <span>•</span>
-                        <span>{lesson.idioma}</span>
-                        {lesson.categoria && (
-                          <>
-                            <span>•</span>
-                            <span>{lesson.categoria}</span>
-                          </>
-                        )}
-                        <span>•</span>
-                        <span>{lesson.duracion_estimada} min</span>
-                        <span>•</span>
-                        <span>{lesson.puntos_xp} XP</span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Link href={`/lecciones/${lesson.id}`}>
-                        <Button variant="ghost" size="icon" title="Vista previa">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Link href={`/admin/lecciones/${lesson.id}/editar`}>
-                        <Button variant="ghost" size="icon" title="Editar">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        title="Archivar"
-                        onClick={() => handleDelete(lesson.id!, lesson.titulo)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {curso && (
+                        <Link href={`/admin/cursos/${curso.id}`}>
+                          <Button variant="outline" size="sm">
+                            Ver Curso
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+
+                  <div className="p-6">
+                    <div className="space-y-3">
+                      {leccionesCurso
+                        .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+                        .map((lesson) => (
+                        <div
+                          key={lesson.id}
+                          className="group rounded-xl border-2 border-border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-md"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="mb-2 flex items-center gap-2">
+                                <span className="text-muted-foreground">#{lesson.orden || '?'}</span>
+                                <h3 className="font-semibold">{lesson.titulo}</h3>
+                                {getEstadoBadge(lesson.estado || 'borrador')}
+                              </div>
+                              
+                              <p className="mb-3 text-sm text-muted-foreground line-clamp-2">
+                                {lesson.descripcion}
+                              </p>
+                              
+                              <div className="flex flex-wrap items-center gap-3 text-sm">
+                                <Badge className={getNivelColor(lesson.nivel)}>
+                                  {lesson.nivel}
+                                </Badge>
+                                
+                                {lesson.categoria && (
+                                  <Badge variant="outline">
+                                    {lesson.categoria}
+                                  </Badge>
+                                )}
+                                
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{lesson.duracion_estimada} min</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Award className="h-3 w-3" />
+                                  <span>{lesson.puntos_xp} XP</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                              <Link href={`/lecciones/${lesson.id}`}>
+                                <Button variant="ghost" size="icon" title="Vista previa">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <Link href={`/admin/lecciones/${lesson.id}/editar`}>
+                                <Button variant="ghost" size="icon" title="Editar">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                title="Archivar"
+                                onClick={() => handleDelete(lesson.id, lesson.titulo)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+        )}
       </main>
     </div>
   )

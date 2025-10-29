@@ -1,18 +1,33 @@
+# back-end/app.py
 from flask import Flask, redirect
 from flask_cors import CORS
 from config.settings import Config
 from config.database import init_db
 from extensions import db, bcrypt, jwt, mail
-from flask_jwt_extended import JWTManager  # ✅ Asegura que JWTManager esté disponible
+from flask_jwt_extended import JWTManager
 import logging
 from logging.handlers import RotatingFileHandler
 import os
 
-# Importar blueprints
+# ========================================
+# ⭐ IMPORTAR TODOS LOS MODELOS
+# ========================================
+# Importante: Importar ANTES de init_db() para que SQLAlchemy los registre
+from models.usuario import Usuario, PerfilUsuario, PerfilEstudiante, PerfilProfesor, PerfilAdministrador
+from models.leccion import Leccion, Actividad, leccion_multimedia  # ← AGREGAR Actividad
+from models.multimedia import Multimedia, ConfiguracionMultimedia
+from models.cursos import Curso, ProgresoCurso  # ← AGREGAR modelos de cursos
+
+# ========================================
+# IMPORTAR BLUEPRINTS
+# ========================================
 from routes.auth import auth_bp
 from routes.usuario_routes import usuario_bp
 from routes.leccion_routes import leccion_bp
 from routes.multimedia_routes import multimedia_bp
+from routes.curso_routes import curso_bp  # ← AGREGAR
+from routes.actividades_routes import actividades_bp  # ← AGREGAR
+
 
 def create_app(config_class=Config):
     """Factory para crear la aplicación Flask"""
@@ -27,7 +42,7 @@ def create_app(config_class=Config):
     # ========================================
     CORS(app, resources={
         r"/api/*": {
-            "origins": ["http://localhost:3000"],
+            "origins": ["http://localhost:3000", "http://localhost:3001"],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
             "allow_headers": ["Content-Type", "Authorization", "x-user-id"],
             "supports_credentials": True,
@@ -44,12 +59,18 @@ def create_app(config_class=Config):
     mail.init_app(app)
 
     # ========================================
-    # CONFIGURAR JWT (EVITA "Subject must be a string")
+    # CONFIGURAR JWT
     # ========================================
     @jwt.user_identity_loader
     def user_identity_lookup(identity):
         """Convierte cualquier identidad numérica en string para evitar errores con JWT"""
         return str(identity)
+
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        """Cargar usuario desde JWT (opcional)"""
+        identity = jwt_data["sub"]
+        return Usuario.query.filter_by(id=int(identity)).one_or_none()
 
     # ========================================
     # LOGGING
@@ -78,7 +99,7 @@ def create_app(config_class=Config):
     def handle_request_fixes():
         from flask import request
         
-        # Flask-CORS ya maneja OPTIONS, no se necesita interceptar
+        # Remover trailing slash (excepto root)
         if request.path != '/' and request.path.endswith('/'):
             return redirect(request.path[:-1], code=308)
     
@@ -89,6 +110,19 @@ def create_app(config_class=Config):
     app.register_blueprint(usuario_bp)
     app.register_blueprint(leccion_bp)
     app.register_blueprint(multimedia_bp)
+    app.register_blueprint(curso_bp)  # ← AGREGAR
+    app.register_blueprint(actividades_bp)  # ← AGREGAR
+    
+    # Log de rutas registradas (útil para debugging)
+    if app.debug:
+        print("\n" + "="*60)
+        print("📋 RUTAS REGISTRADAS:")
+        print("="*60)
+        for rule in app.url_map.iter_rules():
+            if rule.endpoint != 'static':
+                methods = ','.join(sorted(rule.methods - {'HEAD', 'OPTIONS'}))
+                print(f"{methods:20s} {rule}")
+        print("="*60 + "\n")
     
     # ========================================
     # CREAR TABLAS Y DATOS INICIALES
@@ -103,33 +137,69 @@ def create_app(config_class=Config):
     def index():
         return {
             'mensaje': 'API SpeakLexi funcionando correctamente',
-            'version': '1.0.0',
+            'version': '2.0.0',
             'endpoints': {
                 'auth': '/api/auth',
-                'usuario': '/api/usuario',
+                'usuarios': '/api/usuario',
                 'lecciones': '/api/lecciones',
-                'multimedia': '/api/multimedia'
+                'multimedia': '/api/multimedia',
+                'cursos': '/api/cursos',  # ← AGREGAR
+                'actividades': '/api/actividades'  # ← AGREGAR
             }
         }
     
     @app.route('/health')
     def health():
         """Endpoint de health check"""
-        return {'status': 'healthy', 'database': 'connected'}
+        try:
+            # Verificar conexión a BD
+            db.session.execute(db.text('SELECT 1'))
+            return {
+                'status': 'healthy',
+                'database': 'connected',
+                'version': '2.0.0'
+            }
+        except Exception as e:
+            return {
+                'status': 'unhealthy',
+                'database': 'disconnected',
+                'error': str(e)
+            }, 503
     
     @app.errorhandler(404)
     def not_found(error):
         return {
+            'success': False,
             'error': 'Endpoint no encontrado',
             'mensaje': str(error)
         }, 404
     
+    @app.errorhandler(500)
+    def internal_error(error):
+        db.session.rollback()
+        return {
+            'success': False,
+            'error': 'Error interno del servidor',
+            'mensaje': str(error)
+        }, 500
+    
     return app
 
-# Crear la aplicación
+
+# ========================================
+# CREAR LA APLICACIÓN
+# ========================================
 app = create_app()
 
 if __name__ == '__main__':
+    print("\n" + "="*60)
+    print("🚀 INICIANDO SPEAKLEXI")
+    print("="*60)
+    print(f"🌐 Servidor: http://localhost:5000")
+    print(f"📝 Documentación: http://localhost:5000/")
+    print(f"💚 Health check: http://localhost:5000/health")
+    print("="*60 + "\n")
+    
     app.run(
         host='0.0.0.0',
         port=5000,

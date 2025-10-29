@@ -1,0 +1,634 @@
+# back-end/services/gestor_cursos.py
+"""
+Servicio para gestión de cursos y progreso de estudiantes
+Maneja la lógica de negocio relacionada con cursos, inscripciones y seguimiento
+"""
+
+from models.cursos import Curso, ProgresoCurso
+from models.usuario import Usuario, PerfilEstudiante
+from models.leccion import Leccion
+from extensions import db
+from sqlalchemy import func, desc, and_, or_
+from datetime import date, datetime
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class GestorCursos:
+    """Gestor principal de cursos del sistema"""
+    
+    @staticmethod
+    def crear_curso(datos, usuario_creador_id):
+        """
+        Crear un nuevo curso
+        
+        Args:
+            datos (dict): Datos del curso
+            usuario_creador_id (int): ID del usuario que crea el curso
+            
+        Returns:
+            tuple: (curso, error_msg)
+        """
+        try:
+            # Validar campos requeridos
+            campos_requeridos = ['nombre', 'nivel', 'idioma', 'codigo']
+            for campo in campos_requeridos:
+                if campo not in datos or not datos[campo]:
+                    return None, f'Campo requerido faltante: {campo}'
+            
+            # Validar que el código no exista
+            if Curso.query.filter_by(codigo=datos['codigo'].upper()).first():
+                return None, 'El código de curso ya existe'
+            
+            # Validar nivel CEFR
+            niveles_validos = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+            if datos['nivel'].upper() not in niveles_validos:
+                return None, f'Nivel inválido. Use: {", ".join(niveles_validos)}'
+            
+            # Validar usuario creador
+            usuario = Usuario.query.get(usuario_creador_id)
+            if not usuario or usuario.rol not in ['admin', 'profesor']:
+                return None, 'No autorizado para crear cursos'
+            
+            # Si es profesor, asignarlo automáticamente
+            profesor_id = datos.get('profesor_id')
+            if usuario.rol == 'profesor':
+                profesor_id = usuario_creador_id
+            
+            # Crear curso
+            nuevo_curso = Curso(
+                nombre=datos['nombre'].strip(),
+                nivel=datos['nivel'].upper(),
+                descripcion=datos.get('descripcion', '').strip(),
+                idioma=datos.get('idioma', 'ingles'),
+                codigo=datos['codigo'].upper().strip(),
+                profesor_id=profesor_id,
+                imagen_portada=datos.get('imagen_portada'),
+                orden=datos.get('orden', 0),
+                activo=datos.get('activo', True),
+                requisitos_previos=datos.get('requisitos_previos'),
+                objetivos_aprendizaje=datos.get('objetivos_aprendizaje')
+            )
+            
+            db.session.add(nuevo_curso)
+            db.session.commit()
+            
+            logger.info(f"Curso creado: {nuevo_curso.codigo} por usuario {usuario_creador_id}")
+            return nuevo_curso, None
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al crear curso: {str(e)}")
+            return None, f'Error al crear curso: {str(e)}'
+    
+    @staticmethod
+    def actualizar_curso(curso_id, datos, usuario_id):
+        """
+        Actualizar datos de un curso existente
+        
+        Args:
+            curso_id (int): ID del curso
+            datos (dict): Datos a actualizar
+            usuario_id (int): ID del usuario que actualiza
+            
+        Returns:
+            tuple: (curso, error_msg)
+        """
+        try:
+            curso = Curso.query.get(curso_id)
+            if not curso:
+                return None, 'Curso no encontrado'
+            
+            # Verificar permisos
+            usuario = Usuario.query.get(usuario_id)
+            if usuario.rol == 'profesor' and curso.profesor_id != usuario_id:
+                return None, 'No tienes permiso para editar este curso'
+            
+            if usuario.rol not in ['admin', 'profesor']:
+                return None, 'No autorizado'
+            
+            # Campos actualizables
+            campos_permitidos = [
+                'nombre', 'descripcion', 'profesor_id', 'imagen_portada',
+                'activo', 'requisitos_previos', 'objetivos_aprendizaje', 'orden'
+            ]
+            
+            for campo in campos_permitidos:
+                if campo in datos:
+                    valor = datos[campo]
+                    if isinstance(valor, str):
+                        valor = valor.strip()
+                    setattr(curso, campo, valor)
+            
+            curso.actualizado_en = datetime.utcnow()
+            db.session.commit()
+            
+            logger.info(f"Curso actualizado: {curso.codigo}")
+            return curso, None
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al actualizar curso: {str(e)}")
+            return None, str(e)
+    
+    @staticmethod
+    def eliminar_curso(curso_id, usuario_id):
+        """
+        Eliminar un curso (solo si no tiene lecciones)
+        
+        Args:
+            curso_id (int): ID del curso
+            usuario_id (int): ID del administrador
+            
+        Returns:
+            tuple: (exito, error_msg)
+        """
+        try:
+            usuario = Usuario.query.get(usuario_id)
+            if usuario.rol != 'admin':
+                return False, 'Solo administradores pueden eliminar cursos'
+            
+            curso = Curso.query.get(curso_id)
+            if not curso:
+                return False, 'Curso no encontrado'
+            
+            # Verificar que no tenga lecciones
+            if curso.total_lecciones > 0:
+                return False, 'No se puede eliminar un curso con lecciones. Elimine las lecciones primero.'
+            
+            # Verificar estudiantes inscritos
+            estudiantes = ProgresoCurso.query.filter_by(curso_id=curso_id).count()
+            if estudiantes > 0:
+                return False, f'Hay {estudiantes} estudiante(s) inscrito(s). No se puede eliminar.'
+            
+            codigo = curso.codigo
+            db.session.delete(curso)
+            db.session.commit()
+            
+            logger.info(f"Curso eliminado: {codigo}")
+            return True, None
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al eliminar curso: {str(e)}")
+            return False, str(e)
+    
+    @staticmethod
+    def obtener_cursos_disponibles(idioma='ingles', nivel=None, solo_activos=True):
+        """
+        Obtener lista de cursos disponibles
+        
+        Args:
+            idioma (str): Filtrar por idioma
+            nivel (str): Filtrar por nivel CEFR
+            solo_activos (bool): Solo cursos activos
+            
+        Returns:
+            list: Lista de cursos
+        """
+        try:
+            query = Curso.query
+            
+            if solo_activos:
+                query = query.filter_by(activo=True)
+            
+            query = query.filter_by(idioma=idioma)
+            
+            if nivel:
+                query = query.filter_by(nivel=nivel.upper())
+            
+            cursos = query.order_by(Curso.orden, Curso.nivel).all()
+            return cursos
+            
+        except Exception as e:
+            logger.error(f"Error al obtener cursos: {str(e)}")
+            return []
+    
+    @staticmethod
+    def inscribir_estudiante(usuario_id, curso_id):
+        """
+        Inscribir un estudiante en un curso
+        
+        Args:
+            usuario_id (int): ID del estudiante
+            curso_id (int): ID del curso
+            
+        Returns:
+            tuple: (progreso, error_msg)
+        """
+        try:
+            # Validar estudiante
+            usuario = Usuario.query.get(usuario_id)
+            if not usuario or usuario.rol != 'alumno':
+                return None, 'Usuario no válido o no es estudiante'
+            
+            # Validar curso
+            curso = Curso.query.get(curso_id)
+            if not curso:
+                return None, 'Curso no encontrado'
+            
+            if not curso.activo:
+                return None, 'El curso no está disponible actualmente'
+            
+            # Verificar si ya está inscrito
+            progreso_existente = ProgresoCurso.query.filter_by(
+                usuario_id=usuario_id,
+                curso_id=curso_id
+            ).first()
+            
+            if progreso_existente:
+                return None, 'Ya estás inscrito en este curso'
+            
+            # Verificar prerequisitos
+            if not curso.tiene_prerequisitos_cumplidos(usuario_id):
+                return None, 'No cumples con los prerequisitos requeridos'
+            
+            # Crear registro de progreso
+            nuevo_progreso = ProgresoCurso(
+                usuario_id=usuario_id,
+                curso_id=curso_id,
+                lecciones_totales=curso.total_lecciones,
+                fecha_inicio=date.today(),
+                estado='en_progreso' if curso.total_lecciones > 0 else 'no_iniciado'
+            )
+            
+            db.session.add(nuevo_progreso)
+            
+            # Actualizar perfil del estudiante
+            perfil = PerfilEstudiante.query.filter_by(usuario_id=usuario_id).first()
+            if perfil:
+                perfil.curso_actual_id = curso_id
+                perfil.nivel_asignado = curso.nivel
+            
+            db.session.commit()
+            
+            logger.info(f"Estudiante {usuario_id} inscrito en curso {curso_id}")
+            return nuevo_progreso, None
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al inscribir estudiante: {str(e)}")
+            return None, str(e)
+    
+    @staticmethod
+    def obtener_progreso_estudiante(usuario_id, curso_id):
+        """
+        Obtener o crear el progreso de un estudiante en un curso
+        
+        Args:
+            usuario_id (int): ID del estudiante
+            curso_id (int): ID del curso
+            
+        Returns:
+            ProgresoCurso: Objeto de progreso
+        """
+        try:
+            progreso = ProgresoCurso.query.filter_by(
+                usuario_id=usuario_id,
+                curso_id=curso_id
+            ).first()
+            
+            if not progreso:
+                # Crear progreso inicial
+                curso = Curso.query.get(curso_id)
+                if curso:
+                    progreso = ProgresoCurso(
+                        usuario_id=usuario_id,
+                        curso_id=curso_id,
+                        lecciones_totales=curso.total_lecciones
+                    )
+                    db.session.add(progreso)
+                    db.session.commit()
+            
+            return progreso
+            
+        except Exception as e:
+            logger.error(f"Error al obtener progreso: {str(e)}")
+            return None
+    
+    @staticmethod
+    def registrar_leccion_completada(usuario_id, curso_id, leccion_id, 
+                                     tiempo_minutos=0, puntuacion=None):
+        """
+        Registrar la finalización de una lección
+        
+        Args:
+            usuario_id (int): ID del estudiante
+            curso_id (int): ID del curso
+            leccion_id (int): ID de la lección
+            tiempo_minutos (int): Tiempo dedicado en minutos
+            puntuacion (float): Puntuación obtenida
+            
+        Returns:
+            tuple: (progreso, error_msg)
+        """
+        try:
+            # Obtener o crear progreso
+            progreso = GestorCursos.obtener_progreso_estudiante(usuario_id, curso_id)
+            if not progreso:
+                return None, 'No se pudo obtener el progreso'
+            
+            # Verificar que la lección pertenece al curso
+            leccion = Leccion.query.get(leccion_id)
+            if not leccion or leccion.curso_id != curso_id:
+                return None, 'Lección no válida para este curso'
+            
+            # Registrar progreso
+            progreso.registrar_leccion_completada(leccion_id, tiempo_minutos, puntuacion)
+            
+            # Actualizar perfil del estudiante
+            perfil = PerfilEstudiante.query.filter_by(usuario_id=usuario_id).first()
+            if perfil:
+                perfil.lecciones_completadas += 1
+                perfil.tiempo_estudio_total += tiempo_minutos
+                perfil.ultima_actividad = date.today()
+                
+                # Actualizar racha
+                if perfil.ultima_actividad != date.today():
+                    perfil.dias_racha += 1
+                    if perfil.dias_racha > perfil.racha_maxima:
+                        perfil.racha_maxima = perfil.dias_racha
+            
+            db.session.commit()
+            
+            logger.info(f"Lección {leccion_id} completada por usuario {usuario_id}")
+            return progreso, None
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al registrar lección: {str(e)}")
+            return None, str(e)
+    
+    @staticmethod
+    def obtener_estadisticas_curso(curso_id):
+        """
+        Obtener estadísticas completas de un curso
+        
+        Args:
+            curso_id (int): ID del curso
+            
+        Returns:
+            dict: Estadísticas del curso
+        """
+        try:
+            curso = Curso.query.get(curso_id)
+            if not curso:
+                return None
+            
+            # Contar estudiantes por estado
+            total_estudiantes = ProgresoCurso.query.filter_by(curso_id=curso_id).count()
+            completados = ProgresoCurso.query.filter_by(
+                curso_id=curso_id, estado='completado'
+            ).count()
+            en_progreso = ProgresoCurso.query.filter_by(
+                curso_id=curso_id, estado='en_progreso'
+            ).count()
+            
+            # Calcular promedios
+            progresos = ProgresoCurso.query.filter_by(curso_id=curso_id).all()
+            
+            if progresos:
+                promedio_progreso = sum(float(p.porcentaje_completado or 0) for p in progresos) / len(progresos)
+                puntuaciones = [float(p.puntuacion_promedio) for p in progresos if p.puntuacion_promedio]
+                promedio_puntuacion = sum(puntuaciones) / len(puntuaciones) if puntuaciones else None
+                tiempos = [p.tiempo_dedicado for p in progresos if p.tiempo_dedicado]
+                tiempo_promedio = sum(tiempos) / len(tiempos) if tiempos else 0
+            else:
+                promedio_progreso = 0
+                promedio_puntuacion = None
+                tiempo_promedio = 0
+            
+            estadisticas = {
+                'curso_id': curso_id,
+                'curso_nombre': curso.nombre,
+                'nivel': curso.nivel,
+                'total_lecciones': curso.total_lecciones,
+                'duracion_estimada': curso.duracion_estimada_total,
+                'estudiantes': {
+                    'total': total_estudiantes,
+                    'completado': completados,
+                    'en_progreso': en_progreso,
+                    'no_iniciado': total_estudiantes - completados - en_progreso
+                },
+                'promedios': {
+                    'progreso': round(promedio_progreso, 2),
+                    'puntuacion': round(promedio_puntuacion, 2) if promedio_puntuacion else None,
+                    'tiempo_dedicado': round(tiempo_promedio, 2)
+                },
+                'tasa_completado': round((completados / total_estudiantes * 100), 2) if total_estudiantes > 0 else 0
+            }
+            
+            return estadisticas
+            
+        except Exception as e:
+            logger.error(f"Error al obtener estadísticas: {str(e)}")
+            return None
+    
+    @staticmethod
+    def obtener_cursos_estudiante(usuario_id, incluir_progreso=True):
+        """
+        Obtener todos los cursos de un estudiante
+        
+        Args:
+            usuario_id (int): ID del estudiante
+            incluir_progreso (bool): Incluir datos de progreso
+            
+        Returns:
+            list: Lista de cursos con progreso
+        """
+        try:
+            progresos = ProgresoCurso.query.filter_by(usuario_id=usuario_id).all()
+            
+            if not incluir_progreso:
+                return [p.curso for p in progresos]
+            
+            cursos_data = []
+            for progreso in progresos:
+                curso_dict = progreso.curso.to_dict(incluir_lecciones=False)
+                curso_dict['progreso'] = {
+                    'lecciones_completadas': progreso.lecciones_completadas,
+                    'lecciones_totales': progreso.lecciones_totales,
+                    'porcentaje': float(progreso.porcentaje_completado or 0),
+                    'estado': progreso.estado,
+                    'tiempo_dedicado': progreso.tiempo_dedicado,
+                    'puntuacion_promedio': float(progreso.puntuacion_promedio) if progreso.puntuacion_promedio else None,
+                    'ultima_leccion_id': progreso.ultima_leccion_id,
+                    'fecha_inicio': progreso.fecha_inicio.isoformat() if progreso.fecha_inicio else None
+                }
+                cursos_data.append(curso_dict)
+            
+            return cursos_data
+            
+        except Exception as e:
+            logger.error(f"Error al obtener cursos del estudiante: {str(e)}")
+            return []
+    
+    @staticmethod
+    def obtener_cursos_profesor(profesor_id):
+        """
+        Obtener cursos asignados a un profesor
+        
+        Args:
+            profesor_id (int): ID del profesor
+            
+        Returns:
+            list: Lista de cursos
+        """
+        try:
+            cursos = Curso.query.filter_by(profesor_id=profesor_id).order_by(Curso.orden).all()
+            return cursos
+            
+        except Exception as e:
+            logger.error(f"Error al obtener cursos del profesor: {str(e)}")
+            return []
+    
+    @staticmethod
+    def cambiar_estado_curso(curso_id, activo):
+        """
+        Activar o desactivar un curso
+        
+        Args:
+            curso_id (int): ID del curso
+            activo (bool): Nuevo estado
+            
+        Returns:
+            tuple: (curso, error_msg)
+        """
+        try:
+            curso = Curso.query.get(curso_id)
+            if not curso:
+                return None, 'Curso no encontrado'
+            
+            curso.activo = activo
+            db.session.commit()
+            
+            logger.info(f"Curso {curso.codigo} {'activado' if activo else 'desactivado'}")
+            return curso, None
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al cambiar estado del curso: {str(e)}")
+            return None, str(e)
+    
+    @staticmethod
+    def obtener_siguiente_leccion(usuario_id, curso_id):
+        """
+        Obtener la siguiente lección que debe tomar el estudiante
+        
+        Args:
+            usuario_id (int): ID del estudiante
+            curso_id (int): ID del curso
+            
+        Returns:
+            Leccion: Siguiente lección o None
+        """
+        try:
+            progreso = ProgresoCurso.query.filter_by(
+                usuario_id=usuario_id,
+                curso_id=curso_id
+            ).first()
+            
+            if not progreso or not progreso.ultima_leccion_id:
+                # Primera lección del curso
+                return Leccion.query.filter_by(
+                    curso_id=curso_id,
+                    estado='publicada'
+                ).order_by(Leccion.orden).first()
+            
+            # Siguiente lección después de la última completada
+            ultima_leccion = Leccion.query.get(progreso.ultima_leccion_id)
+            if ultima_leccion:
+                siguiente = Leccion.query.filter(
+                    Leccion.curso_id == curso_id,
+                    Leccion.estado == 'publicada',
+                    Leccion.orden > ultima_leccion.orden
+                ).order_by(Leccion.orden).first()
+                
+                return siguiente
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error al obtener siguiente lección: {str(e)}")
+            return None
+    
+    @staticmethod
+    def validar_prerequisitos(usuario_id, curso_id):
+        """
+        Validar si un estudiante cumple los prerequisitos de un curso
+        
+        Args:
+            usuario_id (int): ID del estudiante
+            curso_id (int): ID del curso
+            
+        Returns:
+            tuple: (cumple, cursos_faltantes)
+        """
+        try:
+            curso = Curso.query.get(curso_id)
+            if not curso or not curso.requisitos_previos:
+                return True, []
+            
+            cursos_faltantes = []
+            
+            for curso_req_id in curso.requisitos_previos:
+                progreso = ProgresoCurso.query.filter_by(
+                    usuario_id=usuario_id,
+                    curso_id=curso_req_id
+                ).first()
+                
+                if not progreso or progreso.estado != 'completado':
+                    curso_req = Curso.query.get(curso_req_id)
+                    if curso_req:
+                        cursos_faltantes.append(curso_req.to_dict(incluir_lecciones=False))
+            
+            return len(cursos_faltantes) == 0, cursos_faltantes
+            
+        except Exception as e:
+            logger.error(f"Error al validar prerequisitos: {str(e)}")
+            return False, []
+
+
+# Funciones auxiliares
+
+def calcular_nivel_sugerido(puntuacion_prueba):
+    """
+    Calcular nivel CEFR sugerido basado en puntuación de prueba
+    
+    Args:
+        puntuacion_prueba (int): Puntuación de 0-100
+        
+    Returns:
+        str: Nivel CEFR sugerido
+    """
+    if puntuacion_prueba < 20:
+        return 'A1'
+    elif puntuacion_prueba < 40:
+        return 'A2'
+    elif puntuacion_prueba < 60:
+        return 'B1'
+    elif puntuacion_prueba < 75:
+        return 'B2'
+    elif puntuacion_prueba < 90:
+        return 'C1'
+    else:
+        return 'C2'
+
+
+def obtener_curso_por_nivel(nivel, idioma='ingles'):
+    """
+    Obtener el curso correspondiente a un nivel
+    
+    Args:
+        nivel (str): Nivel CEFR
+        idioma (str): Idioma del curso
+        
+    Returns:
+        Curso: Curso correspondiente o None
+    """
+    return Curso.query.filter_by(
+        nivel=nivel.upper(),
+        idioma=idioma,
+        activo=True
+    ).first()

@@ -77,6 +77,10 @@
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_routes.py"
     },
     {
+      "path": "back-end/url/crear_perfiles.py",
+      "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/crear_perfiles.py"
+    },
+    {
       "path": "back-end/url/generar_hashes.py",
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/generar_hashes.py"
     },
@@ -721,5 +725,5 @@
       "url": "https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/user-registration.md"
     }
   ],
-  "generated": "2025-10-28 09:16:35"
+  "generated": "2025-10-28 14:23:12"
 }

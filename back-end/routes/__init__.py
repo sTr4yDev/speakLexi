@@ -1,6 +1,14 @@
 from routes.auth import auth_bp
 from routes.usuario_routes import usuario_bp
+from routes.leccion_routes import leccion_bp
+from routes.multimedia_routes import multimedia_bp
+from routes.curso_routes import curso_bp  # ← AGREGAR
+from routes.actividades_routes import actividades_bp  # ← AGREGAR
 
 def register_routes(app):
     app.register_blueprint(auth_bp)
     app.register_blueprint(usuario_bp)
+    app.register_blueprint(leccion_bp)
+    app.register_blueprint(multimedia_bp)
+    app.register_blueprint(curso_bp)  # ← AGREGAR
+    app.register_blueprint(actividades_bp)  # ← AGREGAR

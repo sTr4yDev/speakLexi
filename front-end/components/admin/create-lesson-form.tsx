@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,59 +9,174 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Save, Loader2, Plus, X } from "lucide-react"
+import { ArrowLeft, Save, Loader2, Plus, X, Upload, PlayCircle, Image as ImageIcon, Volume2 } from "lucide-react"
 import Link from "next/link"
-import { leccionesAPI, type Leccion } from "@/lib/api"
 import { toast } from "sonner"
+
+// Tipos de actividades gamificadas
+const TIPOS_ACTIVIDAD = [
+  { value: 'multiple_choice', label: '🎯 Opción múltiple', icon: '🎯' },
+  { value: 'fill_blank', label: '✏️ Completar espacios', icon: '✏️' },
+  { value: 'matching', label: '🔗 Emparejar', icon: '🔗' },
+  { value: 'translation', label: '🌐 Traducción', icon: '🌐' },
+  { value: 'listen_repeat', label: '🎤 Escuchar y repetir', icon: '🎤' },
+  { value: 'true_false', label: '✓✗ Verdadero/Falso', icon: '✓' },
+  { value: 'word_order', label: '📝 Ordenar palabras', icon: '📝' },
+]
+
+interface Curso {
+  id: number
+  nombre: string
+  nivel: string
+  codigo: string
+  idioma: string
+}
+
+interface Actividad {
+  tipo: string
+  pregunta: string
+  instrucciones?: string
+  opciones?: any
+  respuesta_correcta: any
+  pista?: string
+  puntos: number
+  multimedia_id?: number
+}
 
 export function CreateLessonForm() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [step, setStep] = useState(1)
+  const [cursos, setCursos] = useState<Curso[]>([])
+  const [loadingCursos, setLoadingCursos] = useState(false)
   
-  const [formData, setFormData] = useState<Partial<Leccion>>({
+  const [formData, setFormData] = useState({
+    // Paso 1: Básico + Curso
+    curso_id: null as number | null,
     titulo: "",
     descripcion: "",
     nivel: "principiante",
     idioma: "ingles",
     categoria: "",
-    etiquetas: [],
     duracion_estimada: 10,
     puntos_xp: 50,
+    orden: 0,
+    
+    // Paso 2: Contenido
     contenido: {
-      objetivos: [],
-      vocabulario_clave: []
-    }
+      objetivos: [] as string[],
+      vocabulario_clave: [] as string[],
+      introduccion: "",
+      ejemplos: [] as string[]
+    },
+    etiquetas: [] as string[],
+    
+    // Paso 3: Actividades gamificadas
+    actividades: [] as Actividad[],
+    
+    // Paso 4: Multimedia
+    multimedia_ids: [] as number[]
   })
 
+  // Estados temporales para agregar items
   const [objetivoTemp, setObjetivoTemp] = useState("")
   const [vocabularioTemp, setVocabularioTemp] = useState("")
   const [etiquetaTemp, setEtiquetaTemp] = useState("")
+  const [ejemploTemp, setEjemploTemp] = useState("")
+
+  // Cargar cursos disponibles
+  useEffect(() => {
+    cargarCursos()
+  }, [])
+
+  const cargarCursos = async () => {
+    try {
+      setLoadingCursos(true)
+      const response = await fetch('/api/cursos?activos=true', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (!response.ok) throw new Error('Error al cargar cursos')
+      
+      const data = await response.json()
+      setCursos(data.cursos || [])
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al cargar cursos')
+    } finally {
+      setLoadingCursos(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    if (!formData.curso_id) {
+      toast.error("Debes seleccionar un curso")
+      setStep(1)
+      return
+    }
+
+    if (formData.actividades.length === 0) {
+      toast.error("Debes agregar al menos una actividad gamificada")
+      setStep(3)
+      return
+    }
+    
     try {
       setSaving(true)
       
-      const leccionData: Omit<Leccion, 'id' | 'creado_en' | 'actualizado_en'> = {
-        titulo: formData.titulo!,
-        descripcion: formData.descripcion!,
-        contenido: formData.contenido || {},
-        nivel: formData.nivel as any,
-        idioma: formData.idioma!,
+      const leccionData = {
+        curso_id: formData.curso_id,
+        titulo: formData.titulo,
+        descripcion: formData.descripcion,
+        contenido: formData.contenido,
+        nivel: formData.nivel,
+        idioma: formData.idioma,
         categoria: formData.categoria,
-        etiquetas: formData.etiquetas || [],
-        requisitos: [],
-        duracion_estimada: formData.duracion_estimada!,
-        puntos_xp: formData.puntos_xp!,
+        etiquetas: formData.etiquetas,
+        duracion_estimada: formData.duracion_estimada,
+        puntos_xp: formData.puntos_xp,
+        orden: formData.orden,
         estado: 'borrador'
       }
       
-      const response = await leccionesAPI.crear(leccionData)
+      const response = await fetch('/api/lecciones', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(leccionData)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al crear lección')
+      }
+
+      const data = await response.json()
+      const leccionId = data.leccion.id
+
+      // Crear actividades
+      for (const actividad of formData.actividades) {
+        await fetch('/api/actividades', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            leccion_id: leccionId,
+            ...actividad
+          })
+        })
+      }
       
       toast.success("Lección creada exitosamente")
-      router.push(`/admin/lecciones/${response.leccion.id}/editar`)
+      router.push(`/admin/lecciones/${leccionId}/editar`)
       
     } catch (error: any) {
       console.error("Error al crear lección:", error)
@@ -71,16 +186,14 @@ export function CreateLessonForm() {
     }
   }
 
+  // Funciones auxiliares
   const agregarObjetivo = () => {
     if (objetivoTemp.trim()) {
-      const contenido = formData.contenido || {}
-      const objetivos = contenido.objetivos || []
-      
       setFormData({
         ...formData,
         contenido: {
-          ...contenido,
-          objetivos: [...objetivos, objetivoTemp.trim()]
+          ...formData.contenido,
+          objetivos: [...formData.contenido.objetivos, objetivoTemp.trim()]
         }
       })
       setObjetivoTemp("")
@@ -88,75 +201,118 @@ export function CreateLessonForm() {
   }
 
   const eliminarObjetivo = (index: number) => {
-    const contenido = formData.contenido || {}
-    const objetivos = contenido.objetivos || []
-    
     setFormData({
       ...formData,
       contenido: {
-        ...contenido,
-        objetivos: objetivos.filter((_ : string, i: number) => i !== index)
+        ...formData.contenido,
+        objetivos: formData.contenido.objetivos.filter((_, i) => i !== index)
       }
     })
   }
 
   const agregarVocabulario = () => {
     if (vocabularioTemp.trim()) {
-      const contenido = formData.contenido || {}
-      const vocabulario = contenido.vocabulario_clave || []
-      
       setFormData({
         ...formData,
         contenido: {
-          ...contenido,
-          vocabulario_clave: [...vocabulario, vocabularioTemp.trim()]
+          ...formData.contenido,
+          vocabulario_clave: [...formData.contenido.vocabulario_clave, vocabularioTemp.trim()]
         }
       })
       setVocabularioTemp("")
     }
   }
 
-  const eliminarVocabulario = (index: number) => {
-    const contenido = formData.contenido || {}
-    const vocabulario = contenido.vocabulario_clave || []
-    
-    setFormData({
-      ...formData,
-      contenido: {
-        ...contenido,
-        vocabulario_clave: vocabulario.filter((_ : string, i: number) => i !== index)
-      }
-    })
-  }
-
   const agregarEtiqueta = () => {
-    if (etiquetaTemp.trim() && !formData.etiquetas?.includes(etiquetaTemp.trim())) {
+    if (etiquetaTemp.trim() && !formData.etiquetas.includes(etiquetaTemp.trim())) {
       setFormData({
         ...formData,
-        etiquetas: [...(formData.etiquetas || []), etiquetaTemp.trim()]
+        etiquetas: [...formData.etiquetas, etiquetaTemp.trim()]
       })
       setEtiquetaTemp("")
     }
   }
 
-  const eliminarEtiqueta = (etiqueta: string) => {
-    setFormData({
-      ...formData,
-      etiquetas: formData.etiquetas?.filter(e => e !== etiqueta)
-    })
-  }
+  const cursoSeleccionado = cursos.find(c => c.id === formData.curso_id)
 
   return (
-    <form onSubmit={handleSubmit}>
-      {/* Paso 1: Información Básica */}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Indicador de pasos */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            {[
+              { num: 1, label: 'Información Básica' },
+              { num: 2, label: 'Contenido' },
+              { num: 3, label: 'Actividades' },
+              { num: 4, label: 'Multimedia' }
+            ].map((s, idx) => (
+              <div key={s.num} className="flex items-center">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                  step >= s.num ? 'bg-primary text-primary-foreground' : 'bg-secondary'
+                }`}>
+                  {s.num}
+                </div>
+                <span className="ml-2 hidden sm:inline">{s.label}</span>
+                {idx < 3 && <div className="mx-4 h-1 w-12 bg-secondary" />}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* PASO 1: Información Básica + Curso */}
       {step === 1 && (
-        <Card className="mx-auto max-w-3xl">
+        <Card>
           <CardHeader>
             <CardTitle>Paso 1: Información Básica</CardTitle>
-            <CardDescription>Datos principales de la lección</CardDescription>
+            <CardDescription>Selecciona el curso y completa los datos principales</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
+            {/* Selector de Curso - MÁS PROMINENTE */}
+            <div className="space-y-2 rounded-lg border-2 border-primary/50 bg-primary/5 p-4">
+              <Label htmlFor="curso" className="text-lg font-semibold">
+                🎓 Curso de la Lección *
+              </Label>
+              <Select 
+                value={formData.curso_id?.toString() || ""}
+                onValueChange={(value) => {
+                  const cursoId = parseInt(value)
+                  const curso = cursos.find(c => c.id === cursoId)
+                  setFormData({
+                    ...formData, 
+                    curso_id: cursoId,
+                    idioma: curso?.idioma || formData.idioma,
+                    nivel: curso?.nivel === 'A1' ? 'principiante' : 
+                           curso?.nivel === 'B1' || curso?.nivel === 'B2' ? 'intermedio' : 'avanzado'
+                  })
+                }}
+              >
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder="Selecciona el curso..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {loadingCursos ? (
+                    <SelectItem value="loading" disabled>Cargando cursos...</SelectItem>
+                  ) : cursos.length === 0 ? (
+                    <SelectItem value="empty" disabled>No hay cursos disponibles</SelectItem>
+                  ) : (
+                    cursos.map((curso) => (
+                      <SelectItem key={curso.id} value={curso.id.toString()}>
+                        {curso.codigo} - {curso.nombre} ({curso.nivel})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {cursoSeleccionado && (
+                <div className="mt-2 text-sm text-muted-foreground">
+                  ℹ️ Esta lección será parte de: <strong>{cursoSeleccionado.nombre}</strong>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="titulo">Título de la Lección *</Label>
               <Input 
@@ -168,53 +324,6 @@ export function CreateLessonForm() {
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="nivel">Nivel *</Label>
-                <Select 
-                  value={formData.nivel}
-                  onValueChange={(value: any) => setFormData({...formData, nivel: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="principiante">Principiante</SelectItem>
-                    <SelectItem value="intermedio">Intermedio</SelectItem>
-                    <SelectItem value="avanzado">Avanzado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="idioma">Idioma *</Label>
-                <Select 
-                  value={formData.idioma}
-                  onValueChange={(value) => setFormData({...formData, idioma: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ingles">Inglés</SelectItem>
-                    <SelectItem value="espanol">Español</SelectItem>
-                    <SelectItem value="frances">Francés</SelectItem>
-                    <SelectItem value="aleman">Alemán</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="categoria">Categoría</Label>
-              <Input 
-                id="categoria" 
-                placeholder="vocabulario, gramatica, pronunciacion, etc."
-                value={formData.categoria}
-                onChange={(e) => setFormData({...formData, categoria: e.target.value})}
-              />
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="descripcion">Descripción *</Label>
               <Textarea
@@ -222,14 +331,47 @@ export function CreateLessonForm() {
                 placeholder="Describe brevemente de qué trata esta lección..."
                 value={formData.descripcion}
                 onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
-                rows={4}
+                rows={3}
                 required
               />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="duracion">Duración estimada (minutos) *</Label>
+                <Label>Nivel (según curso)</Label>
+                <Input value={formData.nivel} disabled className="bg-secondary" />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Idioma (según curso)</Label>
+                <Input value={formData.idioma} disabled className="bg-secondary" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="categoria">Categoría</Label>
+              <Select 
+                value={formData.categoria}
+                onValueChange={(value) => setFormData({...formData, categoria: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una categoría..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vocabulario">📚 Vocabulario</SelectItem>
+                  <SelectItem value="gramatica">📖 Gramática</SelectItem>
+                  <SelectItem value="pronunciacion">🗣️ Pronunciación</SelectItem>
+                  <SelectItem value="conversacion">💬 Conversación</SelectItem>
+                  <SelectItem value="lectura">📰 Lectura</SelectItem>
+                  <SelectItem value="escritura">✍️ Escritura</SelectItem>
+                  <SelectItem value="comprension_auditiva">👂 Comprensión Auditiva</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="duracion">⏱️ Duración (min) *</Label>
                 <Input 
                   id="duracion" 
                   type="number" 
@@ -241,7 +383,7 @@ export function CreateLessonForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="xp">Puntos XP *</Label>
+                <Label htmlFor="xp">⭐ Puntos XP *</Label>
                 <Input 
                   id="xp" 
                   type="number"
@@ -251,10 +393,26 @@ export function CreateLessonForm() {
                   required
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="orden">🔢 Orden</Label>
+                <Input 
+                  id="orden" 
+                  type="number"
+                  min="0"
+                  value={formData.orden}
+                  onChange={(e) => setFormData({...formData, orden: parseInt(e.target.value)})}
+                />
+              </div>
             </div>
 
             <div className="flex gap-3">
-              <Button type="button" onClick={() => setStep(2)} className="flex-1">
+              <Button 
+                type="button" 
+                onClick={() => setStep(2)} 
+                className="flex-1"
+                disabled={!formData.curso_id || !formData.titulo || !formData.descripcion}
+              >
                 Siguiente
               </Button>
               <Button variant="outline" asChild>
@@ -265,21 +423,20 @@ export function CreateLessonForm() {
         </Card>
       )}
 
-      {/* Paso 2: Contenido Detallado */}
+      {/* PASO 2: Contenido Detallado */}
       {step === 2 && (
-        <Card className="mx-auto max-w-3xl">
+        <Card>
           <CardHeader>
-            <CardTitle>Paso 2: Contenido Detallado</CardTitle>
-            <CardDescription>Objetivos, vocabulario y etiquetas</CardDescription>
+            <CardTitle>Paso 2: Contenido Pedagógico</CardTitle>
+            <CardDescription>Objetivos, vocabulario y estructura</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Objetivos */}
             <div className="space-y-2">
-              <Label>Objetivos de Aprendizaje</Label>
+              <Label>📌 Objetivos de Aprendizaje</Label>
               <div className="flex gap-2">
                 <Input 
-                  placeholder="Ej: Aprender saludos formales"
+                  placeholder="Ej: Aprender saludos formales en inglés"
                   value={objetivoTemp}
                   onChange={(e) => setObjetivoTemp(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarObjetivo())}
@@ -288,17 +445,12 @@ export function CreateLessonForm() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              {formData.contenido?.objetivos && formData.contenido.objetivos.length > 0 && (
+              {formData.contenido.objetivos.length > 0 && (
                 <div className="space-y-2 mt-2">
-                  {formData.contenido.objetivos.map((obj: string, i: number) => (
+                  {formData.contenido.objetivos.map((obj, i) => (
                     <div key={i} className="flex items-center gap-2 p-2 bg-secondary rounded">
                       <span className="flex-1 text-sm">{obj}</span>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => eliminarObjetivo(i)}
-                      >
+                      <Button type="button" variant="ghost" size="icon" onClick={() => eliminarObjetivo(i)}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -307,12 +459,11 @@ export function CreateLessonForm() {
               )}
             </div>
 
-            {/* Vocabulario Clave */}
             <div className="space-y-2">
-              <Label>Vocabulario Clave</Label>
+              <Label>📖 Vocabulario Clave</Label>
               <div className="flex gap-2">
                 <Input 
-                  placeholder="Ej: Hello, Good morning"
+                  placeholder="Ej: Hello, Good morning, How are you?"
                   value={vocabularioTemp}
                   onChange={(e) => setVocabularioTemp(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarVocabulario())}
@@ -321,16 +472,20 @@ export function CreateLessonForm() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              {formData.contenido?.vocabulario_clave && formData.contenido.vocabulario_clave.length > 0 && (
+              {formData.contenido.vocabulario_clave.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.contenido.vocabulario_clave.map((vocab: string, i: number) => (
-                    <Badge key={i} variant="secondary" className="gap-1">
+                  {formData.contenido.vocabulario_clave.map((vocab, i) => (
+                    <Badge key={i} variant="secondary">
                       {vocab}
-                      <button 
-                        type="button"
-                        onClick={() => eliminarVocabulario(i)}
-                        className="ml-1 hover:text-destructive"
-                      >
+                      <button type="button" onClick={() => {
+                        setFormData({
+                          ...formData,
+                          contenido: {
+                            ...formData.contenido,
+                            vocabulario_clave: formData.contenido.vocabulario_clave.filter((_, idx) => idx !== i)
+                          }
+                        })
+                      }} className="ml-1">
                         <X className="h-3 w-3" />
                       </button>
                     </Badge>
@@ -339,12 +494,25 @@ export function CreateLessonForm() {
               )}
             </div>
 
-            {/* Etiquetas */}
             <div className="space-y-2">
-              <Label>Etiquetas</Label>
+              <Label htmlFor="introduccion">💡 Introducción</Label>
+              <Textarea
+                id="introduccion"
+                placeholder="Breve introducción al tema de la lección..."
+                value={formData.contenido.introduccion}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  contenido: {...formData.contenido, introduccion: e.target.value}
+                })}
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>🏷️ Etiquetas</Label>
               <div className="flex gap-2">
                 <Input 
-                  placeholder="Ej: saludos, presentaciones"
+                  placeholder="Ej: saludos, presentaciones, básico"
                   value={etiquetaTemp}
                   onChange={(e) => setEtiquetaTemp(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarEtiqueta())}
@@ -353,16 +521,14 @@ export function CreateLessonForm() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              {formData.etiquetas && formData.etiquetas.length > 0 && (
+              {formData.etiquetas.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.etiquetas.map((etiqueta, i) => (
-                    <Badge key={i} variant="outline" className="gap-1">
-                      {etiqueta}
-                      <button 
-                        type="button"
-                        onClick={() => eliminarEtiqueta(etiqueta)}
-                        className="ml-1 hover:text-destructive"
-                      >
+                  {formData.etiquetas.map((tag, i) => (
+                    <Badge key={i} variant="outline">
+                      {tag}
+                      <button type="button" onClick={() => {
+                        setFormData({...formData, etiquetas: formData.etiquetas.filter((_, idx) => idx !== i)})
+                      }} className="ml-1">
                         <X className="h-3 w-3" />
                       </button>
                     </Badge>
@@ -376,16 +542,151 @@ export function CreateLessonForm() {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Anterior
               </Button>
+              <Button type="button" onClick={() => setStep(3)} className="flex-1">
+                Siguiente: Agregar Actividades
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* PASO 3: Actividades Gamificadas */}
+      {step === 3 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Paso 3: Actividades Gamificadas 🎮</CardTitle>
+            <CardDescription>
+              Agrega juegos y ejercicios interactivos (mínimo 1 requerido)
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            <div className="rounded-lg border-2 border-dashed border-primary/30 p-6">
+              <h3 className="mb-4 font-semibold">Tipos de Actividades Disponibles</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {TIPOS_ACTIVIDAD.map((tipo) => (
+                  <Button
+                    key={tipo.value}
+                    type="button"
+                    variant="outline"
+                    className="justify-start h-auto p-4"
+                    onClick={() => {
+                      // Navegar a creador de actividad específico
+                      toast.info(`Creador de "${tipo.label}" próximamente`)
+                    }}
+                  >
+                    <span className="text-2xl mr-3">{tipo.icon}</span>
+                    <span>{tipo.label}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {formData.actividades.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-semibold">Actividades Agregadas ({formData.actividades.length})</h3>
+                {formData.actividades.map((act, idx) => (
+                  <div key={idx} className="flex items-center gap-3 rounded-lg border p-3">
+                    <span className="text-2xl">
+                      {TIPOS_ACTIVIDAD.find(t => t.value === act.tipo)?.icon || '🎮'}
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium">{act.pregunta}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {TIPOS_ACTIVIDAD.find(t => t.value === act.tipo)?.label} • {act.puntos} pts
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          actividades: formData.actividades.filter((_, i) => i !== idx)
+                        })
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {formData.actividades.length === 0 && (
+              <div className="rounded-lg bg-yellow-50 p-4 text-yellow-900">
+                ⚠️ Debes agregar al menos una actividad para continuar
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" onClick={() => setStep(2)}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Anterior
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => setStep(4)} 
+                className="flex-1"
+                disabled={formData.actividades.length === 0}
+              >
+                Siguiente: Multimedia
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* PASO 4: Multimedia */}
+      {step === 4 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Paso 4: Recursos Multimedia 📸🎵</CardTitle>
+            <CardDescription>Agrega imágenes, audios o videos (opcional)</CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Button type="button" variant="outline" className="h-24">
+                <div className="text-center">
+                  <ImageIcon className="mx-auto mb-2 h-8 w-8" />
+                  <span>Subir Imagen</span>
+                </div>
+              </Button>
+              <Button type="button" variant="outline" className="h-24">
+                <div className="text-center">
+                  <Volume2 className="mx-auto mb-2 h-8 w-8" />
+                  <span>Subir Audio</span>
+                </div>
+              </Button>
+              <Button type="button" variant="outline" className="h-24">
+                <div className="text-center">
+                  <PlayCircle className="mx-auto mb-2 h-8 w-8" />
+                  <span>Subir Video</span>
+                </div>
+              </Button>
+            </div>
+
+            <p className="text-sm text-muted-foreground text-center">
+              💡 Los archivos multimedia se asociarán automáticamente a esta lección
+            </p>
+
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" onClick={() => setStep(3)}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Anterior
+              </Button>
               <Button type="submit" className="flex-1" disabled={saving}>
                 {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creando...
+                    Creando lección...
                   </>
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Crear Lección
+                    Crear Lección Completa
                   </>
                 )}
               </Button>
