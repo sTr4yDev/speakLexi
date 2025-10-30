@@ -1,17 +1,28 @@
 # BACKEND - SpeakLexi (Python/Flask)
-# Total: 30 archivos
-# Generado: 2025-10-29 19:06:53
+# Total: 35 archivos
+# Generado: 2025-10-29 22:39:03
 
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/app.py
+# ========== CONFIG (3) ==========
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/__init__.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/database.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/settings.py
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/extensions.py
+
+# ========== MODELS (6) ==========
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/__init__.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/base.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/cursos.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/leccion.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/multimedia.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/usuario.py
+
+# ========== SERVICES (5) ==========
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/correo_service.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_cursos.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_lecciones.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_multimedia.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_usuarios.py
+
+# ========== ROUTES (7) ==========
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/__init__.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/actividades_routes.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/auth.py
@@ -19,11 +30,16 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/curso_
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/leccion_routes.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/multimedia_routes.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/usuario_routes.py
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/correo_service.py
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_cursos.py
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_lecciones.py
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_multimedia.py
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_usuarios.py
+
+# ========== UTILS (4) ==========
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/utils/__init__.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/utils/logger.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/utils/responses.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/utils/validator.py
+
+# ========== OTROS (10) ==========
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/app.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/extensions.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_password.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_routes.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/contenido_txt.py
@@ -32,3 +48,4 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/generar_h
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls_opt.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_front_end.py
+

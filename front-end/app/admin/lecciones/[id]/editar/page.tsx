@@ -1,287 +1,307 @@
 "use client"
 
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Edit, Eye, Trash2, Loader2 } from "lucide-react"
-import Link from "next/link"
 import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { ArrowLeft, Clock, Award, BookOpen, Loader2, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
-import { cursosAPI, leccionesAPI } from "@/lib/api"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import Link from "next/link"
 
-interface Curso {
-  id: number
-  nombre: string
-  nivel: string
-  codigo: string
-}
-
-interface Leccion {
-  id: number
-  curso_id?: number
-  titulo: string
-  descripcion: string
-  nivel: string
-  idioma: string
-  categoria?: string
-  duracion_estimada: number
-  puntos_xp: number
-  estado: string
-  orden?: number
-  curso?: Curso
-}
-
-export default function AdminLessonsPage() {
-  const [lessons, setLessons] = useState<Leccion[]>([])
-  const [cursos, setCursos] = useState<Curso[]>([])
+export default function LeccionVistaPrevia() {
+  const params = useParams()
+  const router = useRouter()
+  const [leccion, setLeccion] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filtros, setFiltros] = useState({
-    curso_id: "all",
-    nivel: "all",
-    estado: "all",
-    categoria: "all"
-  })
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    cargarCursos()
-    cargarLecciones()
-  }, [filtros])
-
-  const cargarCursos = async () => {
-    try {
-      const data = await cursosAPI.listar({ activo: true })
-      setCursos(data.cursos || [])
-    } catch (error) {
-      console.error('Error:', error)
-      toast.error('Error al cargar cursos')
+    if (params.id) {
+      cargarLeccion(params.id as string)
     }
-  }
+  }, [params.id])
 
-  const cargarLecciones = async () => {
+  const cargarLeccion = async (id: string) => {
     try {
       setLoading(true)
+      setError(null)
       
-      const params: any = {}
-      if (searchTerm) params.buscar = searchTerm
-      if (filtros.curso_id && filtros.curso_id !== 'all') params.curso_id = parseInt(filtros.curso_id)
-      if (filtros.nivel && filtros.nivel !== 'all') params.nivel = filtros.nivel
-      if (filtros.estado && filtros.estado !== 'all') params.estado = filtros.estado
-      if (filtros.categoria && filtros.categoria !== 'all') params.categoria = filtros.categoria
+      console.log('🔍 Cargando lección ID:', id)
       
-      const data = await leccionesAPI.listar(params)
-      setLessons(data.lecciones || [])
+      const token = localStorage.getItem('token')
+      console.log('🔑 Token:', token ? 'Presente' : 'NO ENCONTRADO')
+      
+      const response = await fetch(`http://localhost:5000/api/lecciones/${id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('📡 Response status:', response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Error response:', errorData)
+        throw new Error(errorData.message || errorData.error || `Error ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Datos recibidos:', data)
+      
+      const leccionData = data.leccion || data
+      console.log('📚 Lección procesada:', leccionData)
+      
+      if (!leccionData || !leccionData.id) {
+        throw new Error('Los datos de la lección están incompletos')
+      }
+      
+      setLeccion(leccionData)
+      
     } catch (error: any) {
-      console.error("Error al cargar lecciones:", error)
-      toast.error(error.message || "Error al cargar lecciones")
+      console.error('❌ Error completo:', error)
+      setError(error.message || 'Error desconocido al cargar la lección')
+      toast.error('Error: ' + (error.message || 'No se pudo cargar la lección'))
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    cargarLecciones()
-  }
-
-  const handleDelete = async (id: number, titulo: string) => {
-    if (!confirm(`¿Estás seguro de archivar la lección "${titulo}"?`)) {
-      return
-    }
-
-    try {
-      await leccionesAPI.eliminar(id)
-      toast.success("Lección archivada exitosamente")
-      cargarLecciones()
-    } catch (error: any) {
-      console.error("Error al eliminar:", error)
-      toast.error(error.message || "Error al archivar lección")
-    }
-  }
-
-  const getEstadoBadge = (estado: string) => {
-    const variants: Record<string, any> = {
-      publicada: "default",
-      borrador: "secondary",
-      archivada: "outline"
-    }
-    
-    const labels: Record<string, string> = {
-      publicada: "✅ Publicada",
-      borrador: "📝 Borrador",
-      archivada: "📦 Archivada"
-    }
-    
+  if (loading) {
     return (
-      <Badge variant={variants[estado] || "secondary"}>
-        {labels[estado] || estado}
-      </Badge>
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando lección...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !leccion) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">❌ Error al cargar</h2>
+            <p className="text-muted-foreground mb-4">
+              {error || 'Lección no encontrada'}
+            </p>
+            <div className="space-y-2">
+              <Button onClick={() => cargarLeccion(params.id as string)} className="w-full">
+                🔄 Reintentar
+              </Button>
+              <Button variant="outline" onClick={() => router.push('/admin/lecciones')} className="w-full">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Volver a Lecciones
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-      <DashboardHeader />
+      <div className="container mx-auto px-4 py-8">
+        <Button
+          variant="ghost"
+          onClick={() => router.back()}
+          className="mb-6"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Volver
+        </Button>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">📚 Gestión de Lecciones</h1>
-            <p className="mt-1 text-muted-foreground">
-              {loading ? "Cargando..." : `${lessons.length} lecciones encontradas`}
-            </p>
-          </div>
-          <Link href="/admin/lecciones/crear">
-            <Button size="lg">
-              <Plus className="mr-2 h-4 w-4" />
-              Crear Nueva Lección
-            </Button>
-          </Link>
-        </div>
-
-        <Card className="mb-6 p-6">
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar lecciones..." 
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-4">
-              <Select
-                value={filtros.curso_id}
-                onValueChange={(value) => setFiltros({...filtros, curso_id: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos los cursos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los cursos</SelectItem>
-                  {cursos.map((curso) => (
-                    <SelectItem key={curso.id} value={curso.id.toString()}>
-                      {curso.codigo} - {curso.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={filtros.nivel}
-                onValueChange={(value) => setFiltros({...filtros, nivel: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos los niveles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="principiante">Principiante</SelectItem>
-                  <SelectItem value="intermedio">Intermedio</SelectItem>
-                  <SelectItem value="avanzado">Avanzado</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={filtros.estado}
-                onValueChange={(value) => setFiltros({...filtros, estado: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos los estados" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="publicada">Publicada</SelectItem>
-                  <SelectItem value="borrador">Borrador</SelectItem>
-                  <SelectItem value="archivada">Archivada</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={filtros.categoria}
-                onValueChange={(value) => setFiltros({...filtros, categoria: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas las categorías" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="vocabulario">📚 Vocabulario</SelectItem>
-                  <SelectItem value="gramatica">📖 Gramática</SelectItem>
-                  <SelectItem value="pronunciacion">🗣️ Pronunciación</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </form>
-        </Card>
-
-        {loading ? (
-          <Card className="p-12">
-            <div className="flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          </Card>
-        ) : lessons.length === 0 ? (
-          <Card className="p-12">
-            <div className="text-center">
-              <p className="mb-4">No se encontraron lecciones</p>
-              <Link href="/admin/lecciones/crear">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Crear Primera Lección
-                </Button>
-              </Link>
-            </div>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {lessons.map((lesson) => (
-              <Card key={lesson.id} className="p-4 hover:border-primary/50">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="mb-2 flex items-center gap-2">
-                      <h3 className="font-semibold">{lesson.titulo}</h3>
-                      {getEstadoBadge(lesson.estado || 'borrador')}
-                    </div>
-                    <p className="mb-2 text-sm text-muted-foreground">{lesson.descripcion}</p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Link href={`/lecciones/${lesson.id}`}>
-                      <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                    <Link href={`/admin/lecciones/${lesson.id}/editar`}>
-                      <Button variant="ghost" size="icon">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => handleDelete(lesson.id, lesson.titulo)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Header */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-3xl mb-2">{leccion.titulo}</CardTitle>
+                  <CardDescription className="text-lg">{leccion.descripcion}</CardDescription>
                 </div>
-              </Card>
-            ))}
+                <Badge variant={leccion.estado === 'publicada' ? 'default' : 'secondary'} className="ml-4">
+                  {leccion.estado === 'publicada' ? '✅ Publicada' : 
+                   leccion.estado === 'borrador' ? '📝 Borrador' : leccion.estado}
+                </Badge>
+              </div>
+
+              <div className="flex flex-wrap gap-3 mt-4">
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <BookOpen className="h-3 w-3" />
+                  {leccion.nivel}
+                </Badge>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {leccion.duracion_estimada} min
+                </Badge>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Award className="h-3 w-3" />
+                  {leccion.puntos_xp} XP
+                </Badge>
+                {leccion.idioma && (
+                  <Badge variant="outline">
+                    🌐 {leccion.idioma}
+                  </Badge>
+                )}
+                {leccion.categoria && (
+                  <Badge variant="outline">
+                    📚 {leccion.categoria}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Contenido */}
+          {leccion.contenido && typeof leccion.contenido === 'object' && (
+            <>
+              {/* Objetivos */}
+              {leccion.contenido.objetivos && Array.isArray(leccion.contenido.objetivos) && leccion.contenido.objetivos.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>📌 Objetivos de Aprendizaje</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {leccion.contenido.objetivos.map((objetivo: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-primary mt-1">✓</span>
+                          <span>{objetivo}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Introducción */}
+              {leccion.contenido.introduccion && leccion.contenido.introduccion.trim() && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>💡 Introducción</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground whitespace-pre-wrap">
+                      {leccion.contenido.introduccion}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Vocabulario */}
+              {leccion.contenido.vocabulario_clave && Array.isArray(leccion.contenido.vocabulario_clave) && leccion.contenido.vocabulario_clave.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>📖 Vocabulario Clave</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {leccion.contenido.vocabulario_clave.map((palabra: string, idx: number) => (
+                        <Badge key={idx} variant="secondary">
+                          {palabra}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+
+          {/* Actividades */}
+          {leccion.actividades && Array.isArray(leccion.actividades) && leccion.actividades.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>🎮 Actividades ({leccion.actividades.length})</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {leccion.actividades.map((actividad: any, idx: number) => (
+                  <div key={idx} className="p-4 border rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold">#{idx + 1} - {actividad.pregunta}</h4>
+                      <Badge>{actividad.puntos || 10} pts</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Tipo: {actividad.tipo || 'No especificado'}
+                    </p>
+                    {actividad.instrucciones && (
+                      <p className="text-sm mt-2 text-muted-foreground italic">
+                        "{actividad.instrucciones}"
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Etiquetas */}
+          {leccion.etiquetas && Array.isArray(leccion.etiquetas) && leccion.etiquetas.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>🏷️ Etiquetas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {leccion.etiquetas.map((tag: string, idx: number) => (
+                    <Badge key={idx} variant="outline">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Información adicional */}
+          <Card>
+            <CardHeader>
+              <CardTitle>ℹ️ Información de la Lección</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="font-semibold text-muted-foreground">ID</dt>
+                  <dd>{leccion.id}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-muted-foreground">Curso ID</dt>
+                  <dd>{leccion.curso_id || 'No asignado'}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-muted-foreground">Orden</dt>
+                  <dd>{leccion.orden || 0}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-muted-foreground">Estado</dt>
+                  <dd>{leccion.estado || 'borrador'}</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+
+          {/* Botones de acción */}
+          <div className="flex gap-3 flex-col sm:flex-row">
+            <Link href={`/admin/lecciones/${leccion.id}/editar`} className="flex-1">
+              <Button className="w-full">
+                ✏️ Editar Lección
+              </Button>
+            </Link>
+            <Link href="/admin/lecciones" className="flex-1">
+              <Button variant="outline" className="w-full">
+                📚 Ver Todas las Lecciones
+              </Button>
+            </Link>
           </div>
-        )}
-      </main>
+        </div>
+      </div>
     </div>
   )
 }

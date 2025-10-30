@@ -1,9 +1,8 @@
 # PROYECTO COMPLETO - SpeakLexi
-# Backend: 30 archivos
+# Backend: 35 archivos
 # Frontend: 154 archivos
-# Docs: 9 archivos
-# Total: 193 archivos
-# Generado: 2025-10-29 19:06:53
+# Total: 189 archivos
+# Generado: 2025-10-29 22:39:04
 
 # ==========================================================
 # BACKEND
@@ -15,6 +14,7 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/databa
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/settings.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/extensions.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/__init__.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/base.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/cursos.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/leccion.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/multimedia.py
@@ -39,6 +39,10 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/generar_h
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls_opt.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_front_end.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/utils/__init__.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/utils/logger.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/utils/responses.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/utils/validator.py
 
 # ==========================================================
 # FRONTEND
@@ -198,18 +202,3 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-us
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/middleware.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/next-env.d.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/styles/globals.css
-
-# ==========================================================
-# DOCS
-# ==========================================================
-
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/README.md
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/architecture.md
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/database.md
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/errores/bitacoras/ERRORES - 27 OCT 25.md
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/best-practices.md
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/naming-conventions.md
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/requisitos-funcionales.md
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/lession-creation.md
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/user-registration.md
-

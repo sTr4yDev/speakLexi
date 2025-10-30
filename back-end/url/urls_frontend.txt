@@ -1,7 +1,8 @@
-# FRONTEND - SpeakLexi (Next.js/React/TypeScript)
+# FRONTEND - SpeakLexi (Next.js 15/React 19/TypeScript)
 # Total: 154 archivos
-# Generado: 2025-10-29 19:06:53
+# Generado: 2025-10-29 22:39:04
 
+# ========== PAGES/APP ROUTER (42) ==========
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/dashboard/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/[id]/editar/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/crear/page.tsx
@@ -44,6 +45,8 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/registro
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/restablecer-contrasena/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/restablecer-contrasena/reset-password-content.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/verificar-email/page.tsx
+
+# ========== COMPONENTS (106) ==========
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/fill-blank-form.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/matching-form.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/multiple-choice-form.tsx
@@ -150,9 +153,15 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/u
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/tooltip.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/use-mobile.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/use-toast.ts
+
+# ========== STYLES (2) ==========
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/globals.css
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/styles/globals.css
+
+# ========== OTROS (5) ==========
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-mobile.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-toast.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-user-data.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/middleware.ts
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/next-env.d.ts
-https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/styles/globals.css
+

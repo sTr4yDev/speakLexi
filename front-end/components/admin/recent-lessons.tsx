@@ -4,12 +4,22 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Edit, Eye, Trash2, Loader2 } from "lucide-react"
+import { Edit, Eye, Trash2, Loader2, RefreshCw } from "lucide-react"
 import { useState, useEffect } from "react"
-import { leccionesAPI, type Leccion } from "@/lib/api"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
+
+interface Leccion {
+  id: number
+  titulo: string
+  descripcion: string
+  nivel: string
+  idioma: string
+  duracion_estimada: number
+  estado: string
+  actualizado_en?: string
+}
 
 export function RecentLessons() {
   const [lessons, setLessons] = useState<Leccion[]>([])
@@ -17,33 +27,52 @@ export function RecentLessons() {
 
   useEffect(() => {
     cargarLecciones()
+    
+    // ✅ AUTO-REFRESH cada 10 segundos
+    const interval = setInterval(() => {
+      cargarLecciones()
+    }, 10000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const cargarLecciones = async () => {
     try {
       setLoading(true)
-      const response = await leccionesAPI.listar({ 
-        por_pagina: 5,
-        pagina: 1
+      const response = await fetch('http://localhost:5000/api/lecciones?por_pagina=5&pagina=1', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       })
-      setLessons(response.lecciones || [])
+      
+      if (!response.ok) throw new Error('Error al cargar')
+      
+      const data = await response.json()
+      setLessons(data.lecciones || [])
     } catch (error: any) {
-      console.error("Error al cargar lecciones:", error)
-      toast.error("Error al cargar lecciones recientes")
+      console.error("Error:", error)
     } finally {
       setLoading(false)
     }
   }
 
   const handleDelete = async (id: number, titulo: string) => {
-    if (!confirm(`¿Archivar la lección "${titulo}"?`)) return
+    if (!confirm(`¿Archivar "${titulo}"?`)) return
 
     try {
-      await leccionesAPI.eliminar(id)
+      const response = await fetch(`http://localhost:5000/api/lecciones/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (!response.ok) throw new Error('Error')
+      
       toast.success("Lección archivada")
       cargarLecciones()
     } catch (error: any) {
-      toast.error(error.message || "Error al archivar")
+      toast.error("Error al archivar")
     }
   }
 
@@ -54,26 +83,20 @@ export function RecentLessons() {
         locale: es 
       })
     } catch {
-      return "Fecha no disponible"
+      return "Hace poco"
     }
   }
 
   const getEstadoBadge = (estado: string) => {
-    const variants = {
+    const variants: Record<string, any> = {
       publicada: "default",
       borrador: "secondary",
       archivada: "outline"
     }
     
-    const labels = {
-      publicada: "Publicada",
-      borrador: "Borrador",
-      archivada: "Archivada"
-    }
-    
     return (
-      <Badge variant={variants[estado as keyof typeof variants] as any}>
-        {labels[estado as keyof typeof labels] || estado}
+      <Badge variant={variants[estado] || "secondary"}>
+        {estado === 'publicada' ? '✅' : estado === 'borrador' ? '📝' : '📦'} {estado}
       </Badge>
     )
   }
@@ -82,9 +105,14 @@ export function RecentLessons() {
     <Card className="p-6">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-bold">Lecciones Recientes</h2>
-        <Link href="/admin/lecciones/crear">
-          <Button>Crear Lección</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="icon" onClick={cargarLecciones}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Link href="/admin/lecciones/crear">
+            <Button>Crear Lección</Button>
+          </Link>
+        </div>
       </div>
 
       {loading ? (
@@ -114,7 +142,7 @@ export function RecentLessons() {
                     {getEstadoBadge(lesson.estado || 'borrador')}
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <span>Nivel: {lesson.nivel}</span>
+                    <span>{lesson.nivel}</span>
                     <span>•</span>
                     <span>{lesson.idioma}</span>
                     <span>•</span>
@@ -142,7 +170,7 @@ export function RecentLessons() {
                     variant="ghost" 
                     size="icon" 
                     title="Archivar"
-                    onClick={() => handleDelete(lesson.id!, lesson.titulo)}
+                    onClick={() => handleDelete(lesson.id, lesson.titulo)}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
