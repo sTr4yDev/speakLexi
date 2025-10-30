@@ -7,29 +7,32 @@ import { MatchingForm } from "./activity-forms/matching-form"
 import { TranslationForm } from "./activity-forms/translation-form"
 import { TrueFalseForm } from "./activity-forms/true-false-form"
 import { WordOrderForm } from "./activity-forms/word-order-form"
+// ✅ IMPORTAR EL TIPO CORRECTO desde la API
+import { type Actividad } from "@/lib/api"
 
-interface Actividad {
-  tipo: string
-  pregunta: string
-  instrucciones?: string
-  opciones?: any
-  respuesta_correcta: any
-  retroalimentacion?: any
-  pista?: string
-  puntos: number
-  orden: number
-  multimedia_id?: number
-}
+// ✅ ELIMINAR la interfaz Actividad local duplicada
+// interface Actividad {
+//   tipo: string
+//   pregunta: string
+//   instrucciones?: string
+//   opciones?: any
+//   respuesta_correcta: any
+//   retroalimentacion?: any
+//   pista?: string
+//   puntos: number
+//   orden: number
+//   multimedia_id?: number
+// }
 
 interface ActivityModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  tipoActividad: string | null
-  onGuardar: (actividad: Actividad) => void
-  actividadEditar?: Actividad | null
+  tipoActividad: Actividad['tipo'] | null // ✅ Usar el tipo correcto
+  onGuardar: (actividad: Actividad) => void // ✅ Usar el tipo correcto
+  actividadEditar?: Actividad | null // ✅ Usar el tipo correcto
 }
 
-const TITULOS_ACTIVIDAD: Record<string, string> = {
+const TITULOS_ACTIVIDAD: Record<Actividad['tipo'], string> = {
   multiple_choice: "🎯 Opción Múltiple",
   fill_blank: "✏️ Completar Espacios",
   matching: "🔗 Emparejar",
@@ -79,6 +82,9 @@ export function ActivityModal({
           </div>
         )
       default:
+        // ✅ TypeScript ahora sabe que tipoActividad es uno de los valores válidos
+        // pero por seguridad retornamos null para casos inesperados
+        const _exhaustiveCheck: never = tipoActividad
         return null
     }
   }

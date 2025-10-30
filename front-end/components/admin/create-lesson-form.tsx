@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Save, Loader2, Plus, X, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { cursosAPI } from "@/lib/api"
+// FIX 1: Se importa el 'type Actividad' desde la API
+import { cursosAPI, leccionesAPI, actividadesAPI, type Actividad } from "@/lib/api"
 import { ActivityModal } from "@/components/admin/activity-modal"
 
 // Tipos de actividades gamificadas
@@ -33,18 +34,8 @@ interface Curso {
   idioma: string
 }
 
-interface Actividad {
-  tipo: string
-  pregunta: string
-  instrucciones?: string
-  opciones?: any
-  respuesta_correcta: any
-  retroalimentacion?: any
-  pista?: string
-  puntos: number
-  orden: number
-  multimedia_id?: number
-}
+// FIX 2: Se elimina la interfaz 'Actividad' local duplicada.
+// Ya no es necesaria porque la importamos desde 'lib/api'.
 
 export function CreateLessonForm() {
   const router = useRouter()
@@ -55,7 +46,8 @@ export function CreateLessonForm() {
   
   // Estados para modal de actividades
   const [modalActividadOpen, setModalActividadOpen] = useState(false)
-  const [tipoActividadModal, setTipoActividadModal] = useState<string | null>(null)
+  // FIX 3: Se usa el tipo importado 'Actividad['tipo']' para el estado del modal
+  const [tipoActividadModal, setTipoActividadModal] = useState<Actividad['tipo'] | null>(null)
   const [actividadEditando, setActividadEditando] = useState<Actividad | null>(null)
   const [indiceEditando, setIndiceEditando] = useState<number | null>(null)
   
@@ -64,7 +56,8 @@ export function CreateLessonForm() {
     curso_id: null as number | null,
     titulo: "",
     descripcion: "",
-    nivel: "principiante",
+    // Pequeña mejora: Usar los tipos exactos de la API de Leccion
+    nivel: "principiante" as 'principiante' | 'intermedio' | 'avanzado', 
     idioma: "ingles",
     categoria: "",
     duracion_estimada: 10,
@@ -81,6 +74,7 @@ export function CreateLessonForm() {
     etiquetas: [] as string[],
     
     // Paso 3: Actividades gamificadas
+    // Este array ahora usa correctamente el tipo 'Actividad' importado
     actividades: [] as Actividad[],
     
     // Paso 4: Multimedia
@@ -134,11 +128,12 @@ export function CreateLessonForm() {
     try {
       setSaving(true)
       
+      // Preparar datos de la lección
       const leccionData = {
         curso_id: formData.curso_id,
         titulo: formData.titulo,
         descripcion: formData.descripcion,
-        contenido: formData.contenido,
+        contenido: JSON.stringify(formData.contenido), // FIX: Convertir a string
         nivel: formData.nivel,
         idioma: formData.idioma,
         categoria: formData.categoria,
@@ -146,46 +141,41 @@ export function CreateLessonForm() {
         duracion_estimada: formData.duracion_estimada,
         puntos_xp: formData.puntos_xp,
         orden: formData.orden,
-        estado: 'borrador'
+        estado: 'borrador' as const // Usar 'as const' para tipado estricto
       }
       
-      const response = await fetch('/api/lecciones', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(leccionData)
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Error al crear lección')
+      console.log('📤 Enviando lección:', leccionData)
+      
+      // ✅ USAR LA API EN LUGAR DE FETCH DIRECTO
+      const response = await leccionesAPI.crear(leccionData)
+      
+      console.log('✅ Lección creada:', response)
+      
+      const leccionId = response.leccion?.id || response.id
+      
+      if (!leccionId) {
+        throw new Error('No se recibió el ID de la lección creada')
       }
 
-      const data = await response.json()
-      const leccionId = data.leccion.id
-
-      // Crear actividades
+      // Crear actividades una por una
+      console.log(`📤 Creando ${formData.actividades.length} actividades...`)
+      
       for (const actividad of formData.actividades) {
-        await fetch('/api/actividades', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            leccion_id: leccionId,
-            ...actividad
-          })
-        })
+        try {
+          // Esta línea ahora es funcional gracias a la corrección de tipos
+          await actividadesAPI.agregar(leccionId, actividad)
+          console.log(`✅ Actividad "${actividad.pregunta}" creada`)
+        } catch (actError: any) {
+          console.error('Error al crear actividad:', actError)
+          toast.error(`Error al crear actividad: ${actError.message}`)
+        }
       }
       
-      toast.success("Lección creada exitosamente")
+      toast.success("✅ Lección creada exitosamente")
       router.push(`/admin/lecciones/${leccionId}/editar`)
       
     } catch (error: any) {
-      console.error("Error al crear lección:", error)
+      console.error("❌ Error al crear lección:", error)
       toast.error(error.message || "Error al crear lección")
     } finally {
       setSaving(false)
@@ -422,7 +412,7 @@ export function CreateLessonForm() {
                     type="number" 
                     min="1"
                     value={formData.duracion_estimada}
-                    onChange={(e) => setFormData({...formData, duracion_estimada: parseInt(e.target.value)})}
+                    onChange={(e) => setFormData({...formData, duracion_estimada: parseInt(e.target.value) || 1})}
                     required
                   />
                 </div>
@@ -434,7 +424,7 @@ export function CreateLessonForm() {
                     type="number"
                     min="0"
                     value={formData.puntos_xp}
-                    onChange={(e) => setFormData({...formData, puntos_xp: parseInt(e.target.value)})}
+                    onChange={(e) => setFormData({...formData, puntos_xp: parseInt(e.target.value) || 0})}
                     required
                   />
                 </div>
@@ -446,7 +436,7 @@ export function CreateLessonForm() {
                     type="number"
                     min="0"
                     value={formData.orden}
-                    onChange={(e) => setFormData({...formData, orden: parseInt(e.target.value)})}
+                    onChange={(e) => setFormData({...formData, orden: parseInt(e.target.value) || 0})}
                   />
                 </div>
               </div>
@@ -616,7 +606,8 @@ export function CreateLessonForm() {
                       variant="outline"
                       className="justify-start h-auto p-4"
                       onClick={() => {
-                        setTipoActividadModal(tipo.value)
+                        // El tipo 'tipo.value' ahora se valida contra 'Actividad['tipo']'
+                        setTipoActividadModal(tipo.value as Actividad['tipo']) 
                         setActividadEditando(null)
                         setIndiceEditando(null)
                         setModalActividadOpen(true)

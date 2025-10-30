@@ -1,9 +1,9 @@
 # PROYECTO COMPLETO - SpeakLexi
-# Backend: 28 archivos
-# Frontend: 147 archivos
+# Backend: 30 archivos
+# Frontend: 154 archivos
 # Docs: 9 archivos
-# Total: 184 archivos
-# Generado: 2025-10-28 20:45:16
+# Total: 193 archivos
+# Generado: 2025-10-29 17:07:37
 
 # ==========================================================
 # BACKEND
@@ -14,6 +14,7 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/__init
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/database.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/settings.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/extensions.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/__init__.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/cursos.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/leccion.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/multimedia.py
@@ -32,6 +33,7 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gest
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_usuarios.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_password.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_routes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/contenido_txt.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/crear_perfiles.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/generar_hashes.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls.py
@@ -84,6 +86,13 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/registro
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/restablecer-contrasena/page.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/restablecer-contrasena/reset-password-content.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/verificar-email/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/fill-blank-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/matching-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/multiple-choice-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/translation-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/true-false-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/word-order-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-modal.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/admin-stats.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/create-lesson-form.tsx
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/media-library-preview.tsx

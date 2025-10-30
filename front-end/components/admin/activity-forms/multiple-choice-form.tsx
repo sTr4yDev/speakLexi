@@ -6,39 +6,122 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Save, X } from "lucide-react"
+import { Save, X, Plus, Trash2, Eye, EyeOff, Shuffle } from "lucide-react"
 import { toast } from "sonner"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { type Actividad } from "@/lib/api"
 
 interface ActivityFormProps {
-  onGuardar: (actividad: any) => void
+  onGuardar: (actividad: Actividad) => void
   onCancelar: () => void
-  actividadEditar?: any
+  actividadEditar?: Actividad | null
+}
+
+interface Opcion {
+  id: string
+  texto: string
+  retroalimentacion?: string
+  esCorrecta: boolean
 }
 
 export function MultipleChoiceForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
   const [pregunta, setPregunta] = useState("")
-  const [instrucciones, setInstrucciones] = useState("")
-  const [opciones, setOpciones] = useState<string[]>(["", "", "", ""])
-  const [respuestaCorrecta, setRespuestaCorrecta] = useState<number>(0)
+  const [instrucciones, setInstrucciones] = useState("Selecciona la respuesta correcta.")
+  const [opciones, setOpciones] = useState<Opcion[]>([
+    { id: '1', texto: "", retroalimentacion: "", esCorrecta: false },
+    { id: '2', texto: "", retroalimentacion: "", esCorrecta: false },
+    { id: '3', texto: "", retroalimentacion: "", esCorrecta: false },
+    { id: '4', texto: "", retroalimentacion: "", esCorrecta: false }
+  ])
   const [pista, setPista] = useState("")
   const [puntos, setPuntos] = useState(10)
+  const [mostrarPrevisualizacion, setMostrarPrevisualizacion] = useState(false)
+  const [mezclarOpciones, setMezclarOpciones] = useState(true)
+  const [permiteMultiple, setPermiteMultiple] = useState(false)
+  const [explicacion, setExplicacion] = useState("")
 
   useEffect(() => {
     if (actividadEditar) {
       setPregunta(actividadEditar.pregunta || "")
-      setInstrucciones(actividadEditar.instrucciones || "")
-      setOpciones(actividadEditar.opciones || ["", "", "", ""])
-      setRespuestaCorrecta(actividadEditar.respuesta_correcta || 0)
+      setInstrucciones(actividadEditar.instrucciones || "Selecciona la respuesta correcta.")
+      
+      // Procesar opciones existentes
+      if (actividadEditar.opciones?.opciones) {
+        const opcionesExistentes = actividadEditar.opciones.opciones.map((op: string, index: number) => ({
+          id: (index + 1).toString(),
+          texto: op,
+          retroalimentacion: "",
+          esCorrecta: index === actividadEditar.respuesta_correcta
+        }))
+        setOpciones(opcionesExistentes)
+      }
+      
       setPista(actividadEditar.pista || "")
       setPuntos(actividadEditar.puntos || 10)
+      setMezclarOpciones(actividadEditar.opciones?.mezclarOpciones ?? true)
+      setPermiteMultiple(actividadEditar.opciones?.permiteMultiple ?? false)
+      setExplicacion(actividadEditar.retroalimentacion?.explicacion || "")
     }
   }, [actividadEditar])
 
-  const handleOpcionChange = (index: number, valor: string) => {
-    const nuevasOpciones = [...opciones]
-    nuevasOpciones[index] = valor
-    setOpciones(nuevasOpciones)
+  const generarId = () => Math.random().toString(36).substr(2, 9)
+
+  const agregarOpcion = () => {
+    if (opciones.length >= 6) {
+      toast.error("Máximo 6 opciones permitidas")
+      return
+    }
+    
+    const nuevaOpcion: Opcion = {
+      id: generarId(),
+      texto: "",
+      retroalimentacion: "",
+      esCorrecta: false
+    }
+    
+    setOpciones([...opciones, nuevaOpcion])
   }
+
+  const eliminarOpcion = (id: string) => {
+    if (opciones.length <= 2) {
+      toast.error("Debe haber al menos 2 opciones")
+      return
+    }
+    
+    const opcionAEliminar = opciones.find(op => op.id === id)
+    if (opcionAEliminar?.esCorrecta) {
+      toast.error("No puedes eliminar la opción correcta. Cambia primero la respuesta correcta.")
+      return
+    }
+    
+    setOpciones(opciones.filter(op => op.id !== id))
+  }
+
+  const actualizarOpcion = (id: string, campo: keyof Opcion, valor: string | boolean) => {
+    setOpciones(opciones.map(op => 
+      op.id === id ? { ...op, [campo]: valor } : op
+    ))
+  }
+
+  const marcarComoCorrecta = (id: string) => {
+    setOpciones(opciones.map(op => ({
+      ...op,
+      esCorrecta: op.id === id
+    })))
+  }
+
+  const mezclarOpcionesLista = () => {
+    const opcionesMezcladas = [...opciones]
+      .map(op => ({ ...op, id: generarId() }))
+      .sort(() => Math.random() - 0.5)
+    setOpciones(opcionesMezcladas)
+    toast.success("Opciones mezcladas")
+  }
+
+  const opcionesValidas = opciones.filter(op => op.texto.trim())
+  const opcionCorrecta = opciones.find(op => op.esCorrecta)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,108 +131,282 @@ export function MultipleChoiceForm({ onGuardar, onCancelar, actividadEditar }: A
       return
     }
 
-    const opcionesLlenas = opciones.filter(o => o.trim())
-    if (opcionesLlenas.length < 2) {
-      toast.error("Debes agregar al menos 2 opciones")
+    if (opcionesValidas.length < 2) {
+      toast.error("Debes agregar al menos 2 opciones válidas")
       return
     }
 
-    if (!opciones[respuestaCorrecta]?.trim()) {
-      toast.error("Debes seleccionar una respuesta correcta válida")
+    if (!opcionCorrecta) {
+      toast.error("Debes seleccionar una respuesta correcta")
       return
     }
 
-    const actividad = {
+    const indiceCorrecto = opciones.findIndex(op => op.id === opcionCorrecta.id)
+
+    const actividad: Actividad = {
       tipo: 'multiple_choice',
       pregunta: pregunta.trim(),
-      instrucciones: instrucciones.trim() || "Selecciona la respuesta correcta",
-      opciones: opciones.filter(o => o.trim()),
-      respuesta_correcta: respuestaCorrecta,
-      pista: pista.trim(),
-      puntos,
-      orden: actividadEditar?.orden || 0
+      instrucciones: instrucciones.trim(),
+      opciones: {
+        opciones: opcionesValidas.map(op => op.texto),
+        mezclarOpciones,
+        permiteMultiple,
+        retroalimentaciones: opcionesValidas.reduce((acc, op, index) => {
+          if (op.retroalimentacion) {
+            acc[index] = op.retroalimentacion
+          }
+          return acc
+        }, {} as Record<number, string>)
+      },
+      respuesta_correcta: indiceCorrecto,
+      retroalimentacion: {
+        correcto: "¡Correcto! Has seleccionado la respuesta adecuada.",
+        incorrecto: "La respuesta seleccionada no es correcta.",
+        explicacion: explicacion.trim() || undefined
+      },
+      pista: pista.trim() || undefined,
+      puntos: puntos,
+      orden: actividadEditar?.orden || 0,
+      tiempo_limite: undefined,
+      multimedia_id: undefined
     }
 
     onGuardar(actividad)
-    toast.success("Actividad guardada")
+    toast.success(actividadEditar ? "Actividad actualizada" : "Actividad creada")
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="pregunta">Pregunta *</Label>
-        <Textarea
-          id="pregunta"
-          placeholder="Ej: What does 'Hello' mean in Spanish?"
-          value={pregunta}
-          onChange={(e) => setPregunta(e.target.value)}
-          rows={2}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="instrucciones">Instrucciones</Label>
-        <Input
-          id="instrucciones"
-          placeholder="Ej: Selecciona la traducción correcta"
-          value={instrucciones}
-          onChange={(e) => setInstrucciones(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-3">
-        <Label>Opciones * (mínimo 2)</Label>
-        <RadioGroup value={respuestaCorrecta.toString()} onValueChange={(v) => setRespuestaCorrecta(parseInt(v))}>
-          {opciones.map((opcion, index) => (
-            <div key={index} className="flex items-center gap-3">
-              <RadioGroupItem value={index.toString()} id={`opcion-${index}`} />
-              <Input
-                placeholder={`Opción ${index + 1}`}
-                value={opcion}
-                onChange={(e) => handleOpcionChange(index, e.target.value)}
-                className="flex-1"
-              />
-              <Label htmlFor={`opcion-${index}`} className="text-xs text-muted-foreground min-w-[80px]">
-                {index === respuestaCorrecta && opcion ? "✓ Correcta" : ""}
-              </Label>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Previsualización */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Previsualización</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMostrarPrevisualizacion(!mostrarPrevisualizacion)}
+            >
+              {mostrarPrevisualizacion ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {mostrarPrevisualizacion ? "Ocultar" : "Mostrar"}
+            </Button>
+          </div>
+        </CardHeader>
+        {mostrarPrevisualizacion && (
+          <CardContent>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-2">Así verá el estudiante:</p>
+              <p className="font-medium mb-3">{pregunta || "¿Pregunta?"}</p>
+              <div className="space-y-2">
+                {opcionesValidas.slice(0, 4).map((opcion, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2 border rounded">
+                    <input 
+                      type={permiteMultiple ? "checkbox" : "radio"} 
+                      name="preview" 
+                      disabled 
+                      checked={opcion.esCorrecta}
+                      onChange={() => {}}
+                    />
+                    <label className="flex-1">{opcion.texto}</label>
+                    {opcion.esCorrecta && (
+                      <Badge variant="default" className="text-xs">Correcta</Badge>
+                    )}
+                  </div>
+                ))}
+                {opcionesValidas.length > 4 && (
+                  <div className="text-center text-muted-foreground text-sm">
+                    ... y {opcionesValidas.length - 4} opciones más
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
-        </RadioGroup>
-        <p className="text-xs text-muted-foreground">
-          💡 Selecciona el círculo para marcar la respuesta correcta
-        </p>
+          </CardContent>
+        )}
+      </Card>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Columna Izquierda */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="pregunta">Pregunta *</Label>
+            <Textarea
+              id="pregunta"
+              placeholder="Ej: ¿Cuál es la capital de Francia?"
+              value={pregunta}
+              onChange={(e) => setPregunta(e.target.value)}
+              rows={3}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="instrucciones">Instrucciones *</Label>
+            <Textarea
+              id="instrucciones"
+              placeholder="Instrucciones detalladas para el estudiante..."
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={2}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="explicacion">Explicación (Opcional)</Label>
+            <Textarea
+              id="explicacion"
+              placeholder="Explicación que verá el estudiante después de responder..."
+              value={explicacion}
+              onChange={(e) => setExplicacion(e.target.value)}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Configuración</Label>
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="mezclar" className="text-sm">Mezclar opciones</Label>
+                <Switch
+                  id="mezclar"
+                  checked={mezclarOpciones}
+                  onCheckedChange={setMezclarOpciones}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="multiple" className="text-sm">Permitir múltiple selección</Label>
+                <Switch
+                  id="multiple"
+                  checked={permiteMultiple}
+                  onCheckedChange={setPermiteMultiple}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Columna Derecha */}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>
+                Opciones de respuesta ({opcionesValidas.length})
+                {opcionCorrecta && (
+                  <Badge variant="default" className="ml-2">
+                    ✓ Correcta seleccionada
+                  </Badge>
+                )}
+              </Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={mezclarOpcionesLista}
+                  disabled={opcionesValidas.length < 2}
+                >
+                  <Shuffle className="h-4 w-4 mr-2" />
+                  Mezclar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={agregarOpcion}
+                  disabled={opciones.length >= 6}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {opciones.map((opcion, index) => (
+                <Card key={opcion.id} className={opcion.esCorrecta ? "border-green-500 bg-green-50 dark:bg-green-950/20" : ""}>
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type={permiteMultiple ? "checkbox" : "radio"}
+                          checked={opcion.esCorrecta}
+                          onChange={() => marcarComoCorrecta(opcion.id)}
+                          className="text-green-600"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          placeholder={`Opción ${index + 1}`}
+                          value={opcion.texto}
+                          onChange={(e) => actualizarOpcion(opcion.id, 'texto', e.target.value)}
+                          className="flex-1"
+                        />
+                        <Input
+                          placeholder="Retroalimentación específica (opcional)"
+                          value={opcion.retroalimentacion || ''}
+                          onChange={(e) => actualizarOpcion(opcion.id, 'retroalimentacion', e.target.value)}
+                          className="flex-1 text-xs"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => eliminarOpcion(opcion.id)}
+                        disabled={opciones.length <= 2 || opcion.esCorrecta}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {opcion.esCorrecta && (
+                      <div className="mt-2 flex items-center gap-2 text-green-600 text-xs">
+                        <Badge variant="default">Respuesta correcta</Badge>
+                        <span>Esta opción se marcará como la respuesta correcta</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pista">Pista general (Opcional)</Label>
+            <Input
+              id="pista"
+              placeholder="Pista para ayudar al estudiante..."
+              value={pista}
+              onChange={(e) => setPista(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="puntos">Puntos</Label>
+            <Input
+              id="puntos"
+              type="number"
+              min="1"
+              max="100"
+              value={puntos}
+              onChange={(e) => setPuntos(parseInt(e.target.value) || 10)}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="pista">Pista (Opcional)</Label>
-        <Input
-          id="pista"
-          placeholder="Ej: Es un saludo común..."
-          value={pista}
-          onChange={(e) => setPista(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="puntos">Puntos</Label>
-        <Input
-          id="puntos"
-          type="number"
-          min="1"
-          value={puntos}
-          onChange={(e) => setPuntos(parseInt(e.target.value))}
-        />
-      </div>
-
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
           <X className="mr-2 h-4 w-4" />
           Cancelar
         </Button>
-        <Button type="submit" className="flex-1">
+        <Button 
+          type="submit" 
+          className="flex-1" 
+          disabled={opcionesValidas.length < 2 || !opcionCorrecta}
+        >
           <Save className="mr-2 h-4 w-4" />
-          Guardar Actividad
+          {actividadEditar ? 'Actualizar' : 'Crear'} Actividad
         </Button>
       </div>
     </form>

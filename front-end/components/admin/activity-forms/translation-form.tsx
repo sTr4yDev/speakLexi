@@ -6,35 +6,109 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Save, X, ArrowRight } from "lucide-react"
+import { Save, X, Plus, Trash2, Eye, EyeOff, ArrowRight, Languages } from "lucide-react"
 import { toast } from "sonner"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { type Actividad } from "@/lib/api"
 
 interface ActivityFormProps {
-  onGuardar: (actividad: any) => void
+  onGuardar: (actividad: Actividad) => void
   onCancelar: () => void
-  actividadEditar?: any
+  actividadEditar?: Actividad | null
 }
+
+interface TraduccionAceptada {
+  id: string
+  texto: string
+  variante?: string
+}
+
+const IDIOMAS = [
+  { value: "ingles", label: "🇬🇧 Inglés", nativo: "English" },
+  { value: "espanol", label: "🇪🇸 Español", nativo: "Español" },
+  { value: "frances", label: "🇫🇷 Francés", nativo: "Français" },
+  { value: "aleman", label: "🇩🇪 Alemán", nativo: "Deutsch" },
+  { value: "italiano", label: "🇮🇹 Italiano", nativo: "Italiano" },
+  { value: "portugues", label: "🇵🇹 Portugués", nativo: "Português" },
+  { value: "chino", label: "🇨🇳 Chino", nativo: "中文" },
+  { value: "japones", label: "🇯🇵 Japonés", nativo: "日本語" },
+  { value: "ruso", label: "🇷🇺 Ruso", nativo: "Русский" },
+  { value: "arabe", label: "🇸🇦 Árabe", nativo: "العربية" }
+]
 
 export function TranslationForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
   const [textoOrigen, setTextoOrigen] = useState("")
   const [idiomaOrigen, setIdiomaOrigen] = useState("ingles")
-  const [textoDestino, setTextoDestino] = useState("")
+  const [traduccionesAceptadas, setTraduccionesAceptadas] = useState<TraduccionAceptada[]>([
+    { id: '1', texto: "", variante: "principal" }
+  ])
   const [idiomaDestino, setIdiomaDestino] = useState("espanol")
-  const [instrucciones, setInstrucciones] = useState("")
+  const [instrucciones, setInstrucciones] = useState("Traduce la siguiente frase.")
   const [pista, setPista] = useState("")
   const [puntos, setPuntos] = useState(15)
+  const [mostrarPrevisualizacion, setMostrarPrevisualizacion] = useState(false)
+  const [permiteMayusculas, setPermiteMayusculas] = useState(true)
+  const [permiteAcentos, setPermiteAcentos] = useState(true)
+  const [permitePuntuacion, setPermitePuntuacion] = useState(true)
+  const [dificultad, setDificultad] = useState<"facil" | "medio" | "dificil">("medio")
+  const [contexto, setContexto] = useState("")
 
   useEffect(() => {
     if (actividadEditar) {
       setTextoOrigen(actividadEditar.pregunta || "")
       setIdiomaOrigen(actividadEditar.opciones?.idioma_origen || "ingles")
-      setTextoDestino(actividadEditar.respuesta_correcta || "")
+      
+      // Procesar traducciones aceptadas
+      if (actividadEditar.opciones?.traducciones_aceptadas) {
+        setTraduccionesAceptadas(actividadEditar.opciones.traducciones_aceptadas)
+      } else if (actividadEditar.respuesta_correcta) {
+        setTraduccionesAceptadas([{ id: '1', texto: actividadEditar.respuesta_correcta, variante: "principal" }])
+      }
+      
       setIdiomaDestino(actividadEditar.opciones?.idioma_destino || "espanol")
-      setInstrucciones(actividadEditar.instrucciones || "")
+      setInstrucciones(actividadEditar.instrucciones || "Traduce la siguiente frase.")
       setPista(actividadEditar.pista || "")
       setPuntos(actividadEditar.puntos || 15)
+      setPermiteMayusculas(actividadEditar.opciones?.permiteMayusculas ?? true)
+      setPermiteAcentos(actividadEditar.opciones?.permiteAcentos ?? true)
+      setPermitePuntuacion(actividadEditar.opciones?.permitePuntuacion ?? true)
+      setDificultad(actividadEditar.opciones?.dificultad || "medio")
+      setContexto(actividadEditar.opciones?.contexto || "")
     }
   }, [actividadEditar])
+
+  const generarId = () => Math.random().toString(36).substr(2, 9)
+
+  const agregarTraduccion = () => {
+    if (traduccionesAceptadas.length >= 5) {
+      toast.error("Máximo 5 traducciones aceptadas")
+      return
+    }
+    
+    setTraduccionesAceptadas([
+      ...traduccionesAceptadas, 
+      { id: generarId(), texto: "", variante: "alternativa" }
+    ])
+  }
+
+  const eliminarTraduccion = (id: string) => {
+    if (traduccionesAceptadas.length <= 1) {
+      toast.error("Debe haber al menos una traducción aceptada")
+      return
+    }
+    
+    setTraduccionesAceptadas(traduccionesAceptadas.filter(t => t.id !== id))
+  }
+
+  const actualizarTraduccion = (id: string, campo: keyof TraduccionAceptada, valor: string) => {
+    setTraduccionesAceptadas(traduccionesAceptadas.map(t => 
+      t.id === id ? { ...t, [campo]: valor } : t
+    ))
+  }
+
+  const traduccionesValidas = traduccionesAceptadas.filter(t => t.texto.trim())
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,8 +118,8 @@ export function TranslationForm({ onGuardar, onCancelar, actividadEditar }: Acti
       return
     }
 
-    if (!textoDestino.trim()) {
-      toast.error("Escribe la traducción correcta")
+    if (traduccionesValidas.length === 0) {
+      toast.error("Debes agregar al menos una traducción aceptada")
       return
     }
 
@@ -54,127 +128,304 @@ export function TranslationForm({ onGuardar, onCancelar, actividadEditar }: Acti
       return
     }
 
-    const actividad = {
+    const actividad: Actividad = {
       tipo: 'translation',
       pregunta: textoOrigen.trim(),
-      instrucciones: instrucciones.trim() || `Traduce del ${idiomaOrigen} al ${idiomaDestino}`,
+      instrucciones: instrucciones.trim(),
       opciones: {
         idioma_origen: idiomaOrigen,
-        idioma_destino: idiomaDestino
+        idioma_destino: idiomaDestino,
+        traducciones_aceptadas: traduccionesValidas,
+        permiteMayusculas,
+        permiteAcentos,
+        permitePuntuacion,
+        dificultad,
+        contexto: contexto.trim() || undefined
       },
-      respuesta_correcta: textoDestino.trim(),
-      pista: pista.trim(),
-      puntos,
-      orden: actividadEditar?.orden || 0
+      respuesta_correcta: traduccionesValidas[0].texto.trim(),
+      retroalimentacion: {
+        correcto: "¡Traducción correcta!",
+        incorrecto: "La traducción no coincide con ninguna de las respuestas aceptadas.",
+        explicacion: `Traducción correcta: "${traduccionesValidas[0].texto}"`
+      },
+      pista: pista.trim() || undefined,
+      puntos: puntos,
+      orden: actividadEditar?.orden || 0,
+      tiempo_limite: undefined,
+      multimedia_id: undefined
     }
 
     onGuardar(actividad)
-    toast.success("Actividad guardada")
+    toast.success(actividadEditar ? "Actividad actualizada" : "Actividad creada")
   }
 
+  const idiomaOrigenInfo = IDIOMAS.find(i => i.value === idiomaOrigen)
+  const idiomaDestinoInfo = IDIOMAS.find(i => i.value === idiomaDestino)
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="instrucciones">Instrucciones</Label>
-        <Input
-          id="instrucciones"
-          placeholder="Ej: Traduce la siguiente frase al español"
-          value={instrucciones}
-          onChange={(e) => setInstrucciones(e.target.value)}
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Previsualización */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Previsualización</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMostrarPrevisualizacion(!mostrarPrevisualizacion)}
+            >
+              {mostrarPrevisualizacion ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {mostrarPrevisualizacion ? "Ocultar" : "Mostrar"}
+            </Button>
+          </div>
+        </CardHeader>
+        {mostrarPrevisualizacion && (
+          <CardContent>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-2">Así verá el estudiante:</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Languages className="h-4 w-4" />
+                    <span className="font-medium">{idiomaOrigenInfo?.label} → {idiomaDestinoInfo?.label}</span>
+                  </div>
+                  <Badge variant={dificultad === "facil" ? "default" : dificultad === "medio" ? "secondary" : "destructive"}>
+                    {dificultad}
+                  </Badge>
+                </div>
+                <div className="p-3 bg-background rounded border">
+                  <p className="font-medium mb-1">Texto a traducir:</p>
+                  <p>{textoOrigen || "Texto de ejemplo"}</p>
+                </div>
+                {contexto && (
+                  <div className="p-2 bg-blue-50 dark:bg-blue-950/20 rounded text-sm">
+                    <p className="font-medium mb-1">📝 Contexto:</p>
+                    <p>{contexto}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label>Idioma Origen</Label>
-          <Select value={idiomaOrigen} onValueChange={setIdiomaOrigen}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ingles">🇬🇧 Inglés</SelectItem>
-              <SelectItem value="espanol">🇪🇸 Español</SelectItem>
-              <SelectItem value="frances">🇫🇷 Francés</SelectItem>
-              <SelectItem value="aleman">🇩🇪 Alemán</SelectItem>
-              <SelectItem value="italiano">🇮🇹 Italiano</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Columna Izquierda */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="instrucciones">Instrucciones *</Label>
+            <Textarea
+              id="instrucciones"
+              placeholder="Instrucciones detalladas para el estudiante..."
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={2}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Idioma Origen</Label>
+              <Select value={idiomaOrigen} onValueChange={setIdiomaOrigen}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {IDIOMAS.map(idioma => (
+                    <SelectItem key={idioma.value} value={idioma.value}>
+                      {idioma.label} ({idioma.nativo})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Idioma Destino</Label>
+              <Select value={idiomaDestino} onValueChange={setIdiomaDestino}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {IDIOMAS.map(idioma => (
+                    <SelectItem key={idioma.value} value={idioma.value}>
+                      {idioma.label} ({idioma.nativo})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="textoOrigen">Texto a traducir *</Label>
+            <Textarea
+              id="textoOrigen"
+              placeholder="Ej: Hello, how are you today?"
+              value={textoOrigen}
+              onChange={(e) => setTextoOrigen(e.target.value)}
+              rows={3}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="contexto">Contexto (Opcional)</Label>
+            <Textarea
+              id="contexto"
+              placeholder="Ej: Esta frase se usa en un contexto formal..."
+              value={contexto}
+              onChange={(e) => setContexto(e.target.value)}
+              rows={2}
+            />
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Idioma Destino</Label>
-          <Select value={idiomaDestino} onValueChange={setIdiomaDestino}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="espanol">🇪🇸 Español</SelectItem>
-              <SelectItem value="ingles">🇬🇧 Inglés</SelectItem>
-              <SelectItem value="frances">🇫🇷 Francés</SelectItem>
-              <SelectItem value="aleman">🇩🇪 Alemán</SelectItem>
-              <SelectItem value="italiano">🇮🇹 Italiano</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Columna Derecha */}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>
+                Traducciones aceptadas ({traduccionesValidas.length})
+                <Badge variant="secondary" className="ml-2">
+                  {permiteMayusculas ? "May/Min" : "Sens. May"} | 
+                  {permiteAcentos ? " Acentos" : " Sin acentos"} |
+                  {permitePuntuacion ? " Puntuación" : " Sin punt."}
+                </Badge>
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={agregarTraduccion}
+                disabled={traduccionesAceptadas.length >= 5}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar
+              </Button>
+            </div>
+
+            {traduccionesAceptadas.map((traduccion, index) => (
+              <Card key={traduccion.id}>
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2">
+                    <Badge 
+                      variant={index === 0 ? "default" : "outline"} 
+                      className="mt-2"
+                    >
+                      {index === 0 ? "Principal" : `Alt. ${index}`}
+                    </Badge>
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Traducción aceptada"
+                        value={traduccion.texto}
+                        onChange={(e) => actualizarTraduccion(traduccion.id, 'texto', e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => eliminarTraduccion(traduccion.id)}
+                      disabled={traduccionesAceptadas.length <= 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {index === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Esta será la traducción principal mostrada como correcta
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              💡 El estudiante podrá escribir cualquiera de estas traducciones y se considerará correcta.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Configuración de evaluación</Label>
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="mayusculas" className="text-sm">Permitir mayúsculas/minúsculas</Label>
+                <Switch
+                  id="mayusculas"
+                  checked={permiteMayusculas}
+                  onCheckedChange={setPermiteMayusculas}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="acentos" className="text-sm">Permitir acentos</Label>
+                <Switch
+                  id="acentos"
+                  checked={permiteAcentos}
+                  onCheckedChange={setPermiteAcentos}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="puntuacion" className="text-sm">Permitir puntuación diferente</Label>
+                <Switch
+                  id="puntuacion"
+                  checked={permitePuntuacion}
+                  onCheckedChange={setPermitePuntuacion}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dificultad" className="text-sm">Dificultad</Label>
+                <Select value={dificultad} onValueChange={(v: "facil" | "medio" | "dificil") => setDificultad(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="facil">Fácil</SelectItem>
+                    <SelectItem value="medio">Medio</SelectItem>
+                    <SelectItem value="dificil">Difícil</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pista">Pista (Opcional)</Label>
+            <Input
+              id="pista"
+              placeholder="Ej: Recuerda usar el pronombre correcto..."
+              value={pista}
+              onChange={(e) => setPista(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="puntos">Puntos</Label>
+            <Input
+              id="puntos"
+              type="number"
+              min="1"
+              max="100"
+              value={puntos}
+              onChange={(e) => setPuntos(parseInt(e.target.value) || 15)}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="textoOrigen">Texto a traducir *</Label>
-        <Textarea
-          id="textoOrigen"
-          placeholder="Ej: Hello, how are you?"
-          value={textoOrigen}
-          onChange={(e) => setTextoOrigen(e.target.value)}
-          rows={3}
-          required
-        />
-      </div>
-
-      <div className="flex justify-center">
-        <ArrowRight className="h-6 w-6 text-muted-foreground" />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="textoDestino">Traducción correcta *</Label>
-        <Textarea
-          id="textoDestino"
-          placeholder="Ej: Hola, ¿cómo estás?"
-          value={textoDestino}
-          onChange={(e) => setTextoDestino(e.target.value)}
-          rows={3}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="pista">Pista (Opcional)</Label>
-        <Input
-          id="pista"
-          placeholder="Ej: Recuerda usar el pronombre correcto..."
-          value={pista}
-          onChange={(e) => setPista(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="puntos">Puntos</Label>
-        <Input
-          id="puntos"
-          type="number"
-          min="1"
-          value={puntos}
-          onChange={(e) => setPuntos(parseInt(e.target.value))}
-        />
-      </div>
-
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
           <X className="mr-2 h-4 w-4" />
           Cancelar
         </Button>
-        <Button type="submit" className="flex-1">
+        <Button 
+          type="submit" 
+          className="flex-1" 
+          disabled={traduccionesValidas.length === 0}
+        >
           <Save className="mr-2 h-4 w-4" />
-          Guardar Actividad
+          {actividadEditar ? 'Actualizar' : 'Crear'} Actividad
         </Button>
       </div>
     </form>

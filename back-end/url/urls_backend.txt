@@ -1,12 +1,13 @@
 # BACKEND - SpeakLexi (Python/Flask)
-# Total: 28 archivos
-# Generado: 2025-10-28 20:45:16
+# Total: 30 archivos
+# Generado: 2025-10-29 17:07:37
 
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/app.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/__init__.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/database.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/settings.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/extensions.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/__init__.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/cursos.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/leccion.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/multimedia.py
@@ -25,6 +26,7 @@ https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gest
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_usuarios.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_password.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_routes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/contenido_txt.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/crear_perfiles.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/generar_hashes.py
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls.py
