@@ -1,0 +1,25 @@
+# ARCHIVO: back-end/url/contenido/project_content/backend/back-end_extensions.py.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/backend/back-end_extensions.py.txt
+# FECHA DESCARGA: 2025-10-29 18:40:14
+# ==================================================
+
+# ARCHIVO: back-end/extensions.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/extensions.py
+# FECHA DESCARGA: 2025-10-28 22:54:14
+# ==================================================
+
+"""
+Extensiones de Flask - SpeakLexi
+Inicialización centralizada de todas las extensiones
+"""
+
+from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
+from flask_jwt_extended import JWTManager
+from flask_mail import Mail
+
+# Inicializar extensiones sin app (se vinculan después con init_app)
+db = SQLAlchemy()
+bcrypt = Bcrypt()
+jwt = JWTManager()
+mail = Mail()

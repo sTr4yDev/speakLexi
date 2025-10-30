@@ -1,0 +1,43 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_app_admin_lecciones_crear_page.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_app_admin_lecciones_crear_page.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:40:50
+# ==================================================
+
+# ARCHIVO: front-end/app/admin/lecciones/crear/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/crear/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:54:41
+# ==================================================
+
+"use client"
+
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { CreateLessonForm } from "@/components/admin/create-lesson-form"
+import { ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+
+export default function CreateLessonPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Link href="/admin/lecciones">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver a Lecciones
+            </Button>
+          </Link>
+        </div>
+
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-balance">Crear Nueva Lección</h1>
+          <p className="mt-1 text-muted-foreground">Completa los pasos para crear una lección</p>
+        </div>
+
+        <CreateLessonForm />
+      </main>
+    </div>
+  )
+}

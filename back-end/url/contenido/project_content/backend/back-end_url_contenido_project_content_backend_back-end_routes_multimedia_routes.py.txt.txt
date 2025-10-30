@@ -1,0 +1,537 @@
+# ARCHIVO: back-end/url/contenido/project_content/backend/back-end_routes_multimedia_routes.py.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/backend/back-end_routes_multimedia_routes.py.txt
+# FECHA DESCARGA: 2025-10-29 18:40:22
+# ==================================================
+
+# ARCHIVO: back-end/routes/multimedia_routes.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/multimedia_routes.py
+# FECHA DESCARGA: 2025-10-28 22:54:24
+# ==================================================
+
+"""
+Rutas API para gestión de recursos multimedia - SpeakLexi
+Endpoints REST para subir, gestionar y servir archivos multimedia
+"""
+
+from flask import Blueprint, request, jsonify, send_file
+from services.gestor_multimedia import gestor_multimedia
+from werkzeug.utils import secure_filename
+from functools import wraps
+from pathlib import Path
+import os
+
+# Crear blueprint
+multimedia_bp = Blueprint('multimedia', __name__, url_prefix='/api/multimedia')
+
+
+# ========== CONFIGURACIÓN ==========
+
+EXTENSIONES_PERMITIDAS = {
+    'imagen': {'jpg', 'jpeg', 'png', 'gif', 'webp'},
+    'audio': {'mp3', 'wav', 'ogg'},
+    'video': {'mp4', 'webm'},
+    'documento': {'pdf', 'txt'}
+}
+
+
+# ========== DECORADORES ==========
+
+def validar_usuario_id(f):
+    """Decorador para validar que exista usuario_id en la sesión/headers"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # TODO: Implementar autenticación real con JWT o sesiones
+        # Por ahora asumimos usuario_id = 1 para desarrollo
+        usuario_id = request.headers.get('X-User-ID', 1)
+        request.usuario_id = int(usuario_id)
+        return f(*args, **kwargs)
+    return decorated
+
+
+def validar_permisos_admin(f):
+    """Decorador para validar permisos de administrador"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # TODO: Implementar verificación real de roles
+        # Por ahora permite todas las operaciones
+        return f(*args, **kwargs)
+    return decorated
+
+
+def archivo_permitido(filename, tipo=None):
+    """
+    Verifica si un archivo tiene extensión permitida
+    
+    Args:
+        filename (str): Nombre del archivo
+        tipo (str): Tipo de multimedia (imagen, audio, video, documento)
+    
+    Returns:
+        bool: True si es permitido
+    """
+    if '.' not in filename:
+        return False
+    
+    extension = filename.rsplit('.', 1)[1].lower()
+    
+    if tipo:
+        return extension in EXTENSIONES_PERMITIDAS.get(tipo, set())
+    
+    # Si no se especifica tipo, verificar en todas las categorías
+    todas_extensiones = set()
+    for exts in EXTENSIONES_PERMITIDAS.values():
+        todas_extensiones.update(exts)
+    
+    return extension in todas_extensiones
+
+
+# ========== ENDPOINTS DE MULTIMEDIA ==========
+
+@multimedia_bp.route('/', methods=['GET'])
+def listar_recursos():
+    """
+    GET /api/multimedia
+    Lista todos los recursos multimedia con filtros opcionales
+    
+    Query params:
+        - tipo: imagen|audio|video|documento
+        - categoria: vocabulario|gramatica|pronunciacion|etc
+        - estado: pendiente|procesando|disponible|error
+        - buscar: término de búsqueda
+        - etiqueta: etiqueta específica
+        - pagina: número de página (default: 1)
+        - por_pagina: items por página (default: 20)
+    """
+    try:
+        # Obtener parámetros de consulta
+        filtros = {
+            'tipo': request.args.get('tipo'),
+            'categoria': request.args.get('categoria'),
+            'estado': request.args.get('estado'),
+            'buscar': request.args.get('buscar'),
+            'etiqueta': request.args.get('etiqueta')
+        }
+        
+        # Remover valores None
+        filtros = {k: v for k, v in filtros.items() if v is not None}
+        
+        pagina = request.args.get('pagina', 1, type=int)
+        por_pagina = request.args.get('por_pagina', 20, type=int)
+        
+        resultado, codigo = gestor_multimedia.listar_recursos(
+            filtros=filtros,
+            pagina=pagina,
+            por_pagina=por_pagina
+        )
+        
+        return jsonify(resultado), codigo
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al listar recursos: {str(e)}"}), 500
+
+
+@multimedia_bp.route('/<int:multimedia_id>', methods=['GET'])
+def obtener_recurso(multimedia_id):
+    """
+    GET /api/multimedia/<id>
+    Obtiene información de un recurso multimedia
+    
+    Query params:
+        - incluir_metadata: true|false (default: false)
+    """
+    try:
+        incluir_metadata = request.args.get('incluir_metadata', 'false').lower() == 'true'
+        
+        resultado, codigo = gestor_multimedia.obtener_recurso(
+            multimedia_id,
+            incluir_metadata=incluir_metadata
+        )
+        
+        return jsonify(resultado), codigo
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al obtener recurso: {str(e)}"}), 500
+
+
+@multimedia_bp.route('/upload', methods=['POST'])
+@validar_usuario_id
+def subir_archivo():
+    """
+    POST /api/multimedia/upload
+    Sube un nuevo archivo multimedia
+    
+    Form data:
+        - archivo: File (requerido)
+        - descripcion: string
+        - alt_text: string
+        - categoria: string
+        - etiquetas: JSON array como string
+        - transcripcion: string (para audio/video)
+    """
+    try:
+        # Verificar que se envió un archivo
+        if 'archivo' not in request.files:
+            return jsonify({"error": "No se proporcionó ningún archivo"}), 400
+        
+        archivo = request.files['archivo']
+        
+        if archivo.filename == '':
+            return jsonify({"error": "No se seleccionó ningún archivo"}), 400
+        
+        # Obtener datos adicionales del formulario
+        datos_adicionales = {
+            'descripcion': request.form.get('descripcion'),
+            'alt_text': request.form.get('alt_text'),
+            'categoria': request.form.get('categoria'),
+            'transcripcion': request.form.get('transcripcion')
+        }
+        
+        # Procesar etiquetas si existen
+        etiquetas_str = request.form.get('etiquetas')
+        if etiquetas_str:
+            try:
+                import json
+                datos_adicionales['etiquetas'] = json.loads(etiquetas_str)
+            except:
+                datos_adicionales['etiquetas'] = []
+        
+        # Subir archivo
+        resultado, codigo = gestor_multimedia.subir_archivo(
+            archivo,
+            datos_adicionales,
+            request.usuario_id
+        )
+        
+        return jsonify(resultado), codigo
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al subir archivo: {str(e)}"}), 500
+
+
+@multimedia_bp.route('/<int:multimedia_id>', methods=['PUT', 'PATCH'])
+@validar_usuario_id
+def actualizar_recurso(multimedia_id):
+    """
+    PUT/PATCH /api/multimedia/<id>
+    Actualiza información de un recurso multimedia
+    
+    Body JSON:
+    {
+        "descripcion": "string",
+        "alt_text": "string",
+        "transcripcion": "string",
+        "etiquetas": ["tag1", "tag2"],
+        "categoria": "string"
+    }
+    """
+    try:
+        datos = request.get_json()
+        
+        if not datos:
+            return jsonify({"error": "No se proporcionaron datos"}), 400
+        
+        resultado, codigo = gestor_multimedia.actualizar_recurso(
+            multimedia_id,
+            datos
+        )
+        
+        return jsonify(resultado), codigo
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al actualizar recurso: {str(e)}"}), 500
+
+
+@multimedia_bp.route('/<int:multimedia_id>', methods=['DELETE'])
+@validar_usuario_id
+@validar_permisos_admin
+def eliminar_recurso(multimedia_id):
+    """
+    DELETE /api/multimedia/<id>
+    Elimina un recurso multimedia
+    
+    Query params:
+        - eliminar_archivo: true|false (default: true)
+    """
+    try:
+        eliminar_archivo = request.args.get('eliminar_archivo', 'true').lower() == 'true'
+        
+        resultado, codigo = gestor_multimedia.eliminar_recurso(
+            multimedia_id,
+            eliminar_archivo=eliminar_archivo
+        )
+        
+        return jsonify(resultado), codigo
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al eliminar recurso: {str(e)}"}), 500
+
+
+@multimedia_bp.route('/<int:multimedia_id>/asociar-leccion/<int:leccion_id>', methods=['POST'])
+@validar_usuario_id
+@validar_permisos_admin
+def asociar_con_leccion(multimedia_id, leccion_id):
+    """
+    POST /api/multimedia/<id>/asociar-leccion/<leccion_id>
+    Asocia un recurso multimedia con una lección
+    
+    Body JSON (opcional):
+    {
+        "orden": int
+    }
+    """
+    try:
+        datos = request.get_json() or {}
+        orden = datos.get('orden', 0)
+        
+        resultado, codigo = gestor_multimedia.asociar_con_leccion(
+            multimedia_id,
+            leccion_id,
+            orden=orden
+        )
+        
+        return jsonify(resultado), codigo
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al asociar recurso: {str(e)}"}), 500
+
+
+@multimedia_bp.route('/<int:multimedia_id>/desasociar-leccion/<int:leccion_id>', methods=['DELETE'])
+@validar_usuario_id
+@validar_permisos_admin
+def desasociar_de_leccion(multimedia_id, leccion_id):
+    """
+    DELETE /api/multimedia/<id>/desasociar-leccion/<leccion_id>
+    Desasocia un recurso multimedia de una lección
+    """
+    try:
+        resultado, codigo = gestor_multimedia.desasociar_de_leccion(
+            multimedia_id,
+            leccion_id
+        )
+        
+        return jsonify(resultado), codigo
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al desasociar recurso: {str(e)}"}), 500
+
+
+@multimedia_bp.route('/estadisticas', methods=['GET'])
+def obtener_estadisticas():
+    """
+    GET /api/multimedia/estadisticas
+    Obtiene estadísticas generales del sistema multimedia
+    """
+    try:
+        resultado, codigo = gestor_multimedia.obtener_estadisticas()
+        return jsonify(resultado), codigo
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al obtener estadísticas: {str(e)}"}), 500
+
+
+@multimedia_bp.route('/archivo/<path:filename>', methods=['GET'])
+def servir_archivo(filename):
+    """
+    GET /api/multimedia/archivo/<filename>
+    Sirve un archivo multimedia estático
+    
+    Este endpoint permite servir archivos directamente
+    """
+    try:
+        from models.multimedia import ConfiguracionMultimedia
+        
+        # Obtener ruta base
+        ruta_base = ConfiguracionMultimedia.obtener_valor(
+            'ruta_almacenamiento',
+            'uploads/multimedia'
+        )
+        
+        # Construir ruta completa
+        ruta_archivo = Path(ruta_base) / filename
+        
+        # Verificar que el archivo existe
+        if not ruta_archivo.exists():
+            return jsonify({"error": "Archivo no encontrado"}), 404
+        
+        # Verificar que la ruta no sale del directorio permitido
+        if not str(ruta_archivo.resolve()).startswith(str(Path(ruta_base).resolve())):
+            return jsonify({"error": "Acceso denegado"}), 403
+        
+        # Servir archivo
+        return send_file(
+            str(ruta_archivo),
+            as_attachment=False,
+            mimetype=None  # Flask detectará automáticamente
+        )
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al servir archivo: {str(e)}"}), 500
+
+
+# ========== ENDPOINTS DE VALIDACIÓN ==========
+
+@multimedia_bp.route('/validar-extension', methods=['POST'])
+def validar_extension():
+    """
+    POST /api/multimedia/validar-extension
+    Valida si una extensión de archivo es permitida
+    
+    Body JSON:
+    {
+        "filename": "string",
+        "tipo": "imagen|audio|video|documento" (opcional)
+    }
+    """
+    try:
+        datos = request.get_json()
+        
+        if not datos or 'filename' not in datos:
+            return jsonify({"error": "Debe proporcionar un nombre de archivo"}), 400
+        
+        filename = datos['filename']
+        tipo = datos.get('tipo')
+        
+        es_valido = archivo_permitido(filename, tipo)
+        
+        return jsonify({
+            "valido": es_valido,
+            "filename": filename,
+            "tipo": tipo
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al validar extensión: {str(e)}"}), 500
+
+
+@multimedia_bp.route('/extensiones-permitidas', methods=['GET'])
+def listar_extensiones_permitidas():
+    """
+    GET /api/multimedia/extensiones-permitidas
+    Lista todas las extensiones de archivo permitidas
+    
+    Query params:
+        - tipo: imagen|audio|video|documento (opcional)
+    """
+    try:
+        tipo = request.args.get('tipo')
+        
+        if tipo:
+            extensiones = list(EXTENSIONES_PERMITIDAS.get(tipo, []))
+        else:
+            extensiones = EXTENSIONES_PERMITIDAS
+        
+        return jsonify({
+            "extensiones": extensiones
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Error al listar extensiones: {str(e)}"}), 500
+
+
+# ========== ENDPOINTS DE BÚSQUEDA AVANZADA ==========
+
+@multimedia_bp.route('/buscar', methods=['POST'])
+def buscar_recursos():
+    """
+    POST /api/multimedia/buscar
+    Búsqueda avanzada de recursos multimedia
+    
+    Body JSON:
+    {
+        "termino": "string",
+        "filtros": {
+            "tipo": "imagen|audio|video|documento",
+            "categoria": "string",
+            "etiquetas": ["tag1", "tag2"],
+            "fecha_desde": "YYYY-MM-DD",
+            "fecha_hasta": "YYYY-MM-DD",
+            "tamano_min": int (bytes),
+            "tamano_max": int (bytes)
+        },
+        "ordenar_por": "fecha|nombre|tamano|veces_usado",
+        "orden": "asc|desc",
+        "pagina": int,
+        "por_pagina": int
+    }
+    """
+    try:
+        datos = request.get_json() or {}
+        
+        # Extraer parámetros de búsqueda
+        termino = datos.get('termino')
+        filtros = datos.get('filtros', {})
+        pagina = datos.get('pagina', 1)
+        por_pagina = datos.get('por_pagina', 20)
+        
+        # Agregar término de búsqueda a filtros
+        if termino:
+            filtros['buscar'] = termino
+        
+        resultado, codigo = gestor_multimedia.listar_recursos(
+            filtros=filtros,
+            pagina=pagina,
+            por_pagina=por_pagina
+        )
+        
+        return jsonify(resultado), codigo
+        
+    except Exception as e:
+        return jsonify({"error": f"Error en búsqueda: {str(e)}"}), 500
+
+
+# ========== MANEJO DE ERRORES ==========
+
+@multimedia_bp.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "Recurso no encontrado"}), 404
+
+
+@multimedia_bp.errorhandler(413)
+def file_too_large(error):
+    return jsonify({"error": "El archivo es demasiado grande"}), 413
+
+
+@multimedia_bp.errorhandler(500)
+def internal_error(error):
+    return jsonify({"error": "Error interno del servidor"}), 500
+
+
+# ========== INFORMACIÓN DEL BLUEPRINT ==========
+
+@multimedia_bp.route('/info', methods=['GET'])
+def info():
+    """Información sobre los endpoints disponibles"""
+    return jsonify({
+        "nombre": "API de Multimedia - SpeakLexi",
+        "version": "1.0.0",
+        "endpoints": {
+            "recursos": {
+                "GET /api/multimedia": "Listar recursos con filtros",
+                "GET /api/multimedia/<id>": "Obtener recurso específico",
+                "POST /api/multimedia/upload": "Subir nuevo archivo",
+                "PUT /api/multimedia/<id>": "Actualizar recurso",
+                "DELETE /api/multimedia/<id>": "Eliminar recurso",
+                "GET /api/multimedia/estadisticas": "Estadísticas generales",
+                "GET /api/multimedia/archivo/<filename>": "Servir archivo estático"
+            },
+            "asociaciones": {
+                "POST /api/multimedia/<id>/asociar-leccion/<lid>": "Asociar con lección",
+                "DELETE /api/multimedia/<id>/desasociar-leccion/<lid>": "Desasociar de lección"
+            },
+            "validacion": {
+                "POST /api/multimedia/validar-extension": "Validar extensión de archivo",
+                "GET /api/multimedia/extensiones-permitidas": "Listar extensiones permitidas"
+            },
+            "busqueda": {
+                "POST /api/multimedia/buscar": "Búsqueda avanzada"
+            }
+        },
+        "formatos_soportados": EXTENSIONES_PERMITIDAS
+    }), 200
+
+
+# ========== CONFIGURACIÓN DE LÍMITES ==========
+
+# Configurar tamaño máximo de archivo (50 MB por defecto)
+# Esto debe configurarse en la app principal:
+# app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024

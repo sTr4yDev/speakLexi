@@ -1,0 +1,46 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components_gamification_level-progress.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components_gamification_level-progress.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:42:00
+# ==================================================
+
+# ARCHIVO: front-end/components/gamification/level-progress.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/gamification/level-progress.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:52
+# ==================================================
+
+import { Card } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Zap } from "lucide-react"
+
+export function LevelProgress() {
+  const currentLevel = 5
+  const currentXP = 1250
+  const nextLevelXP = 2000
+  const progress = (currentXP / nextLevelXP) * 100
+
+  return (
+    <Card className="p-6">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Zap className="h-6 w-6" />
+        </div>
+        <div>
+          <h3 className="font-bold">Nivel {currentLevel}</h3>
+          <p className="text-sm text-muted-foreground">Estudiante Dedicado</p>
+        </div>
+      </div>
+
+      <div className="mb-2 flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">Progreso al Nivel {currentLevel + 1}</span>
+        <span className="font-medium">
+          {currentXP} / {nextLevelXP} XP
+        </span>
+      </div>
+      <Progress value={progress} className="h-3" />
+
+      <p className="mt-3 text-center text-sm text-muted-foreground">
+        {nextLevelXP - currentXP} XP para el siguiente nivel
+      </p>
+    </Card>
+  )
+}

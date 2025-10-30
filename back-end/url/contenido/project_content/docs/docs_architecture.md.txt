@@ -1,5 +1,5 @@
 # ARCHIVO: docs/architecture.md
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/architecture.md
-# FECHA DESCARGA: 2025-10-28 22:57:21
+# FECHA DESCARGA: 2025-10-29 18:46:21
 # ==================================================
 

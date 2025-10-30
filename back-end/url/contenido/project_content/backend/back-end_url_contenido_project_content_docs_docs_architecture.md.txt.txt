@@ -1,0 +1,10 @@
+# ARCHIVO: back-end/url/contenido/project_content/docs/docs_architecture.md.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/docs/docs_architecture.md.txt
+# FECHA DESCARGA: 2025-10-29 18:40:41
+# ==================================================
+
+# ARCHIVO: docs/architecture.md
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/architecture.md
+# FECHA DESCARGA: 2025-10-28 22:57:21
+# ==================================================
+

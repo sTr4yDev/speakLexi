@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/ui/sonner.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/sonner.tsx
-# FECHA DESCARGA: 2025-10-28 22:56:50
+# FECHA DESCARGA: 2025-10-29 18:45:56
 # ==================================================
 
 'use client'

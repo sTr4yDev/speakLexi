@@ -1,0 +1,373 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_app_restablecer-contrasena_page.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_app_restablecer-contrasena_page.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:41:31
+# ==================================================
+
+# ARCHIVO: front-end/app/restablecer-contrasena/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/restablecer-contrasena/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:20
+# ==================================================
+
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, Lock, Shield } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { Progress } from "@/components/ui/progress"
+
+export default function RestablecerContrasenaPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+  
+  const [loading, setLoading] = useState(false)
+  const [validandoToken, setValidandoToken] = useState(true)
+  const [tokenValido, setTokenValido] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
+  
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  
+  const token = searchParams.get("token")
+
+  useEffect(() => {
+    if (token) {
+      validarToken()
+    } else {
+      setValidandoToken(false)
+      setError("Token no proporcionado")
+    }
+  }, [token])
+
+  const validarToken = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/validar-token-recuperacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setTokenValido(true)
+      } else {
+        setError(data.error || "Token inválido o expirado")
+      }
+    } catch (error: any) {
+      setError("Error al validar el token")
+    } finally {
+      setValidandoToken(false)
+    }
+  }
+
+  const calcularFuerzaPassword = (pass: string): number => {
+    let fuerza = 0
+    if (pass.length >= 8) fuerza += 25
+    if (pass.length >= 12) fuerza += 15
+    if (/[a-z]/.test(pass)) fuerza += 15
+    if (/[A-Z]/.test(pass)) fuerza += 15
+    if (/[0-9]/.test(pass)) fuerza += 15
+    if (/[^a-zA-Z0-9]/.test(pass)) fuerza += 15
+    return Math.min(fuerza, 100)
+  }
+
+  const getFuerzaColor = (fuerza: number): string => {
+    if (fuerza < 40) return "bg-red-500"
+    if (fuerza < 70) return "bg-yellow-500"
+    return "bg-green-500"
+  }
+
+  const getFuerzaTexto = (fuerza: number): string => {
+    if (fuerza < 40) return "Débil"
+    if (fuerza < 70) return "Media"
+    return "Fuerte"
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+
+    // Validaciones
+    if (!password || !confirmPassword) {
+      setError("Por favor completa todos los campos")
+      return
+    }
+
+    if (password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres")
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden")
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/restablecer-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          token,
+          nueva_password: password 
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error al restablecer la contraseña")
+      }
+
+      setSuccess(true)
+      toast({
+        title: "¡Contraseña actualizada!",
+        description: "Tu contraseña ha sido restablecida exitosamente",
+      })
+
+      // Redirigir al login después de 3 segundos
+      setTimeout(() => {
+        router.push("/login")
+      }, 3000)
+
+    } catch (error: any) {
+      setError(error.message || "Error al restablecer la contraseña")
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Mientras valida el token
+  if (validandoToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center justify-center p-8">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Validando token...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Token inválido
+  if (!tokenValido && !validandoToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
+        <Card className="w-full max-w-md border-destructive">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-12 w-12 text-destructive" />
+            </div>
+            <CardTitle className="text-destructive">Token Inválido</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert variant="destructive">
+              <AlertDescription>
+                El enlace de recuperación es inválido o ha expirado. 
+                Por favor solicita uno nuevo.
+              </AlertDescription>
+            </Alert>
+            <Button
+              onClick={() => router.push("/recuperar-contrasena")}
+              className="w-full"
+            >
+              Solicitar nuevo enlace
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Éxito
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <CheckCircle2 className="h-16 w-16 text-green-500" />
+            </div>
+            <CardTitle className="text-2xl">¡Contraseña Actualizada!</CardTitle>
+            <CardDescription>
+              Tu contraseña ha sido restablecida exitosamente
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert>
+              <Shield className="h-4 w-4" />
+              <AlertDescription>
+                Ahora puedes iniciar sesión con tu nueva contraseña.
+                Serás redirigido automáticamente...
+              </AlertDescription>
+            </Alert>
+            <Button
+              onClick={() => router.push("/login")}
+              className="w-full"
+            >
+              Ir al inicio de sesión
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const fuerzaPassword = calcularFuerzaPassword(password)
+
+  // Formulario de nueva contraseña
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <Lock className="h-12 w-12 text-primary" />
+          </div>
+          <CardTitle>Nueva Contraseña</CardTitle>
+          <CardDescription>
+            Ingresa tu nueva contraseña segura
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Nueva Contraseña */}
+            <div className="space-y-2">
+              <Label htmlFor="password">Nueva Contraseña</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+
+              {/* Indicador de fuerza */}
+              {password && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Seguridad:</span>
+                    <span className={`font-semibold ${
+                      fuerzaPassword < 40 ? "text-red-500" :
+                      fuerzaPassword < 70 ? "text-yellow-500" :
+                      "text-green-500"
+                    }`}>
+                      {getFuerzaTexto(fuerzaPassword)}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all ${getFuerzaColor(fuerzaPassword)}`}
+                      style={{ width: `${fuerzaPassword}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Confirmar Contraseña */}
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repite tu contraseña"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
+              )}
+              {confirmPassword && password === confirmPassword && (
+                <p className="text-xs text-green-500 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Las contraseñas coinciden
+                </p>
+              )}
+            </div>
+
+            {/* Requisitos */}
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-xs font-semibold mb-2">Requisitos de la contraseña:</p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li className={password.length >= 8 ? "text-green-500" : ""}>
+                  • Al menos 8 caracteres
+                </li>
+                <li className={/[A-Z]/.test(password) ? "text-green-500" : ""}>
+                  • Una letra mayúscula
+                </li>
+                <li className={/[a-z]/.test(password) ? "text-green-500" : ""}>
+                  • Una letra minúscula
+                </li>
+                <li className={/[0-9]/.test(password) ? "text-green-500" : ""}>
+                  • Un número
+                </li>
+              </ul>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Actualizando...
+                </>
+              ) : (
+                <>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Restablecer Contraseña
+                </>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

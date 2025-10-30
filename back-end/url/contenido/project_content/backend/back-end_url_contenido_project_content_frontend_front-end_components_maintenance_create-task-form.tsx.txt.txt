@@ -1,0 +1,215 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components_maintenance_create-task-form.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components_maintenance_create-task-form.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:42:13
+# ==================================================
+
+# ARCHIVO: front-end/components/maintenance/create-task-form.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/maintenance/create-task-form.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:07
+# ==================================================
+
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
+import { Calendar, Clock, AlertCircle } from "lucide-react"
+
+export function CreateTaskForm() {
+  const { toast } = useToast()
+  const router = useRouter()
+
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [taskType, setTaskType] = useState("")
+  const [priority, setPriority] = useState("")
+  const [assignedTo, setAssignedTo] = useState("")
+  const [scheduledDate, setScheduledDate] = useState("")
+  const [scheduledTime, setScheduledTime] = useState("")
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [frequency, setFrequency] = useState("")
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!title || !taskType || !priority || !assignedTo || !scheduledDate || !scheduledTime) {
+      toast({
+        title: "Campos incompletos",
+        description: "Por favor completa todos los campos requeridos",
+        variant: "destructive",
+      })
+      return
+    }
+
+    toast({
+      title: "Tarea programada exitosamente",
+      description: "La tarea ha sido creada y el responsable será notificado",
+    })
+    router.push("/mantenimiento/tareas")
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <Card className="mx-auto max-w-3xl">
+        <CardHeader>
+          <CardTitle>Información de la Tarea</CardTitle>
+          <CardDescription>Completa los detalles de la tarea de mantenimiento</CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="title">Título de la Tarea *</Label>
+            <Input
+              id="title"
+              placeholder="Ej: Actualización de base de datos"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Descripción</Label>
+            <Textarea
+              id="description"
+              placeholder="Describe los detalles de la tarea..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="taskType">Tipo de Tarea *</Label>
+              <Select value={taskType} onValueChange={setTaskType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="automatica">Automática</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="priority">Prioridad *</Label>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona prioridad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="baja">Baja</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                  <SelectItem value="alta">Alta</SelectItem>
+                  <SelectItem value="critica">Crítica</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="assignedTo">Asignar a *</Label>
+            <Select value={assignedTo} onValueChange={setAssignedTo}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona responsable" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Carlos Martínez">Carlos Martínez</SelectItem>
+                <SelectItem value="Ana López">Ana López</SelectItem>
+                <SelectItem value="Pedro Sánchez">Pedro Sánchez</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="scheduledDate" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Fecha Programada *
+              </Label>
+              <Input
+                id="scheduledDate"
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="scheduledTime" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Hora Programada *
+              </Label>
+              <Input
+                id="scheduledTime"
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-lg border p-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="recurring"
+                checked={isRecurring}
+                onCheckedChange={(checked) => setIsRecurring(checked as boolean)}
+              />
+              <Label htmlFor="recurring" className="cursor-pointer font-medium">
+                Tarea Recurrente
+              </Label>
+            </div>
+
+            {isRecurring && (
+              <div className="space-y-2">
+                <Label htmlFor="frequency">Frecuencia</Label>
+                <Select value={frequency} onValueChange={setFrequency}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona frecuencia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="diaria">Diaria</SelectItem>
+                    <SelectItem value="semanal">Semanal</SelectItem>
+                    <SelectItem value="mensual">Mensual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg bg-blue-50 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-900">Nota</p>
+                <p className="mt-1 text-sm text-blue-700">
+                  El responsable asignado recibirá una notificación cuando se acerque la fecha programada.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button type="submit" className="flex-1">
+              Programar Tarea
+            </Button>
+            <Button type="button" variant="outline" onClick={() => router.push("/mantenimiento/tareas")}>
+              Cancelar
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </form>
+  )
+}

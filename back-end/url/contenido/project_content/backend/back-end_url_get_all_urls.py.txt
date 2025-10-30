@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/url/get_all_urls.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls.py
-# FECHA DESCARGA: 2025-10-28 22:54:32
+# FECHA DESCARGA: 2025-10-29 18:43:36
 # ==================================================
 
 # get_all_urls_fixed.py

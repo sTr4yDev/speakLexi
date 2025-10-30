@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/models/cursos.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/cursos.py
-# FECHA DESCARGA: 2025-10-28 22:54:15
+# FECHA DESCARGA: 2025-10-29 18:39:48
 # ==================================================
 
 # back-end/models/cursos.py

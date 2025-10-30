@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/url/urls_backend_organizado.txt
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/urls_backend_organizado.txt
-# FECHA DESCARGA: 2025-10-28 22:54:36
+# FECHA DESCARGA: 2025-10-29 18:43:40
 # ==================================================
 
 # Backend - SpeakLexi

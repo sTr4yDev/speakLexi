@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/hooks/use-mobile.ts
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-mobile.ts
-# FECHA DESCARGA: 2025-10-28 22:57:09
+# FECHA DESCARGA: 2025-10-29 18:46:13
 # ==================================================
 
 import * as React from 'react'

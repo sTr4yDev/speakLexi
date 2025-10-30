@@ -1,0 +1,599 @@
+# ARCHIVO: back-end/url/contenido/project_content/docs/docs_guidelines_naming-conventions.md.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/docs/docs_guidelines_naming-conventions.md.txt
+# FECHA DESCARGA: 2025-10-29 18:40:44
+# ==================================================
+
+# ARCHIVO: docs/guidelines/naming-conventions.md
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/naming-conventions.md
+# FECHA DESCARGA: 2025-10-28 22:57:26
+# ==================================================
+
+# 🏷️ Convenciones de Nombres - SpeakLexi
+
+## 🎯 Principio General
+> **Los nombres deben ser descriptivos, consistentes y en español** (excepto términos técnicos estándar en inglés).
+
+---
+
+## 🐍 Backend (Python/Flask)
+
+### **1. Archivos y Módulos**
+```
+✅ BIEN - snake_case en español
+usuario.py
+gestor_usuarios.py
+correo_service.py
+auth.py (técnico, puede ser inglés)
+leccion.py
+progreso.py
+
+❌ MAL
+Usuario.py          # ❌ PascalCase
+gestorUsuarios.py   # ❌ camelCase
+user.py             # ❌ Inglés inconsistente
+USUARIO.PY          # ❌ MAYÚSCULAS
+```
+
+### **2. Clases (Modelos)**
+```python
+✅ BIEN - PascalCase, sustantivos singulares
+class Usuario:
+    pass
+
+class PerfilUsuario:
+    pass
+
+class Leccion:
+    pass
+
+class ReporteFalla:
+    pass
+
+class TareaMantenimiento:
+    pass
+
+❌ MAL
+class usuario:              # ❌ Minúsculas
+class Usuarios:             # ❌ Plural
+class usuario_model:        # ❌ snake_case
+class User:                 # ❌ Inglés inconsistente
+```
+
+### **3. Funciones y Métodos**
+```python
+✅ BIEN - snake_case, verbos descriptivos
+def registrar_usuario():
+    pass
+
+def enviar_correo_verificacion():
+    pass
+
+def calcular_nivel_usuario():
+    pass
+
+def obtener_lecciones_por_nivel():
+    pass
+
+def validar_credenciales():
+    pass
+
+# Métodos privados con guión bajo inicial
+def _generar_hash_password():
+    pass
+
+def _validar_datos_entrada():
+    pass
+
+❌ MAL
+def RegistrarUsuario():        # ❌ PascalCase
+def registerUser():            # ❌ camelCase + inglés
+def register():                # ❌ No descriptivo
+def reg_usr():                 # ❌ Abreviaciones
+def enviarCorreo():            # ❌ camelCase
+```
+
+### **4. Variables**
+```python
+✅ BIEN - snake_case, descriptivas
+usuario_id = "123"
+email_usuario = "test@example.com"
+datos_registro = {...}
+lista_lecciones = []
+nivel_actual = "principiante"
+fecha_creacion = datetime.now()
+es_activo = True
+tiene_verificacion = False
+
+# Constantes en MAYÚSCULAS
+MAX_INTENTOS_LOGIN = 3
+TIEMPO_EXPIRACION_TOKEN = 3600
+NIVELES_DISPONIBLES = ['principiante', 'intermedio', 'avanzado']
+
+❌ MAL
+id = "123"                  # ❌ Demasiado genérico
+e = "test@example.com"      # ❌ Una letra
+data = {...}                # ❌ Inglés + no descriptivo
+list = []                   # ❌ Palabra reservada
+n = "principiante"          # ❌ Abreviación
+x = True                    # ❌ No descriptivo
+```
+
+### **5. Blueprints (Rutas)**
+```python
+✅ BIEN - sufijo _bp
+from flask import Blueprint
+
+auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+usuario_bp = Blueprint('usuarios', __name__, url_prefix='/api/usuarios')
+leccion_bp = Blueprint('lecciones', __name__, url_prefix='/api/lecciones')
+progreso_bp = Blueprint('progreso', __name__, url_prefix='/api/progreso')
+
+❌ MAL
+authBlueprint               # ❌ camelCase
+usuario_routes              # ❌ Inconsistente con _bp
+bp_auth                     # ❌ Prefijo en lugar de sufijo
+```
+
+### **6. Servicios/Gestores**
+```python
+✅ BIEN - prefijo gestor_ o sufijo _service
+gestor_usuarios.py
+gestor_lecciones.py
+gestor_progreso.py
+correo_service.py
+autenticacion_service.py
+
+# Dentro del archivo
+class GestorUsuarios:
+    def registrar(self, datos):
+        pass
+    
+    def actualizar_perfil(self, usuario_id, datos):
+        pass
+
+❌ MAL
+user_manager.py         # ❌ Inglés
+UsuarioGestor.py       # ❌ PascalCase en archivo
+manager_usuario.py     # ❌ Orden incorrecto
+```
+
+### **7. Rutas/Endpoints**
+```python
+✅ BIEN - kebab-case (guiones), plurales para recursos
+@auth_bp.route('/registro', methods=['POST'])
+@usuario_bp.route('/perfil', methods=['GET'])
+@usuario_bp.route('/cambiar-curso', methods=['PUT'])
+@leccion_bp.route('/', methods=['GET'])  # /api/lecciones
+@leccion_bp.route('/<leccion_id>', methods=['GET'])
+@progreso_bp.route('/racha-actual', methods=['GET'])
+
+❌ MAL
+@auth_bp.route('/Registro')              # ❌ PascalCase
+@usuario_bp.route('/cambiarcurso')       # ❌ Sin separador
+@usuario_bp.route('/cambiar_curso')      # ❌ snake_case
+@leccion_bp.route('/leccion/<id>')       # ❌ Singular inconsistente
+```
+
+---
+
+## 🗄️ Base de Datos (MySQL/SQLAlchemy)
+
+### **1. Nombres de Tablas**
+```python
+✅ BIEN - Plural, snake_case
+__tablename__ = 'usuarios'
+__tablename__ = 'perfiles_usuario'
+__tablename__ = 'lecciones'
+__tablename__ = 'progresos'
+__tablename__ = 'recompensas'
+__tablename__ = 'reportes_falla'
+__tablename__ = 'tareas_mantenimiento'
+
+❌ MAL
+__tablename__ = 'Usuario'           # ❌ Singular + PascalCase
+__tablename__ = 'usuario'           # ❌ Singular
+__tablename__ = 'perfil_usuarios'   # ❌ Inconsistente
+__tablename__ = 'users'             # ❌ Inglés
+```
+
+### **2. Nombres de Columnas**
+```python
+✅ BIEN - snake_case, descriptivas
+id = db.Column(db.Integer, primary_key=True)
+nombre_completo = db.Column(db.String(100))
+email = db.Column(db.String(120), unique=True)
+password_hash = db.Column(db.String(255))
+fecha_registro = db.Column(db.DateTime)
+fecha_nacimiento = db.Column(db.Date)
+es_activo = db.Column(db.Boolean, default=True)
+nivel_actual = db.Column(db.String(50))
+puntos_acumulados = db.Column(db.Integer, default=0)
+
+# Claves foráneas con sufijo _id
+usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
+leccion_id = db.Column(db.Integer, db.ForeignKey('lecciones.id'))
+
+❌ MAL
+Nombre = db.Column(...)              # ❌ PascalCase
+nombreCompleto = db.Column(...)      # ❌ camelCase
+name = db.Column(...)                # ❌ Inglés
+n = db.Column(...)                   # ❌ Abreviación
+created_at = db.Column(...)          # ❌ Inglés (usar fecha_creacion)
+isActive = db.Column(...)            # ❌ camelCase + inglés
+```
+
+### **3. Índices y Constraints**
+```python
+✅ BIEN
+db.Index('idx_usuarios_email', 'email')
+db.Index('idx_lecciones_nivel', 'nivel')
+db.UniqueConstraint('email', name='uq_usuarios_email')
+db.ForeignKeyConstraint(['usuario_id'], ['usuarios.id'], name='fk_progreso_usuario')
+
+❌ MAL
+db.Index('index1', 'email')          # ❌ No descriptivo
+db.Index('email_idx', 'email')       # ❌ Orden incorrecto
+```
+
+### **4. Relaciones SQLAlchemy**
+```python
+✅ BIEN
+# En Usuario
+perfil = db.relationship('PerfilUsuario', backref='usuario', uselist=False)
+lecciones_completadas = db.relationship('Progreso', backref='usuario')
+recompensas = db.relationship('Recompensa', backref='usuario')
+
+# En Leccion
+actividades = db.relationship('Actividad', backref='leccion', cascade='all, delete-orphan')
+
+❌ MAL
+prof = db.relationship(...)          # ❌ Abreviación
+leccionesCompletadas = db.relationship(...)  # ❌ camelCase
+```
+
+---
+
+## ⚛️ Frontend (React/Next.js/TypeScript)
+
+### **1. Archivos y Carpetas**
+```
+✅ BIEN - kebab-case para archivos, PascalCase para componentes
+app/
+├── login/page.tsx                    ✅
+├── registro/page.tsx                 ✅
+├── recuperar-contrasena/page.tsx     ✅
+├── dashboard/page.tsx                ✅
+
+components/
+├── auth/
+│   ├── LoginForm.tsx                 ✅ Componente
+│   ├── RegisterForm.tsx              ✅
+│   └── login-form.tsx                ✅ Alternativa válida
+├── ui/
+│   ├── Button.tsx                    ✅
+│   └── button.tsx                    ✅ shadcn/ui usa minúsculas
+
+hooks/
+├── use-user-data.ts                  ✅
+├── use-auth.ts                       ✅
+
+❌ MAL
+app/Login/page.tsx                    # ❌ PascalCase en carpeta
+components/login_form.tsx             # ❌ snake_case
+components/loginForm.tsx              # ❌ camelCase
+hooks/useUserData.ts                  # ❌ camelCase sin guion
+```
+
+### **2. Componentes React**
+```tsx
+✅ BIEN - PascalCase
+export function LoginForm() {}
+export function DashboardHeader() {}
+export function LessonCard() {}
+export function UserProfileSettings() {}
+
+// Componentes internos (no exportados)
+function LoadingSpinner() {}
+
+❌ MAL
+export function loginForm() {}        # ❌ camelCase
+export function login_form() {}       # ❌ snake_case
+export function LOGINFORM() {}        # ❌ MAYÚSCULAS
+```
+
+### **3. Props y State**
+```tsx
+✅ BIEN - camelCase
+interface LoginFormProps {
+  initialEmail?: string;
+  onSubmit: (data: LoginData) => void;
+  isLoading: boolean;
+  errorMessage?: string;
+}
+
+function LoginForm({ initialEmail, onSubmit, isLoading }: LoginFormProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+}
+
+❌ MAL
+interface Props {                     # ❌ Demasiado genérico
+  InitialEmail?: string;              # ❌ PascalCase
+  on_submit: () => void;              # ❌ snake_case
+}
+
+const [Email, SetEmail] = useState(); # ❌ PascalCase
+const [show_password, set_show_password] = useState(); # ❌ snake_case
+```
+
+### **4. Hooks Personalizados**
+```tsx
+✅ BIEN - prefijo use + camelCase
+export function useAuth() {}
+export function useUserData() {}
+export function useLessons() {}
+export function useLocalStorage() {}
+
+❌ MAL
+export function auth() {}             # ❌ Sin prefijo use
+export function UseAuth() {}          # ❌ PascalCase
+export function use_auth() {}         # ❌ snake_case
+```
+
+### **5. Tipos e Interfaces TypeScript**
+```tsx
+✅ BIEN - PascalCase
+interface Usuario {
+  id: string;
+  nombre: string;
+  email: string;
+}
+
+type NivelCurso = 'principiante' | 'intermedio' | 'avanzado';
+
+type LeccionEstado = 'pendiente' | 'en_progreso' | 'completada';
+
+interface PropsFormularioRegistro {
+  onSuccess: () => void;
+}
+
+❌ MAL
+interface usuario {}                  # ❌ minúsculas
+type nivel_curso = string;            # ❌ snake_case
+interface propsFormularioRegistro {}  # ❌ camelCase
+```
+
+### **6. Constantes**
+```tsx
+✅ BIEN - MAYÚSCULAS con guión bajo
+const API_BASE_URL = 'http://localhost:5000/api';
+const MAX_LOGIN_ATTEMPTS = 3;
+const TOKEN_STORAGE_KEY = 'auth_token';
+const NIVELES_DISPONIBLES = ['principiante', 'intermedio', 'avanzado'];
+
+❌ MAL
+const apiBaseUrl = '...';             # ❌ camelCase
+const max_login_attempts = 3;         # ❌ snake_case minúsculas
+const MaxLoginAttempts = 3;           # ❌ PascalCase
+```
+
+### **7. Funciones de Utilidad**
+```tsx
+✅ BIEN - camelCase, verbos descriptivos
+export function formatearFecha(fecha: Date): string {}
+export function validarEmail(email: string): boolean {}
+export function calcularNivel(puntos: number): number {}
+export function obtenerToken(): string | null {}
+
+❌ MAL
+export function FormatearFecha() {}   # ❌ PascalCase
+export function formatear_fecha() {}  # ❌ snake_case
+export function format() {}           # ❌ No descriptivo
+export function fmt() {}              # ❌ Abreviación
+```
+
+### **8. Rutas Next.js**
+```
+✅ BIEN - kebab-case
+app/
+├── login/                            ✅ /login
+├── registro/                         ✅ /registro
+├── recuperar-contrasena/             ✅ /recuperar-contrasena
+├── perfil/                           ✅ /perfil
+├── lecciones/
+│   └── [id]/                         ✅ /lecciones/123
+└── admin/
+    └── usuarios/
+        └── [id]/
+            └── editar/               ✅ /admin/usuarios/123/editar
+
+❌ MAL
+app/Login/                            # ❌ PascalCase
+app/recuperar_contrasena/             # ❌ snake_case
+app/recuperarContrasena/              # ❌ camelCase
+```
+
+---
+
+## 🌐 Variables de Entorno (.env)
+```bash
+✅ BIEN - MAYÚSCULAS con guión bajo
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=loquesea2013
+DB_NAME=SpeakLexi
+JWT_SECRET_KEY=clave_secreta
+JWT_ACCESS_TOKEN_EXPIRES=3600
+MAIL_SERVER=smtp.gmail.com
+MAIL_USERNAME=donitasdechocolate01@gmail.com
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+
+❌ MAL
+db_host=localhost                     # ❌ Minúsculas
+DbHost=localhost                      # ❌ PascalCase
+dbHost=localhost                      # ❌ camelCase
+DATABASE-HOST=localhost               # ❌ Guiones en lugar de _
+```
+
+---
+
+## 📁 Estructura de Carpetas
+```
+✅ BIEN - snake_case o kebab-case
+back-end/                             ✅
+├── config/                           ✅
+├── models/                           ✅
+├── routes/                           ✅
+├── services/                         ✅
+└── utils/                            ✅
+
+front-end/                            ✅
+├── app/                              ✅
+├── components/                       ✅
+│   ├── auth/                         ✅
+│   ├── dashboard/                    ✅
+│   └── ui/                           ✅
+├── hooks/                            ✅
+└── lib/                              ✅
+
+❌ MAL
+BackEnd/                              # ❌ PascalCase
+back_End/                             # ❌ Inconsistente
+BACKEND/                              # ❌ MAYÚSCULAS
+componentes/                          # ❌ Español inconsistente con proyecto
+```
+
+---
+
+## 🎨 Clases CSS (Tailwind)
+```tsx
+✅ BIEN - kebab-case para clases personalizadas
+<div className="bg-blue-500 text-white p-4 rounded-lg">
+  {/* Tailwind usa clases predefinidas */}
+</div>
+
+// En globals.css
+.boton-primario {
+  @apply bg-blue-500 text-white px-4 py-2 rounded;
+}
+
+.tarjeta-leccion {
+  @apply border rounded-lg shadow-md p-6;
+}
+
+❌ MAL
+.botonPrimario {}                     # ❌ camelCase
+.boton_primario {}                    # ❌ snake_case (no estándar en CSS)
+.BotonPrimario {}                     # ❌ PascalCase
+```
+
+---
+
+## 📊 Resumen de Convenciones
+
+| Elemento | Convención | Ejemplo |
+|----------|-----------|---------|
+| **Archivos Python** | snake_case | `gestor_usuarios.py` |
+| **Clases Python** | PascalCase | `class Usuario:` |
+| **Funciones Python** | snake_case | `def registrar_usuario():` |
+| **Variables Python** | snake_case | `usuario_id = "123"` |
+| **Constantes Python** | MAYÚSCULAS | `MAX_INTENTOS = 3` |
+| **Tablas BD** | snake_case plural | `usuarios`, `lecciones` |
+| **Columnas BD** | snake_case | `nombre_completo`, `email` |
+| **Archivos React** | kebab-case / PascalCase | `LoginForm.tsx`, `login-form.tsx` |
+| **Componentes React** | PascalCase | `function LoginForm()` |
+| **Props/State** | camelCase | `isLoading`, `userName` |
+| **Hooks** | use + camelCase | `useAuth()`, `useUserData()` |
+| **Tipos TS** | PascalCase | `interface Usuario {}` |
+| **Funciones TS** | camelCase | `validarEmail()` |
+| **Rutas Next.js** | kebab-case | `/recuperar-contrasena` |
+| **Variables ENV** | MAYÚSCULAS | `DB_HOST`, `JWT_SECRET_KEY` |
+| **Clases CSS** | kebab-case | `.boton-primario` |
+
+---
+
+## 🚨 Errores Comunes a Evitar
+
+### 1. **Mezclar Idiomas**
+```python
+❌ MAL
+def register_usuario(data):  # ❌ Inglés + Español
+    user_email = data['correo']  # ❌ Inglés + Español
+    
+✅ BIEN
+def registrar_usuario(data):
+    email_usuario = data['email']
+```
+
+### 2. **Abreviaciones No Claras**
+```python
+❌ MAL
+usr_id = "123"
+msg = "Hola"
+btn_clk = True
+
+✅ BIEN
+usuario_id = "123"
+mensaje = "Hola"
+boton_clickeado = True
+```
+
+### 3. **Inconsistencia en el Proyecto**
+```python
+❌ MAL - Inconsistente
+# En un archivo
+class Usuario:
+    pass
+
+# En otro archivo
+class user_profile:
+    pass
+
+✅ BIEN - Consistente
+class Usuario:
+    pass
+
+class PerfilUsuario:
+    pass
+```
+
+### 4. **Nombres Demasiado Genéricos**
+```python
+❌ MAL
+def handle():
+    data = get()
+    process(data)
+    
+✅ BIEN
+def manejar_registro_usuario():
+    datos_formulario = obtener_datos_formulario()
+    procesar_registro(datos_formulario)
+```
+
+---
+
+## ✅ Checklist de Nombres
+
+Antes de crear un archivo, variable o función, pregúntate:
+
+- [ ] ¿Sigue la convención correcta (snake_case, PascalCase, camelCase)?
+- [ ] ¿Es descriptivo y claro?
+- [ ] ¿Está en español (excepto términos técnicos)?
+- [ ] ¿Es consistente con el resto del proyecto?
+- [ ] ¿Evita abreviaciones confusas?
+- [ ] ¿No usa palabras reservadas del lenguaje?
+
+---
+
+## 📚 Referencias
+
+- **PEP 8** (Python): https://pep8.org/
+- **Google TypeScript Style Guide**: https://google.github.io/styleguide/tsguide.html
+- **Airbnb JavaScript Style Guide**: https://github.com/airbnb/javascript
+
+---
+
+**Actualizado:** Octubre 2025  
+**Proyecto:** SpeakLexi v1.0.0

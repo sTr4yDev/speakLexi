@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/ui/spinner.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/spinner.tsx
-# FECHA DESCARGA: 2025-10-28 22:56:51
+# FECHA DESCARGA: 2025-10-29 18:45:57
 # ==================================================
 
 import { Loader2Icon } from 'lucide-react'

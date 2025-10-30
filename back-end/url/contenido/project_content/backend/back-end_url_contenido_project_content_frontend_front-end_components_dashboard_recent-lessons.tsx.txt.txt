@@ -1,0 +1,118 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components_dashboard_recent-lessons.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components_dashboard_recent-lessons.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:41:56
+# ==================================================
+
+# ARCHIVO: front-end/components/dashboard/recent-lessons.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/dashboard/recent-lessons.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:47
+# ==================================================
+
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+import Link from "next/link"
+import { ChevronRight, Lock } from "lucide-react"
+
+export function RecentLessons() {
+  const lessons = [
+    {
+      id: 1,
+      title: "Greetings and Introductions",
+      description: "Learn how to greet people and introduce yourself",
+      progress: 100,
+      completed: true,
+      xp: 10,
+    },
+    {
+      id: 2,
+      title: "Numbers 1-20",
+      description: "Learn to count from 1 to 20 in English",
+      progress: 75,
+      completed: false,
+      xp: 10,
+    },
+    {
+      id: 3,
+      title: "Colors and Shapes",
+      description: "Learn basic colors and shapes",
+      progress: 0,
+      completed: false,
+      xp: 10,
+      locked: false,
+    },
+    {
+      id: 4,
+      title: "Family Members",
+      description: "Learn vocabulary about family",
+      progress: 0,
+      completed: false,
+      xp: 15,
+      locked: true,
+    },
+  ]
+
+  return (
+    <Card className="p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-xl font-bold">Tus Lecciones</h2>
+        <Link href="/lecciones">
+          <Button variant="ghost" size="sm">
+            Ver Todas
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </Link>
+      </div>
+
+      <div className="space-y-3">
+        {lessons.map((lesson) => (
+          <Link
+            key={lesson.id}
+            href={lesson.locked ? "#" : `/lecciones/${lesson.id}`}
+            className={`block ${lesson.locked ? "cursor-not-allowed" : ""}`}
+          >
+            <div
+              className={`rounded-xl border-2 p-4 transition-all ${
+                lesson.locked
+                  ? "border-border bg-muted/50 opacity-60"
+                  : lesson.completed
+                    ? "border-success/30 bg-success/5 hover:border-success"
+                    : "border-border bg-card hover:border-primary hover:bg-primary/5"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{lesson.title}</h3>
+                    {lesson.completed && (
+                      <span className="rounded-full bg-success px-2 py-0.5 text-xs font-medium text-success-foreground">
+                        Completada
+                      </span>
+                    )}
+                    {lesson.locked && <Lock className="h-4 w-4 text-muted-foreground" />}
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{lesson.description}</p>
+                  {!lesson.locked && !lesson.completed && (
+                    <div className="mt-3">
+                      <div className="mb-1 flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Progreso</span>
+                        <span className="font-medium">{lesson.progress}%</span>
+                      </div>
+                      <Progress value={lesson.progress} className="h-2" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-1 rounded-lg bg-accent/10 px-2 py-1 text-sm font-medium text-accent">
+                    <span>+{lesson.xp}</span>
+                    <span className="text-xs">XP</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Card>
+  )
+}

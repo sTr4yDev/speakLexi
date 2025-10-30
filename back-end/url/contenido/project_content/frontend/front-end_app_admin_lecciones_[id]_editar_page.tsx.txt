@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/app/admin/lecciones/[id]/editar/page.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/[id]/editar/page.tsx
-# FECHA DESCARGA: 2025-10-28 22:54:40
+# FECHA DESCARGA: 2025-10-29 18:43:44
 # ==================================================
 
 "use client"

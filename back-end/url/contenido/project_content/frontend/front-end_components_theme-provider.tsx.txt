@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/theme-provider.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/theme-provider.tsx
-# FECHA DESCARGA: 2025-10-28 22:56:15
+# FECHA DESCARGA: 2025-10-29 18:45:10
 # ==================================================
 
 'use client'

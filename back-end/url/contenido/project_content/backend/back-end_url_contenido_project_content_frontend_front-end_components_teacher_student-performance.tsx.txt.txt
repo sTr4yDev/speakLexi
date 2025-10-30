@@ -1,0 +1,120 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components_teacher_student-performance.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components_teacher_student-performance.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:42:18
+# ==================================================
+
+# ARCHIVO: front-end/components/teacher/student-performance.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/teacher/student-performance.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:13
+# ==================================================
+
+import { Card } from "@/components/ui/card"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import { ChevronRight } from "lucide-react"
+
+export function StudentPerformance() {
+  const students = [
+    {
+      id: 1,
+      name: "María García",
+      initials: "MG",
+      level: "B1",
+      lessonsCompleted: 15,
+      totalLessons: 20,
+      averageScore: 92,
+      status: "excellent",
+    },
+    {
+      id: 2,
+      name: "Carlos Rodríguez",
+      initials: "CR",
+      level: "A2",
+      lessonsCompleted: 8,
+      totalLessons: 15,
+      averageScore: 78,
+      status: "good",
+    },
+    {
+      id: 3,
+      name: "Ana Martínez",
+      initials: "AM",
+      level: "B1",
+      lessonsCompleted: 12,
+      totalLessons: 20,
+      averageScore: 65,
+      status: "needs-attention",
+    },
+    {
+      id: 4,
+      name: "Luis Fernández",
+      initials: "LF",
+      level: "A1",
+      lessonsCompleted: 5,
+      totalLessons: 10,
+      averageScore: 88,
+      status: "good",
+    },
+  ]
+
+  const getStatusBadge = (status: string) => {
+    if (status === "excellent") return <Badge className="bg-success text-success-foreground">Excelente</Badge>
+    if (status === "good") return <Badge variant="secondary">Bien</Badge>
+    return <Badge variant="destructive">Necesita Atención</Badge>
+  }
+
+  return (
+    <Card className="p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-xl font-bold">Rendimiento de Estudiantes</h2>
+        <Link href="/profesor/estadisticas" className="text-sm text-primary hover:underline">
+          Ver Todos
+          <ChevronRight className="ml-1 inline h-4 w-4" />
+        </Link>
+      </div>
+
+      <div className="space-y-4">
+        {students.map((student) => (
+          <Link key={student.id} href={`/profesor/estadisticas/${student.id}`}>
+            <div className="rounded-xl border-2 border-border bg-card p-4 transition-all hover:border-primary hover:bg-primary/5">
+              <div className="flex items-start gap-4">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback className="bg-primary text-primary-foreground">{student.initials}</AvatarFallback>
+                </Avatar>
+
+                <div className="flex-1">
+                  <div className="mb-2 flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold">{student.name}</h3>
+                      <p className="text-sm text-muted-foreground">Nivel {student.level}</p>
+                    </div>
+                    {getStatusBadge(student.status)}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <div className="mb-1 flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Progreso</span>
+                        <span className="font-medium">
+                          {student.lessonsCompleted} / {student.totalLessons} lecciones
+                        </span>
+                      </div>
+                      <Progress value={(student.lessonsCompleted / student.totalLessons) * 100} className="h-2" />
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Promedio</span>
+                      <span className="font-bold text-primary">{student.averageScore}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Card>
+  )
+}

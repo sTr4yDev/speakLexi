@@ -1,0 +1,31 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components.json.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components.json.txt
+# FECHA DESCARGA: 2025-10-29 18:41:35
+# ==================================================
+
+# ARCHIVO: front-end/components.json
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components.json
+# FECHA DESCARGA: 2025-10-28 22:55:23
+# ==================================================
+
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide"
+}

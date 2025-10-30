@@ -1,5 +1,5 @@
 # ARCHIVO: docs/database.md
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/database.md
-# FECHA DESCARGA: 2025-10-28 22:57:23
+# FECHA DESCARGA: 2025-10-29 18:46:22
 # ==================================================
 

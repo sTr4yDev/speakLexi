@@ -1,0 +1,51 @@
+# ARCHIVO: back-end/url/contenido/project_content/docs/docs_guidelines_requisitos-funcionales.md.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/docs/docs_guidelines_requisitos-funcionales.md.txt
+# FECHA DESCARGA: 2025-10-29 18:40:45
+# ==================================================
+
+# ARCHIVO: docs/guidelines/requisitos-funcionales.md
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/requisitos-funcionales.md
+# FECHA DESCARGA: 2025-10-28 22:57:27
+# ==================================================
+
+# 📋 Tabla de Requisitos Funcionales del Sistema
+
+| **Módulo** | **Actividad** | **ID** | **Requisito Funcional** | **Descripción Breve** |
+|-------------|----------------|---------|---------------------------|------------------------|
+| **Gestión de Usuarios** | Implementar requisitos, CRUD de usuario y validaciones | **RF-1** | Iniciar sesión | El usuario podrá acceder al sistema ingresando su correo electrónico y contraseña. |
+|  |  | **RF-2** | Recuperar contraseña | El sistema permitirá recuperar la contraseña mediante un enlace enviado al correo electrónico. |
+|  |  | **RF-3** | Autenticar usuario | El sistema debe permitir enviar automáticamente un mensaje de verificación al correo electrónico del usuario para validar su identidad. |
+|  |  | **RF-4** | Registrar usuario | El usuario podrá crear una cuenta proporcionando información básica como nombre, correo electrónico, contraseña y otros datos personales necesarios. |
+|  |  | **RF-5** | Asignar usuario | Después del registro, el sistema clasificará al usuario según su nivel de dominio del idioma, asignándolo al curso o módulo correspondiente. |
+|  |  | **RF-6** | Cambiar curso | El sistema debe permitir al usuario cambiar el curso de idioma. |
+|  |  | **RF-7** | Eliminar cuenta | El usuario tendrá la opción de borrar su cuenta y todos sus datos asociados del sistema de forma definitiva. |
+
+---
+
+| **Módulo** | **Actividad** | **ID** | **Requisito Funcional** | **Descripción Breve** |
+|-------------|----------------|---------|---------------------------|------------------------|
+| **Gestión de Lecciones y Contenidos** | Implementar requisitos, CRUD de usuario y validaciones | **RF-8** | Crear nuevas lecciones | El sistema debe permitir al administrador de contenido crear nuevas lecciones mediante preguntas con actividades dinámicas de juego. |
+|  |  | **RF-9** | Agregar Multimedia | El sistema debe permitir agregar recursos multimedia (audio, video, imágenes) dentro de las lecciones. |
+
+---
+
+| **Módulo** | **Actividad** | **ID** | **Requisito Funcional** | **Descripción Breve** |
+|-------------|----------------|---------|---------------------------|------------------------|
+| **Gestión del Aprendizaje** | Implementar requisitos, CRUD de usuario y validaciones | **RF-10** | Registrar progreso | El sistema debe registrar el progreso del alumno al acabar cada lección. |
+|  |  | **RF-11** | Otorgar recompensas | El sistema debe otorgar recompensas con el objetivo de incentivar al alumno. |
+|  |  | **RF-12** | Generar tablas | El sistema debe generar tablas de clasificación a partir de desafíos entre diferentes alumnos. |
+
+---
+
+| **Módulo** | **Actividad** | **ID** | **Requisito Funcional** | **Descripción Breve** |
+|-------------|----------------|---------|---------------------------|------------------------|
+| **Gestión de Desempeño y Retroalimentación** | Implementar requisitos, análisis y reportes | **RF-13** | Consultar estadísticas de progreso | Permite al profesor visualizar el rendimiento de los alumnos (promedio, racha y tiempo de estudio) mediante reportes automáticos. |
+|  |  | **RF-14** | Revisar retroalimentación | Permite al profesor revisar y responder comentarios enviados por los alumnos sobre las lecciones. |
+|  |  | **RF-15** | Planificar nuevos contenidos | Genera planes personalizados de estudio según las áreas de mejora detectadas en las estadísticas. |
+
+---
+
+| **Módulo** | **Actividad** | **ID** | **Requisito Funcional** | **Descripción Breve** |
+|-------------|----------------|---------|---------------------------|------------------------|
+| **Gestión de Soporte y Mantenimiento** | Implementar requisitos, CRUD y validaciones | **RF-16** | Consultar reportes de fallas | El sistema debe permitir al personal de mantenimiento consultar reportes de fallas del sistema para identificar errores. |
+|  |  | **RF-17** | Programar tareas | El sistema debe permitir al personal de mantenimiento programar tareas de mantenimiento preventivo. |

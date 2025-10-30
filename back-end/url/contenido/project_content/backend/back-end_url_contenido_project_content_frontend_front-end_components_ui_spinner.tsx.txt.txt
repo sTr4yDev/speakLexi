@@ -1,0 +1,26 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components_ui_spinner.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components_ui_spinner.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:43:05
+# ==================================================
+
+# ARCHIVO: front-end/components/ui/spinner.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/spinner.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:51
+# ==================================================
+
+import { Loader2Icon } from 'lucide-react'
+
+import { cn } from '@/lib/utils'
+
+function Spinner({ className, ...props }: React.ComponentProps<'svg'>) {
+  return (
+    <Loader2Icon
+      role="status"
+      aria-label="Loading"
+      className={cn('size-4 animate-spin', className)}
+      {...props}
+    />
+  )
+}
+
+export { Spinner }

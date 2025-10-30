@@ -1,0 +1,1205 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_docs_ARQUITECTURA_PROYECTO.md.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_docs_ARQUITECTURA_PROYECTO.md.txt
+# FECHA DESCARGA: 2025-10-29 18:43:16
+# ==================================================
+
+# ARCHIVO: front-end/docs/ARQUITECTURA_PROYECTO.md
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/docs/ARQUITECTURA_PROYECTO.md
+# FECHA DESCARGA: 2025-10-28 22:57:03
+# ==================================================
+
+# 📐 Arquitectura del Proyecto SpeakLexi
+
+## 📋 Tabla de Contenidos
+1. [Visión General](#visión-general)
+2. [Estructura del Proyecto](#estructura-del-proyecto)
+3. [Módulos del Sistema](#módulos-del-sistema)
+4. [Flujo de Datos](#flujo-de-datos)
+5. [Componentes Principales](#componentes-principales)
+6. [Rutas y Navegación](#rutas-y-navegación)
+7. [Esquema de Base de Datos](#esquema-de-base-de-datos)
+8. [APIs Necesarias para Backend](#apis-necesarias-para-backend)
+9. [Autenticación y Autorización](#autenticación-y-autorización)
+10. [Integración Frontend-Backend](#integración-frontend-backend)
+
+---
+
+## 🎯 Visión General
+
+SpeakLexi es una plataforma de aprendizaje de idiomas gamificada tipo Duolingo, construida con Next.js 15 (App Router), React 19, TypeScript, y Tailwind CSS v4. La arquitectura está diseñada para ser modular, escalable y fácil de integrar con un backend Flask.
+
+### Tecnologías Frontend
+- **Framework**: Next.js 15 (App Router)
+- **UI Library**: React 19
+- **Lenguaje**: TypeScript
+- **Estilos**: Tailwind CSS v4
+- **Componentes UI**: shadcn/ui
+- **Gestión de Estado**: React Hooks + localStorage (temporal)
+- **Futuro Backend**: Flask + PostgreSQL/Supabase
+
+---
+
+## 📁 Estructura del Proyecto
+
+\`\`\`
+speaklexi/
+├── app/                          # Rutas de Next.js (App Router)
+│   ├── page.tsx                  # Landing page
+│   ├── layout.tsx                # Layout principal con fuentes
+│   ├── globals.css               # Estilos globales y tokens de diseño
+│   │
+│   ├── login/                    # Módulo de Autenticación
+│   │   └── page.tsx
+│   ├── registro/
+│   │   └── page.tsx
+│   ├── verificar-email/
+│   │   └── page.tsx
+│   ├── recuperar-contrasena/
+│   │   └── page.tsx
+│   ├── asignar-nivel/
+│   │   └── page.tsx
+│   ├── correo-enviado/
+│   │   └── page.tsx
+│   │
+│   ├── dashboard/                # Módulo Alumno
+│   │   └── page.tsx              # Dashboard principal del estudiante
+│   ├── lecciones/
+│   │   ├── page.tsx              # Lista de lecciones
+│   │   └── [id]/
+│   │       └── page.tsx          # Visor de lección individual
+│   ├── logros/
+│   │   └── page.tsx              # Logros y recompensas
+│   ├── clasificacion/
+│   │   └── page.tsx              # Tabla de clasificación
+│   ├── progreso/
+│   │   └── page.tsx              # Progreso detallado del alumno
+│   ├── perfil/
+│   │   └── page.tsx              # Perfil del usuario
+│   ├── cambiar-curso/
+│   │   └── page.tsx              # Cambiar curso actual
+│   ├── eliminar-cuenta/
+│   │   └── page.tsx              # Eliminar cuenta (3 pasos)
+│   │
+│   ├── profesor/                 # Módulo Profesor
+│   │   ├── dashboard/
+│   │   │   └── page.tsx          # Dashboard del profesor
+│   │   ├── estadisticas/
+│   │   │   ├── page.tsx          # Estadísticas generales
+│   │   │   └── [id]/
+│   │   │       └── page.tsx      # Detalle de alumno individual
+│   │   ├── retroalimentacion/
+│   │   │   └── page.tsx          # Gestión de retroalimentación
+│   │   └── planificacion/
+│   │       ├── page.tsx          # Lista de planificaciones
+│   │       └── nuevo/
+│   │           └── page.tsx      # Crear nueva planificación (3 pasos)
+│   │
+│   ├── admin/                    # Módulo Administrador
+│   │   ├── dashboard/
+│   │   │   └── page.tsx          # Dashboard del admin
+│   │   ├── lecciones/
+│   │   │   ├── page.tsx          # Gestión de lecciones
+│   │   │   ├── crear/
+│   │   │   │   └── page.tsx      # Crear nueva lección
+│   │   │   └── [id]/
+│   │   │       └── editar/
+│   │   │           └── page.tsx  # Editar lección existente
+│   │   ├── multimedia/
+│   │   │   └── page.tsx          # Biblioteca multimedia
+│   │   └── usuarios/
+│   │       ├── page.tsx          # Gestión de usuarios
+│   │       └── [id]/
+│   │           └── editar/
+│   │               └── page.tsx  # Editar usuario
+│   │
+│   └── mantenimiento/            # Módulo Mantenimiento
+│       ├── dashboard/
+│       │   └── page.tsx          # Dashboard de mantenimiento
+│       ├── reportes/
+│       │   ├── page.tsx          # Lista de reportes de bugs
+│       │   └── [id]/
+│       │       └── page.tsx      # Detalle de reporte
+│       └── tareas/
+│           ├── page.tsx          # Lista de tareas programadas
+│           └── nueva/
+│               └── page.tsx      # Crear nueva tarea
+│
+├── components/                   # Componentes reutilizables
+│   ├── ui/                       # Componentes base de shadcn/ui
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   ├── input.tsx
+│   │   ├── dialog.tsx
+│   │   ├── dropdown-menu.tsx
+│   │   ├── progress.tsx
+│   │   ├── avatar.tsx
+│   │   ├── badge.tsx
+│   │   ├── breadcrumb.tsx
+│   │   ├── checkbox.tsx
+│   │   ├── label.tsx
+│   │   ├── radio-group.tsx
+│   │   ├── select.tsx
+│   │   ├── textarea.tsx
+│   │   └── ...
+│   │
+│   ├── auth/                     # Componentes de autenticación
+│   │   ├── login-form.tsx
+│   │   ├── register-form.tsx
+│   │   ├── level-assignment-flow.tsx
+│   │   └── password-recovery-form.tsx
+│   │
+│   ├── dashboard/                # Componentes del dashboard alumno
+│   │   ├── dashboard-header.tsx  # Header con navegación por rol
+│   │   ├── progress-overview.tsx
+│   │   ├── streak-card.tsx
+│   │   ├── quick-actions.tsx
+│   │   └── recent-lessons.tsx
+│   │
+│   ├── lessons/                  # Componentes de lecciones
+│   │   ├── lesson-filters.tsx
+│   │   ├── lesson-list.tsx
+│   │   ├── lesson-viewer.tsx
+│   │   ├── completion-modal.tsx
+│   │   ├── abandon-lesson-modal.tsx
+│   │   └── activities/           # Tipos de actividades
+│   │       ├── multiple-choice-activity.tsx
+│   │       ├── fill-blank-activity.tsx
+│   │       ├── true-false-activity.tsx
+│   │       ├── word-order-activity.tsx
+│   │       ├── matching-activity.tsx
+│   │       ├── listen-repeat-activity.tsx
+│   │       └── translation-activity.tsx
+│   │
+│   ├── gamification/             # Componentes de gamificación
+│   │   ├── achievements-list.tsx
+│   │   ├── level-progress.tsx
+│   │   ├── rewards-inventory.tsx
+│   │   ├── leaderboard-table.tsx
+│   │   ├── leaderboard-filters.tsx
+│   │   └── user-rank-card.tsx
+│   │
+│   ├── teacher/                  # Componentes del profesor
+│   │   ├── teacher-stats.tsx
+│   │   ├── student-performance.tsx
+│   │   ├── recent-feedback.tsx
+│   │   ├── quick-teacher-actions.tsx
+│   │   ├── create-planning-form.tsx
+│   │   └── response-modal.tsx
+│   │
+│   ├── admin/                    # Componentes del admin
+│   │   ├── admin-stats.tsx
+│   │   ├── recent-lessons.tsx
+│   │   ├── media-library-preview.tsx
+│   │   ├── quick-admin-actions.tsx
+│   │   └── create-lesson-form.tsx
+│   │
+│   ├── maintenance/              # Componentes de mantenimiento
+│   │   ├── maintenance-stats.tsx
+│   │   ├── recent-reports.tsx
+│   │   ├── scheduled-tasks.tsx
+│   │   ├── quick-maintenance-actions.tsx
+│   │   └── create-task-form.tsx
+│   │
+│   └── profile/                  # Componentes de perfil
+│       └── profile-settings.tsx  # Configuración de perfil (role-aware)
+│
+├── scripts/                      # Scripts SQL para base de datos
+│   ├── 01-create-tables.sql     # Creación de tablas
+│   └── 02-seed-initial-data.sql # Datos iniciales
+│
+├── docs/                         # Documentación
+│   ├── PROGRESO_IMPLEMENTACION_FINAL.md
+│   ├── CONEXION_INTERFACES_FINAL.md
+│   └── ARQUITECTURA_PROYECTO.md (este archivo)
+│
+├── lib/                          # Utilidades
+│   └── utils.ts                  # Función cn() para clases
+│
+└── hooks/                        # Custom hooks
+    ├── use-mobile.tsx
+    └── use-toast.ts
+\`\`\`
+
+---
+
+## 🧩 Módulos del Sistema
+
+### 1. **Módulo de Autenticación** 🔐
+**Propósito**: Gestionar el acceso y registro de usuarios
+
+**Páginas**:
+- `/` - Landing page con botones de login/registro
+- `/login` - Inicio de sesión
+- `/registro` - Registro de nuevos usuarios
+- `/verificar-email` - Verificación de correo electrónico
+- `/recuperar-contrasena` - Recuperación de contraseña
+- `/asignar-nivel` - Asignación de nivel inicial (evaluación o manual)
+- `/correo-enviado` - Confirmación de envío de correo
+
+**Componentes Clave**:
+- `components/auth/login-form.tsx` - Formulario de login con usuarios de prueba
+- `components/auth/register-form.tsx` - Formulario de registro
+- `components/auth/level-assignment-flow.tsx` - Flujo de asignación de nivel
+- `components/auth/password-recovery-form.tsx` - Recuperación de contraseña
+
+**Interacciones**:
+- Almacena `userRole` y `userName` en `localStorage` tras login exitoso
+- Redirige según rol:
+  - `estudiante` → `/dashboard`
+  - `profesor` → `/profesor/dashboard`
+  - `admin` → `/admin/dashboard`
+  - `mantenimiento` → `/mantenimiento/dashboard`
+
+**APIs Necesarias**:
+\`\`\`python
+POST /api/auth/login
+POST /api/auth/register
+POST /api/auth/verify-email
+POST /api/auth/forgot-password
+POST /api/auth/reset-password
+POST /api/auth/assign-level
+\`\`\`
+
+---
+
+### 2. **Módulo Alumno** 🎓
+**Propósito**: Experiencia de aprendizaje gamificada para estudiantes
+
+**Páginas**:
+- `/dashboard` - Dashboard principal con progreso, racha, acciones rápidas
+- `/lecciones` - Lista de lecciones con filtros
+- `/lecciones/[id]` - Visor de lección con actividades interactivas
+- `/logros` - Logros desbloqueados y recompensas
+- `/clasificacion` - Tabla de clasificación (leaderboard)
+- `/progreso` - Progreso detallado por curso y lección
+- `/perfil` - Perfil del usuario con configuración
+- `/cambiar-curso` - Cambiar curso actual
+- `/eliminar-cuenta` - Proceso de eliminación de cuenta (3 pasos)
+
+**Componentes Clave**:
+- `components/dashboard/dashboard-header.tsx` - Header con navegación role-aware
+- `components/lessons/lesson-viewer.tsx` - Visor de lecciones con actividades
+- `components/lessons/activities/*` - 7 tipos de actividades interactivas
+- `components/gamification/*` - Sistema de gamificación
+
+**Tipos de Actividades**:
+1. **Opción Múltiple** (`multiple-choice-activity.tsx`)
+2. **Completar Espacios** (`fill-blank-activity.tsx`)
+3. **Verdadero/Falso** (`true-false-activity.tsx`)
+4. **Ordenar Palabras** (`word-order-activity.tsx`)
+5. **Emparejar** (`matching-activity.tsx`)
+6. **Escuchar y Repetir** (`listen-repeat-activity.tsx`)
+7. **Traducción** (`translation-activity.tsx`)
+
+**Interacciones**:
+- Lee `userRole` de `localStorage` para mostrar navegación correcta
+- Actualiza progreso tras completar actividades
+- Calcula XP y actualiza racha diaria
+- Desbloquea logros según criterios
+
+**APIs Necesarias**:
+\`\`\`python
+GET /api/student/dashboard
+GET /api/student/lessons?course_id=&level=&status=
+GET /api/student/lessons/:id
+POST /api/student/lessons/:id/complete
+GET /api/student/achievements
+GET /api/student/leaderboard?period=&course_id=
+GET /api/student/progress
+PUT /api/student/profile
+POST /api/student/change-course
+DELETE /api/student/account
+\`\`\`
+
+---
+
+### 3. **Módulo Profesor** 👨‍🏫
+**Propósito**: Herramientas para profesores para monitorear y guiar estudiantes
+
+**Páginas**:
+- `/profesor/dashboard` - Dashboard con estadísticas y acciones rápidas
+- `/profesor/estadisticas` - Estadísticas generales de estudiantes
+- `/profesor/estadisticas/[id]` - Detalle de alumno individual
+- `/profesor/retroalimentacion` - Gestión de retroalimentación de estudiantes
+- `/profesor/planificacion` - Lista de planificaciones
+- `/profesor/planificacion/nuevo` - Crear nueva planificación (3 pasos)
+
+**Componentes Clave**:
+- `components/teacher/teacher-stats.tsx` - Estadísticas del profesor
+- `components/teacher/student-performance.tsx` - Rendimiento de estudiantes
+- `components/teacher/create-planning-form.tsx` - Formulario de planificación (3 pasos)
+- `components/teacher/response-modal.tsx` - Modal para responder retroalimentación
+
+**Interacciones**:
+- Visualiza estadísticas agregadas de estudiantes
+- Exporta reportes en CSV
+- Responde a comentarios/preguntas de estudiantes
+- Crea planificaciones personalizadas por área de mejora
+
+**APIs Necesarias**:
+\`\`\`python
+GET /api/teacher/dashboard
+GET /api/teacher/statistics
+GET /api/teacher/students/:id
+GET /api/teacher/feedback
+POST /api/teacher/feedback/:id/respond
+GET /api/teacher/planning
+POST /api/teacher/planning
+GET /api/teacher/export/statistics
+\`\`\`
+
+---
+
+### 4. **Módulo Administrador** ⚙️
+**Propósito**: Gestión de contenido, usuarios y configuración del sistema
+
+**Páginas**:
+- `/admin/dashboard` - Dashboard con estadísticas del sistema
+- `/admin/lecciones` - Gestión de lecciones
+- `/admin/lecciones/crear` - Crear nueva lección
+- `/admin/lecciones/[id]/editar` - Editar lección existente
+- `/admin/multimedia` - Biblioteca multimedia
+- `/admin/usuarios` - Gestión de usuarios
+- `/admin/usuarios/[id]/editar` - Editar usuario
+
+**Componentes Clave**:
+- `components/admin/admin-stats.tsx` - Estadísticas del sistema
+- `components/admin/create-lesson-form.tsx` - Formulario de creación de lecciones
+- `components/admin/media-library-preview.tsx` - Vista previa de multimedia
+
+**Interacciones**:
+- CRUD completo de lecciones y actividades
+- Gestión de usuarios (crear, editar, eliminar, cambiar roles)
+- Subida y gestión de archivos multimedia
+- Configuración de cursos y niveles
+
+**APIs Necesarias**:
+\`\`\`python
+GET /api/admin/dashboard
+GET /api/admin/lessons
+POST /api/admin/lessons
+PUT /api/admin/lessons/:id
+DELETE /api/admin/lessons/:id
+GET /api/admin/media
+POST /api/admin/media/upload
+DELETE /api/admin/media/:id
+GET /api/admin/users
+POST /api/admin/users
+PUT /api/admin/users/:id
+DELETE /api/admin/users/:id
+\`\`\`
+
+---
+
+### 5. **Módulo Mantenimiento** 🔧
+**Propósito**: Gestión de reportes de bugs y tareas programadas
+
+**Páginas**:
+- `/mantenimiento/dashboard` - Dashboard de mantenimiento
+- `/mantenimiento/reportes` - Lista de reportes de bugs
+- `/mantenimiento/reportes/[id]` - Detalle de reporte individual
+- `/mantenimiento/tareas` - Lista de tareas programadas
+- `/mantenimiento/tareas/nueva` - Crear nueva tarea
+
+**Componentes Clave**:
+- `components/maintenance/maintenance-stats.tsx` - Estadísticas de mantenimiento
+- `components/maintenance/recent-reports.tsx` - Reportes recientes
+- `components/maintenance/create-task-form.tsx` - Formulario de tareas
+
+**Interacciones**:
+- Visualiza y gestiona reportes de bugs
+- Asigna prioridades y estados a reportes
+- Programa tareas de mantenimiento
+- Monitorea salud del sistema
+
+**APIs Necesarias**:
+\`\`\`python
+GET /api/maintenance/dashboard
+GET /api/maintenance/reports
+GET /api/maintenance/reports/:id
+PUT /api/maintenance/reports/:id
+GET /api/maintenance/tasks
+POST /api/maintenance/tasks
+PUT /api/maintenance/tasks/:id
+DELETE /api/maintenance/tasks/:id
+\`\`\`
+
+---
+
+## 🔄 Flujo de Datos
+
+### Flujo de Autenticación
+\`\`\`
+1. Usuario ingresa credenciales en /login
+2. LoginForm envía datos (actualmente mock)
+3. Backend valida credenciales
+4. Backend retorna: { user_id, name, email, role, token }
+5. Frontend guarda en localStorage:
+   - userRole: "estudiante" | "profesor" | "admin" | "mantenimiento"
+   - userName: string
+   - authToken: string (para futuras peticiones)
+6. Redirige según rol
+\`\`\`
+
+### Flujo de Lección
+\`\`\`
+1. Alumno navega a /lecciones
+2. LessonList obtiene lecciones del backend
+3. Alumno selecciona lección → /lecciones/[id]
+4. LessonViewer carga lección y actividades
+5. Alumno completa actividades una por una
+6. Al finalizar, se calcula puntuación
+7. Se envía progreso al backend
+8. Backend actualiza:
+   - user_progress (lección completada)
+   - user_stats (XP, racha)
+   - achievements (si se desbloquean)
+9. Frontend muestra CompletionModal con resultados
+\`\`\`
+
+### Flujo de Gamificación
+\`\`\`
+1. Backend calcula XP tras cada lección
+2. Frontend consulta /api/student/achievements
+3. Backend verifica criterios de logros:
+   - Lecciones completadas
+   - Días consecutivos (racha)
+   - Puntuación perfecta
+   - Tiempo récord
+4. Si se desbloquea logro, backend retorna notificación
+5. Frontend muestra animación de logro desbloqueado
+6. Leaderboard se actualiza automáticamente
+\`\`\`
+
+---
+
+## 🎨 Componentes Principales
+
+### DashboardHeader (Role-Aware)
+**Ubicación**: `components/dashboard/dashboard-header.tsx`
+
+**Propósito**: Header de navegación que cambia según el rol del usuario
+
+**Lógica**:
+\`\`\`typescript
+const userRole = localStorage.getItem('userRole')
+
+if (userRole === 'estudiante') {
+  // Muestra: Dashboard, Lecciones, Logros, Clasificación
+}
+if (userRole === 'profesor') {
+  // Muestra: Dashboard, Estadísticas, Retroalimentación, Planificación
+}
+if (userRole === 'admin') {
+  // Muestra: Dashboard, Lecciones, Biblioteca, Usuarios
+}
+if (userRole === 'mantenimiento') {
+  // Muestra: Dashboard, Reportes, Tareas
+}
+\`\`\`
+
+**Interacción con Backend**:
+- Necesita endpoint para obtener notificaciones: `GET /api/notifications`
+- Necesita endpoint para logout: `POST /api/auth/logout`
+
+---
+
+### LessonViewer
+**Ubicación**: `components/lessons/lesson-viewer.tsx`
+
+**Propósito**: Renderiza lecciones con actividades interactivas
+
+**Estructura de Datos Esperada**:
+\`\`\`typescript
+interface Lesson {
+  id: number
+  title: string
+  description: string
+  level: string
+  xp_reward: number
+  activities: Activity[]
+}
+
+interface Activity {
+  id: number
+  type: 'multiple_choice' | 'fill_blank' | 'true_false' | 
+        'word_order' | 'matching' | 'listen_repeat' | 'translation'
+  question: string
+  options?: string[]  // Para multiple_choice
+  correct_answer: string | string[]
+  audio_url?: string  // Para listen_repeat
+  image_url?: string
+  hint?: string
+}
+\`\`\`
+
+**Flujo**:
+1. Recibe `lessonId` de la URL
+2. Llama `GET /api/student/lessons/:id`
+3. Renderiza actividades según `activity.type`
+4. Valida respuestas del usuario
+5. Calcula puntuación final
+6. Envía resultados: `POST /api/student/lessons/:id/complete`
+
+---
+
+### ProfileSettings (Role-Aware)
+**Ubicación**: `components/profile/profile-settings.tsx`
+
+**Propósito**: Configuración de perfil adaptada al rol
+
+**Lógica**:
+\`\`\`typescript
+const userRole = localStorage.getItem('userRole')
+
+// Solo para estudiantes:
+if (userRole === 'estudiante') {
+  // Muestra: Nivel Actual, Curso Actual, Zona de Peligro
+}
+
+// Para profesor, admin, mantenimiento:
+// NO muestra: Nivel Actual, Curso Actual, Zona de Peligro
+// Solo muestra: Información Personal, Preferencias
+\`\`\`
+
+---
+
+## 🗺️ Rutas y Navegación
+
+### Rutas Públicas (No requieren autenticación)
+- `/` - Landing page
+- `/login` - Inicio de sesión
+- `/registro` - Registro
+- `/verificar-email` - Verificación de email
+- `/recuperar-contrasena` - Recuperación de contraseña
+- `/correo-enviado` - Confirmación
+
+### Rutas Protegidas por Rol
+
+#### Estudiante (`userRole === 'estudiante'`)
+- `/dashboard`
+- `/lecciones`
+- `/lecciones/[id]`
+- `/logros`
+- `/clasificacion`
+- `/progreso`
+- `/perfil`
+- `/cambiar-curso`
+- `/eliminar-cuenta`
+
+#### Profesor (`userRole === 'profesor'`)
+- `/profesor/dashboard`
+- `/profesor/estadisticas`
+- `/profesor/estadisticas/[id]`
+- `/profesor/retroalimentacion`
+- `/profesor/planificacion`
+- `/profesor/planificacion/nuevo`
+- `/perfil`
+
+#### Admin (`userRole === 'admin'`)
+- `/admin/dashboard`
+- `/admin/lecciones`
+- `/admin/lecciones/crear`
+- `/admin/lecciones/[id]/editar`
+- `/admin/multimedia`
+- `/admin/usuarios`
+- `/admin/usuarios/[id]/editar`
+- `/perfil`
+
+#### Mantenimiento (`userRole === 'mantenimiento'`)
+- `/mantenimiento/dashboard`
+- `/mantenimiento/reportes`
+- `/mantenimiento/reportes/[id]`
+- `/mantenimiento/tareas`
+- `/mantenimiento/tareas/nueva`
+- `/perfil`
+
+---
+
+## 🗄️ Esquema de Base de Datos
+
+**Ubicación**: `scripts/01-create-tables.sql`
+
+### Tablas Principales
+
+#### users
+\`\`\`sql
+id, email, password_hash, name, role, created_at, last_login, 
+email_verified, is_active
+\`\`\`
+
+#### courses
+\`\`\`sql
+id, name, description, language, level, created_at
+\`\`\`
+
+#### lessons
+\`\`\`sql
+id, course_id, title, description, level, order_index, xp_reward, 
+estimated_time, created_at
+\`\`\`
+
+#### activities
+\`\`\`sql
+id, lesson_id, type, question, options, correct_answer, hint, 
+audio_url, image_url, order_index
+\`\`\`
+
+#### user_progress
+\`\`\`sql
+id, user_id, lesson_id, status, score, attempts, completed_at, 
+time_spent
+\`\`\`
+
+#### user_stats
+\`\`\`sql
+id, user_id, course_id, total_xp, current_level, lessons_completed, 
+current_streak, longest_streak, last_activity_date
+\`\`\`
+
+#### achievements
+\`\`\`sql
+id, name, description, icon, criteria_type, criteria_value, 
+xp_reward, badge_color
+\`\`\`
+
+#### user_achievements
+\`\`\`sql
+id, user_id, achievement_id, unlocked_at, progress
+\`\`\`
+
+#### leaderboard
+\`\`\`sql
+id, user_id, course_id, total_xp, rank, period, updated_at
+\`\`\`
+
+#### feedback
+\`\`\`sql
+id, user_id, teacher_id, lesson_id, comment, rating, status, 
+response, created_at, responded_at
+\`\`\`
+
+#### planning
+\`\`\`sql
+id, teacher_id, student_id, title, description, focus_area, 
+lessons, start_date, end_date, status, created_at
+\`\`\`
+
+#### bug_reports
+\`\`\`sql
+id, user_id, title, description, severity, status, assigned_to, 
+created_at, resolved_at
+\`\`\`
+
+#### scheduled_tasks
+\`\`\`sql
+id, name, description, frequency, last_run, next_run, status, 
+created_by
+\`\`\`
+
+#### multimedia
+\`\`\`sql
+id, filename, file_type, file_size, url, uploaded_by, created_at
+\`\`\`
+
+**Ver esquema completo en**: `scripts/01-create-tables.sql`
+
+---
+
+## 🔌 APIs Necesarias para Backend
+
+### Estructura de Respuesta Estándar
+\`\`\`python
+# Éxito
+{
+  "success": True,
+  "data": {...},
+  "message": "Operación exitosa"
+}
+
+# Error
+{
+  "success": False,
+  "error": "Mensaje de error",
+  "code": "ERROR_CODE"
+}
+\`\`\`
+
+### Endpoints por Módulo
+
+#### Autenticación
+\`\`\`python
+POST   /api/auth/login
+POST   /api/auth/register
+POST   /api/auth/verify-email
+POST   /api/auth/forgot-password
+POST   /api/auth/reset-password
+POST   /api/auth/assign-level
+POST   /api/auth/logout
+GET    /api/auth/me  # Obtener usuario actual
+\`\`\`
+
+#### Estudiante
+\`\`\`python
+GET    /api/student/dashboard
+GET    /api/student/lessons
+GET    /api/student/lessons/:id
+POST   /api/student/lessons/:id/complete
+GET    /api/student/achievements
+GET    /api/student/leaderboard
+GET    /api/student/progress
+PUT    /api/student/profile
+POST   /api/student/change-course
+DELETE /api/student/account
+POST   /api/student/feedback  # Enviar retroalimentación
+\`\`\`
+
+#### Profesor
+\`\`\`python
+GET    /api/teacher/dashboard
+GET    /api/teacher/statistics
+GET    /api/teacher/students/:id
+GET    /api/teacher/feedback
+POST   /api/teacher/feedback/:id/respond
+GET    /api/teacher/planning
+POST   /api/teacher/planning
+PUT    /api/teacher/planning/:id
+DELETE /api/teacher/planning/:id
+GET    /api/teacher/export/statistics  # Exportar CSV
+\`\`\`
+
+#### Admin
+\`\`\`python
+GET    /api/admin/dashboard
+GET    /api/admin/lessons
+POST   /api/admin/lessons
+PUT    /api/admin/lessons/:id
+DELETE /api/admin/lessons/:id
+GET    /api/admin/media
+POST   /api/admin/media/upload
+DELETE /api/admin/media/:id
+GET    /api/admin/users
+POST   /api/admin/users
+PUT    /api/admin/users/:id
+DELETE /api/admin/users/:id
+GET    /api/admin/courses
+POST   /api/admin/courses
+\`\`\`
+
+#### Mantenimiento
+\`\`\`python
+GET    /api/maintenance/dashboard
+GET    /api/maintenance/reports
+GET    /api/maintenance/reports/:id
+PUT    /api/maintenance/reports/:id
+GET    /api/maintenance/tasks
+POST   /api/maintenance/tasks
+PUT    /api/maintenance/tasks/:id
+DELETE /api/maintenance/tasks/:id
+\`\`\`
+
+#### Global
+\`\`\`python
+GET    /api/notifications  # Notificaciones del usuario
+PUT    /api/notifications/:id/read
+\`\`\`
+
+---
+
+## 🔐 Autenticación y Autorización
+
+### Flujo de Autenticación con Flask
+
+#### 1. Login
+\`\`\`python
+# Frontend envía:
+POST /api/auth/login
+{
+  "email": "juan@example.com",
+  "password": "password123"
+}
+
+# Backend responde:
+{
+  "success": True,
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "Juan Pérez",
+      "email": "juan@example.com",
+      "role": "estudiante"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+
+# Frontend guarda en localStorage:
+localStorage.setItem('authToken', data.token)
+localStorage.setItem('userRole', data.user.role)
+localStorage.setItem('userName', data.user.name)
+\`\`\`
+
+#### 2. Peticiones Autenticadas
+\`\`\`typescript
+// Frontend incluye token en headers:
+fetch('/api/student/dashboard', {
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+    'Content-Type': 'application/json'
+  }
+})
+\`\`\`
+
+#### 3. Middleware de Autorización (Flask)
+\`\`\`python
+from functools import wraps
+from flask import request, jsonify
+import jwt
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'error': 'Token missing'}), 401
+        
+        try:
+            token = token.split(' ')[1]  # Remove 'Bearer '
+            data = jwt.decode(token, app.config['SECRET_KEY'])
+            current_user = User.query.get(data['user_id'])
+        except:
+            return jsonify({'error': 'Token invalid'}), 401
+        
+        return f(current_user, *args, **kwargs)
+    return decorated
+
+def role_required(roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated(current_user, *args, **kwargs):
+            if current_user.role not in roles:
+                return jsonify({'error': 'Unauthorized'}), 403
+            return f(current_user, *args, **kwargs)
+        return decorated
+    return decorator
+
+# Uso:
+@app.route('/api/teacher/dashboard')
+@token_required
+@role_required(['profesor'])
+def teacher_dashboard(current_user):
+    # Solo profesores pueden acceder
+    pass
+\`\`\`
+
+---
+
+## 🔗 Integración Frontend-Backend
+
+### Configuración de Variables de Entorno
+
+**Frontend** (`.env.local`):
+\`\`\`bash
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+SUPABASE_NEXT_PUBLIC_SUPABASE_URL=your_supaSUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY_ANON_KEY=your_supabase_key
+\`\`\`
+
+**Backend** (`.env`):
+\`\`\`bash
+FLASK_APP=app.py
+FLASK_ENV=development
+SECRET_KEY=your_secret_key
+DATABASE_URL=postgresql://user:password@localhost/speaklexi
+JWT_SECRET_KEY=your_jwt_secret
+CORS_ORIGINS=http://localhost:3000
+\`\`\`
+
+### Cliente API (Frontend)
+
+**Crear**: `lib/api-client.ts`
+\`\`\`typescript
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+export class ApiClient {
+  private getHeaders(): HeadersInit {
+    const token = localStorage.getItem('authToken')
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    }
+  }
+
+  async get(endpoint: string) {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      headers: this.getHeaders()
+    })
+    return this.handleResponse(response)
+  }
+
+  async post(endpoint: string, data: any) {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data)
+    })
+    return this.handleResponse(response)
+  }
+
+  async put(endpoint: string, data: any) {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data)
+    })
+    return this.handleResponse(response)
+  }
+
+  async delete(endpoint: string) {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    })
+    return this.handleResponse(response)
+  }
+
+  private async handleResponse(response: Response) {
+    const data = await response.json()
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Request failed')
+    }
+    
+    return data
+  }
+}
+
+export const api = new ApiClient()
+\`\`\`
+
+**Uso en Componentes**:
+\`\`\`typescript
+import { api } from '@/lib/api-client'
+
+// En lugar de datos mock:
+const lessons = await api.get('/student/lessons?course_id=1')
+
+// Completar lección:
+await api.post(`/student/lessons/${lessonId}/complete`, {
+  score: 95,
+  time_spent: 180,
+  answers: [...]
+})
+\`\`\`
+
+### Estructura del Backend Flask
+
+\`\`\`
+backend/
+├── app.py                    # Aplicación principal
+├── config.py                 # Configuración
+├── requirements.txt          # Dependencias
+├── .env                      # Variables de entorno
+│
+├── models/                   # Modelos SQLAlchemy
+│   ├── __init__.py
+│   ├── user.py
+│   ├── course.py
+│   ├── lesson.py
+│   ├── activity.py
+│   ├── progress.py
+│   └── ...
+│
+├── routes/                   # Blueprints de rutas
+│   ├── __init__.py
+│   ├── auth.py
+│   ├── student.py
+│   ├── teacher.py
+│   ├── admin.py
+│   └── maintenance.py
+│
+├── services/                 # Lógica de negocio
+│   ├── __init__.py
+│   ├── auth_service.py
+│   ├── lesson_service.py
+│   ├── gamification_service.py
+│   └── ...
+│
+├── utils/                    # Utilidades
+│   ├── __init__.py
+│   ├── decorators.py         # @token_required, @role_required
+│   ├── validators.py
+│   └── helpers.py
+│
+└── migrations/               # Migraciones de base de datos
+    └── ...
+\`\`\`
+
+### Ejemplo de Endpoint Flask
+
+\`\`\`python
+# routes/student.py
+from flask import Blueprint, request, jsonify
+from models.lesson import Lesson
+from models.user_progress import UserProgress
+from utils.decorators import token_required, role_required
+from services.gamification_service import GamificationService
+
+student_bp = Blueprint('student', __name__)
+
+@student_bp.route('/lessons', methods=['GET'])
+@token_required
+@role_required(['estudiante'])
+def get_lessons(current_user):
+    course_id = request.args.get('course_id')
+    level = request.args.get('level')
+    status = request.args.get('status')
+    
+    query = Lesson.query
+    
+    if course_id:
+        query = query.filter_by(course_id=course_id)
+    if level:
+        query = query.filter_by(level=level)
+    
+    lessons = query.all()
+    
+    # Agregar progreso del usuario
+    lessons_data = []
+    for lesson in lessons:
+        progress = UserProgress.query.filter_by(
+            user_id=current_user.id,
+            lesson_id=lesson.id
+        ).first()
+        
+        lessons_data.append({
+            'id': lesson.id,
+            'title': lesson.title,
+            'description': lesson.description,
+            'level': lesson.level,
+            'xp_reward': lesson.xp_reward,
+            'status': progress.status if progress else 'not_started',
+            'score': progress.score if progress else None
+        })
+    
+    return jsonify({
+        'success': True,
+        'data': lessons_data
+    })
+
+@student_bp.route('/lessons/<int:lesson_id>/complete', methods=['POST'])
+@token_required
+@role_required(['estudiante'])
+def complete_lesson(current_user, lesson_id):
+    data = request.json
+    score = data.get('score')
+    time_spent = data.get('time_spent')
+    
+    # Guardar progreso
+    progress = UserProgress(
+        user_id=current_user.id,
+        lesson_id=lesson_id,
+        status='completed',
+        score=score,
+        time_spent=time_spent
+    )
+    db.session.add(progress)
+    
+    # Actualizar estadísticas y gamificación
+    gamification = GamificationService()
+    result = gamification.process_lesson_completion(
+        current_user, 
+        lesson_id, 
+        score
+    )
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'data': {
+            'xp_earned': result['xp_earned'],
+            'new_achievements': result['new_achievements'],
+            'level_up': result['level_up']
+        }
+    })
+\`\`\`
+
+---
+
+## 📊 Consideraciones de Rendimiento
+
+### Frontend
+- **Code Splitting**: Next.js automáticamente divide el código por rutas
+- **Lazy Loading**: Componentes pesados se cargan bajo demanda
+- **Optimización de Imágenes**: Usar `next/image` para imágenes optimizadas
+- **Caching**: SWR o React Query para cachear peticiones
+
+### Backend
+- **Paginación**: Implementar en listas largas (lecciones, usuarios, reportes)
+- **Índices de Base de Datos**: En columnas frecuentemente consultadas
+- **Caching**: Redis para datos frecuentemente accedidos (leaderboard, estadísticas)
+- **Rate Limiting**: Limitar peticiones por usuario/IP
+
+---
+
+## 🚀 Próximos Pasos para Implementación Backend
+
+### Fase 1: Setup Inicial
+1. Configurar Flask + SQLAlchemy + PostgreSQL
+2. Implementar autenticación JWT
+3. Crear modelos de base de datos
+4. Configurar CORS para Next.js
+
+### Fase 2: Módulo Autenticación
+1. Endpoints de login/registro
+2. Verificación de email
+3. Recuperación de contraseña
+4. Middleware de autorización
+
+### Fase 3: Módulo Alumno
+1. Endpoints de lecciones
+2. Sistema de progreso
+3. Gamificación (XP, logros, leaderboard)
+4. Perfil de usuario
+
+### Fase 4: Módulos Profesor, Admin, Mantenimiento
+1. Estadísticas y reportes
+2. Gestión de contenido
+3. Sistema de retroalimentación
+4. Planificaciones
+
+### Fase 5: Optimización
+1. Caching con Redis
+2. Subida de archivos multimedia
+3. Notificaciones en tiempo real (WebSockets)
+4. Tests unitarios e integración
+
+---
+
+## 📝 Notas Finales
+
+### Estado Actual del Frontend
+- ✅ Todas las interfaces implementadas
+- ✅ Navegación completa entre módulos
+- ✅ Componentes reutilizables y modulares
+- ✅ Sistema de roles funcional (localStorage)
+- ⚠️ Datos mock (listos para reemplazar con API calls)
+
+### Preparación para Backend
+- ✅ Esquema de base de datos definido
+- ✅ Estructura de APIs documentada
+- ✅ Flujos de autenticación diseñados
+- ✅ Cliente API preparado (`lib/api-client.ts`)
+- ⚠️ Requiere implementación de Flask
+
+### Contacto y Mantenimiento
+Para preguntas sobre la arquitectura o implementación del backend, referirse a:
+- `docs/PROGRESO_IMPLEMENTACION_FINAL.md` - Estado de implementación
+- `docs/CONEXION_INTERFACES_FINAL.md` - Conexiones entre interfaces
+- `scripts/01-create-tables.sql` - Esquema de base de datos completo
+
+---
+
+**Última actualización**: 2025
+**Versión del documento**: 1.0
+**Autor**: v0 AI Assistant

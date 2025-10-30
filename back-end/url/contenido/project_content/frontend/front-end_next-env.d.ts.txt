@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/next-env.d.ts
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/next-env.d.ts
-# FECHA DESCARGA: 2025-10-28 22:57:13
+# FECHA DESCARGA: 2025-10-29 18:46:16
 # ==================================================
 
 /// <reference types="next" />

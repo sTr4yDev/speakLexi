@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/scripts/01-create-tables.sql
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/scripts/01-create-tables.sql
-# FECHA DESCARGA: 2025-10-28 22:57:16
+# FECHA DESCARGA: 2025-10-29 18:46:18
 # ==================================================
 
 -- SpeakLexi Database Schema

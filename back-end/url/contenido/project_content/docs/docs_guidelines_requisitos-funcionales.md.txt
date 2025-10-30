@@ -1,6 +1,6 @@
 # ARCHIVO: docs/guidelines/requisitos-funcionales.md
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/requisitos-funcionales.md
-# FECHA DESCARGA: 2025-10-28 22:57:27
+# FECHA DESCARGA: 2025-10-29 18:46:25
 # ==================================================
 
 # 📋 Tabla de Requisitos Funcionales del Sistema

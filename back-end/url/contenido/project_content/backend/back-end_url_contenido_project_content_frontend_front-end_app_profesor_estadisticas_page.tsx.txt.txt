@@ -1,0 +1,158 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_app_profesor_estadisticas_page.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_app_profesor_estadisticas_page.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:41:24
+# ==================================================
+
+# ARCHIVO: front-end/app/profesor/estadisticas/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/estadisticas/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:13
+# ==================================================
+
+"use client"
+
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Search, Download } from "lucide-react"
+import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
+
+export default function TeacherStatisticsPage() {
+  const { toast } = useToast()
+
+  const students = [
+    {
+      id: 1,
+      name: "María García",
+      initials: "MG",
+      level: "B1",
+      lessonsCompleted: 15,
+      totalLessons: 20,
+      averageScore: 92,
+      lastActivity: "Hace 2 horas",
+    },
+    {
+      id: 2,
+      name: "Carlos Rodríguez",
+      initials: "CR",
+      level: "A2",
+      lessonsCompleted: 8,
+      totalLessons: 15,
+      averageScore: 78,
+      lastActivity: "Hace 1 día",
+    },
+    {
+      id: 3,
+      name: "Ana Martínez",
+      initials: "AM",
+      level: "B1",
+      lessonsCompleted: 12,
+      totalLessons: 20,
+      averageScore: 65,
+      lastActivity: "Hace 3 horas",
+    },
+  ]
+
+  const handleExport = () => {
+    toast({
+      title: "Exportando reporte",
+      description: "El archivo CSV se descargará en breve",
+    })
+
+    const csvContent = [
+      ["Nombre", "Nivel", "Lecciones Completadas", "Total Lecciones", "Promedio", "Última Actividad"],
+      ...students.map((s) => [
+        s.name,
+        s.level,
+        s.lessonsCompleted,
+        s.totalLessons,
+        `${s.averageScore}%`,
+        s.lastActivity,
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `estadisticas-estudiantes-${new Date().toISOString().split("T")[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-balance">Estadísticas de Estudiantes</h1>
+            <p className="mt-1 text-muted-foreground">Analiza el rendimiento de tus estudiantes</p>
+          </div>
+          <Button onClick={handleExport}>
+            <Download className="mr-2 h-4 w-4" />
+            Exportar Reporte
+          </Button>
+        </div>
+
+        <Card className="mb-6 p-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Buscar estudiante..." className="pl-10" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="space-y-4">
+            {students.map((student) => (
+              <Link key={student.id} href={`/profesor/estadisticas/${student.id}`}>
+                <div className="rounded-xl border-2 border-border bg-card p-4 transition-all hover:border-primary hover:bg-primary/5">
+                  <div className="flex items-start gap-4">
+                    <Avatar className="h-12 w-12">
+                      <AvatarFallback className="bg-primary text-primary-foreground">{student.initials}</AvatarFallback>
+                    </Avatar>
+
+                    <div className="flex-1">
+                      <div className="mb-3 flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold">{student.name}</h3>
+                          <p className="text-sm text-muted-foreground">Nivel {student.level}</p>
+                        </div>
+                        <Badge variant="secondary">{student.lastActivity}</Badge>
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <div>
+                          <p className="mb-1 text-xs text-muted-foreground">Progreso</p>
+                          <Progress value={(student.lessonsCompleted / student.totalLessons) * 100} className="h-2" />
+                          <p className="mt-1 text-xs font-medium">
+                            {student.lessonsCompleted} / {student.totalLessons}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="mb-1 text-xs text-muted-foreground">Promedio</p>
+                          <p className="text-2xl font-bold text-primary">{student.averageScore}%</p>
+                        </div>
+                        <div>
+                          <p className="mb-1 text-xs text-muted-foreground">Estado</p>
+                          <Badge className="bg-success text-success-foreground">Activo</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      </main>
+    </div>
+  )
+}

@@ -1,0 +1,194 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_scripts_01-create-tables.sql.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_scripts_01-create-tables.sql.txt
+# FECHA DESCARGA: 2025-10-29 18:43:29
+# ==================================================
+
+# ARCHIVO: front-end/scripts/01-create-tables.sql
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/scripts/01-create-tables.sql
+# FECHA DESCARGA: 2025-10-28 22:57:16
+# ==================================================
+
+-- SpeakLexi Database Schema
+-- Users and Authentication Tables
+
+-- Users table with role-based access
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255) NOT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'student', -- student, teacher, admin, maintenance
+  email_verified BOOLEAN DEFAULT FALSE,
+  verification_code VARCHAR(6),
+  verification_code_expires_at TIMESTAMP,
+  reset_token VARCHAR(255),
+  reset_token_expires_at TIMESTAMP,
+  level_assigned BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Student profiles
+CREATE TABLE IF NOT EXISTS student_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  current_level VARCHAR(50), -- A1, A2, B1, B2, C1, C2
+  current_course VARCHAR(100),
+  total_xp INTEGER DEFAULT 0,
+  streak_days INTEGER DEFAULT 0,
+  last_activity_date DATE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Courses
+CREATE TABLE IF NOT EXISTS courses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  language VARCHAR(100) NOT NULL,
+  level VARCHAR(50) NOT NULL,
+  description TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Lessons
+CREATE TABLE IF NOT EXISTS lessons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  level VARCHAR(50) NOT NULL,
+  order_index INTEGER NOT NULL,
+  xp_reward INTEGER DEFAULT 10,
+  is_published BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Activities within lessons
+CREATE TABLE IF NOT EXISTS activities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lesson_id UUID REFERENCES lessons(id) ON DELETE CASCADE,
+  type VARCHAR(50) NOT NULL, -- multiple_choice, fill_blank, audio, speaking, matching
+  question TEXT NOT NULL,
+  correct_answer TEXT NOT NULL,
+  options JSONB, -- For multiple choice options
+  media_url VARCHAR(500),
+  order_index INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Student progress
+CREATE TABLE IF NOT EXISTS student_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  lesson_id UUID REFERENCES lessons(id) ON DELETE CASCADE,
+  completed BOOLEAN DEFAULT FALSE,
+  score INTEGER,
+  attempts INTEGER DEFAULT 0,
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(student_id, lesson_id)
+);
+
+-- Achievements and rewards
+CREATE TABLE IF NOT EXISTS achievements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  icon VARCHAR(255),
+  criteria JSONB NOT NULL, -- Conditions to unlock
+  xp_reward INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Student achievements
+CREATE TABLE IF NOT EXISTS student_achievements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  achievement_id UUID REFERENCES achievements(id) ON DELETE CASCADE,
+  unlocked_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(student_id, achievement_id)
+);
+
+-- Feedback and comments
+CREATE TABLE IF NOT EXISTS feedback (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  lesson_id UUID REFERENCES lessons(id) ON DELETE CASCADE,
+  comment TEXT NOT NULL,
+  teacher_response TEXT,
+  status VARCHAR(50) DEFAULT 'pending', -- pending, responded, resolved
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Teacher plans
+CREATE TABLE IF NOT EXISTS teacher_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  teacher_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  target_areas JSONB,
+  associated_lessons JSONB,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Maintenance reports
+CREATE TABLE IF NOT EXISTS maintenance_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reported_by UUID REFERENCES users(id),
+  module VARCHAR(100) NOT NULL,
+  severity VARCHAR(50) NOT NULL, -- low, medium, high, critical
+  description TEXT NOT NULL,
+  status VARCHAR(50) DEFAULT 'open', -- open, in_progress, resolved, closed
+  assigned_to UUID REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Scheduled tasks
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  task_type VARCHAR(50) NOT NULL, -- preventive, corrective, update
+  priority VARCHAR(50) NOT NULL, -- low, medium, high
+  scheduled_date TIMESTAMP NOT NULL,
+  assigned_to UUID REFERENCES users(id),
+  status VARCHAR(50) DEFAULT 'pending', -- pending, in_progress, completed
+  is_recurring BOOLEAN DEFAULT FALSE,
+  recurrence_pattern VARCHAR(100),
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Multimedia library
+CREATE TABLE IF NOT EXISTS multimedia (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  filename VARCHAR(255) NOT NULL,
+  file_type VARCHAR(50) NOT NULL, -- image, audio, video
+  file_url VARCHAR(500) NOT NULL,
+  file_size INTEGER,
+  uploaded_by UUID REFERENCES users(id),
+  usage_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_student_profiles_user_id ON student_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_lessons_course_id ON lessons(course_id);
+CREATE INDEX IF NOT EXISTS idx_activities_lesson_id ON activities(lesson_id);
+CREATE INDEX IF NOT EXISTS idx_student_progress_student_id ON student_progress(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_progress_lesson_id ON student_progress(lesson_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_student_id ON feedback(student_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);

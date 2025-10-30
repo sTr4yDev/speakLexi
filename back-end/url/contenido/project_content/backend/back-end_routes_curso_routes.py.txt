@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/routes/curso_routes.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/curso_routes.py
-# FECHA DESCARGA: 2025-10-28 22:54:22
+# FECHA DESCARGA: 2025-10-29 18:39:55
 # ==================================================
 
 # back-end/routes/curso_routes.py

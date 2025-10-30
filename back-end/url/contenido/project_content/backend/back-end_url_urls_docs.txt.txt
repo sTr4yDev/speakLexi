@@ -1,11 +1,11 @@
 # ARCHIVO: back-end/url/urls_docs.txt
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/urls_docs.txt
-# FECHA DESCARGA: 2025-10-28 22:54:38
+# FECHA DESCARGA: 2025-10-29 18:43:41
 # ==================================================
 
 # DOCUMENTACIÓN - SpeakLexi
 # Total: 9 archivos
-# Generado: 2025-10-28 20:45:16
+# Generado: 2025-10-29 17:07:37
 
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/README.md
 https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/architecture.md

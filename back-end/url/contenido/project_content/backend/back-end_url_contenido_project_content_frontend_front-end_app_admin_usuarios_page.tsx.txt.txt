@@ -1,0 +1,191 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_app_admin_usuarios_page.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_app_admin_usuarios_page.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:40:55
+# ==================================================
+
+# ARCHIVO: front-end/app/admin/usuarios/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/usuarios/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:54:46
+# ==================================================
+
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Search, UserPlus, Users, GraduationCap, Shield, Wrench } from "lucide-react"
+import Link from "next/link"
+
+export default function UsersPage() {
+  const users = [
+    {
+      id: 1,
+      name: "Juan Pérez",
+      email: "juan@example.com",
+      role: "estudiante",
+      status: "activo",
+      joinDate: "15 Ene 2025",
+    },
+    {
+      id: 2,
+      name: "María García",
+      email: "maria.profesor@example.com",
+      role: "profesor",
+      status: "activo",
+      joinDate: "10 Ene 2025",
+    },
+    {
+      id: 3,
+      name: "Carlos López",
+      email: "carlos@example.com",
+      role: "estudiante",
+      status: "inactivo",
+      joinDate: "5 Ene 2025",
+    },
+    {
+      id: 4,
+      name: "Ana Martínez",
+      email: "ana.admin@example.com",
+      role: "admin",
+      status: "activo",
+      joinDate: "1 Ene 2025",
+    },
+  ]
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-balance">Gestión de Usuarios</h1>
+            <p className="mt-1 text-muted-foreground">Administra los usuarios de la plataforma</p>
+          </div>
+          <Button>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Nuevo Usuario
+          </Button>
+        </div>
+
+        {/* Stats */}
+        <div className="mb-6 grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">1,234</div>
+              <p className="text-xs text-muted-foreground">+12% este mes</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Estudiantes</CardTitle>
+              <GraduationCap className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">1,150</div>
+              <p className="text-xs text-muted-foreground">93% del total</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Profesores</CardTitle>
+              <Users className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">68</div>
+              <p className="text-xs text-muted-foreground">5.5% del total</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Administradores</CardTitle>
+              <Shield className="h-4 w-4 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">16</div>
+              <p className="text-xs text-muted-foreground">1.5% del total</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Users List */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Lista de Usuarios</CardTitle>
+                <CardDescription>Busca y gestiona usuarios de la plataforma</CardDescription>
+              </div>
+              <div className="relative w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Buscar usuarios..." className="pl-8" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {users.map((user) => (
+                <Card key={user.id}>
+                  <CardContent className="flex items-center justify-between pt-6">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {user.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="mb-1 flex items-center gap-2">
+                          <h3 className="font-semibold">{user.name}</h3>
+                          <Badge
+                            variant="outline"
+                            className={
+                              user.role === "estudiante"
+                                ? "border-blue-500 text-blue-500"
+                                : user.role === "profesor"
+                                  ? "border-green-500 text-green-500"
+                                  : user.role === "admin"
+                                    ? "border-purple-500 text-purple-500"
+                                    : "border-orange-500 text-orange-500"
+                            }
+                          >
+                            {user.role === "estudiante" && <GraduationCap className="mr-1 h-3 w-3" />}
+                            {user.role === "profesor" && <Users className="mr-1 h-3 w-3" />}
+                            {user.role === "admin" && <Shield className="mr-1 h-3 w-3" />}
+                            {user.role === "mantenimiento" && <Wrench className="mr-1 h-3 w-3" />}
+                            {user.role}
+                          </Badge>
+                          <Badge variant={user.status === "activo" ? "default" : "secondary"}>{user.status}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <p className="text-xs text-muted-foreground">Registrado: {user.joinDate}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href="/perfil">Ver Perfil</Link>
+                      </Button>
+                      <Button size="sm" variant="default" asChild>
+                        <Link href={`/admin/usuarios/${user.id}/editar`}>Editar</Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  )
+}

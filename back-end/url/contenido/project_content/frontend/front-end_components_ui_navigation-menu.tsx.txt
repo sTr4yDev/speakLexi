@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/ui/navigation-menu.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/navigation-menu.tsx
-# FECHA DESCARGA: 2025-10-28 22:56:40
+# FECHA DESCARGA: 2025-10-29 18:45:43
 # ==================================================
 
 import * as React from 'react'

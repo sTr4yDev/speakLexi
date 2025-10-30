@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/app/correo-enviado/page.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/correo-enviado/page.tsx
-# FECHA DESCARGA: 2025-10-28 22:54:50
+# FECHA DESCARGA: 2025-10-29 18:43:53
 # ==================================================
 
 import { Button } from "@/components/ui/button"

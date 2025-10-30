@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/test_routes.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_routes.py
-# FECHA DESCARGA: 2025-10-28 22:54:30
+# FECHA DESCARGA: 2025-10-29 18:40:05
 # ==================================================
 
 # En la consola de Python o crear un archivo test_routes.py

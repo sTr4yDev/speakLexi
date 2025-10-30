@@ -1,0 +1,13 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_app_admin_lecciones_loading.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_app_admin_lecciones_loading.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:40:51
+# ==================================================
+
+# ARCHIVO: front-end/app/admin/lecciones/loading.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/loading.tsx
+# FECHA DESCARGA: 2025-10-28 22:54:42
+# ==================================================
+
+export default function Loading() {
+  return null
+}

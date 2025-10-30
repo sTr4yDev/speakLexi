@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/services/correo_service.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/correo_service.py
-# FECHA DESCARGA: 2025-10-28 22:54:25
+# FECHA DESCARGA: 2025-10-29 18:39:59
 # ==================================================
 
 from flask_mail import Message

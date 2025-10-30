@@ -12,12 +12,13 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Save, Loader2, Plus, X, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
-// FIX 1: Se importa el 'type Actividad' desde la API
-import { cursosAPI, leccionesAPI, actividadesAPI, type Actividad } from "@/lib/api"
+import { cursosAPI, leccionesAPI, actividadesAPI } from "@/lib/api"
 import { ActivityModal } from "@/components/admin/activity-modal"
 
 // Tipos de actividades gamificadas
-const TIPOS_ACTIVIDAD = [
+type TipoActividad = 'multiple_choice' | 'fill_blank' | 'matching' | 'translation' | 'true_false' | 'word_order' | 'listen_repeat'
+
+const TIPOS_ACTIVIDAD: { value: TipoActividad; label: string; icon: string }[] = [
   { value: 'multiple_choice', label: '🎯 Opción múltiple', icon: '🎯' },
   { value: 'fill_blank', label: '✏️ Completar espacios', icon: '✏️' },
   { value: 'matching', label: '🔗 Emparejar', icon: '🔗' },
@@ -34,8 +35,21 @@ interface Curso {
   idioma: string
 }
 
-// FIX 2: Se elimina la interfaz 'Actividad' local duplicada.
-// Ya no es necesaria porque la importamos desde 'lib/api'.
+interface Actividad {
+  tipo: TipoActividad
+  pregunta: string
+  instrucciones?: string
+  opciones: any
+  respuesta_correcta: any
+  retroalimentacion?: any
+  pista?: string
+  puntos: number
+  orden: number
+  multimedia_id?: number
+}
+
+// Definir el tipo para el nivel de la lección
+type NivelLeccion = 'principiante' | 'intermedio' | 'avanzado'
 
 export function CreateLessonForm() {
   const router = useRouter()
@@ -46,8 +60,7 @@ export function CreateLessonForm() {
   
   // Estados para modal de actividades
   const [modalActividadOpen, setModalActividadOpen] = useState(false)
-  // FIX 3: Se usa el tipo importado 'Actividad['tipo']' para el estado del modal
-  const [tipoActividadModal, setTipoActividadModal] = useState<Actividad['tipo'] | null>(null)
+  const [tipoActividadModal, setTipoActividadModal] = useState<TipoActividad | null>(null)
   const [actividadEditando, setActividadEditando] = useState<Actividad | null>(null)
   const [indiceEditando, setIndiceEditando] = useState<number | null>(null)
   
@@ -56,8 +69,7 @@ export function CreateLessonForm() {
     curso_id: null as number | null,
     titulo: "",
     descripcion: "",
-    // Pequeña mejora: Usar los tipos exactos de la API de Leccion
-    nivel: "principiante" as 'principiante' | 'intermedio' | 'avanzado', 
+    nivel: "principiante" as NivelLeccion,
     idioma: "ingles",
     categoria: "",
     duracion_estimada: 10,
@@ -74,7 +86,6 @@ export function CreateLessonForm() {
     etiquetas: [] as string[],
     
     // Paso 3: Actividades gamificadas
-    // Este array ahora usa correctamente el tipo 'Actividad' importado
     actividades: [] as Actividad[],
     
     // Paso 4: Multimedia
@@ -94,20 +105,33 @@ export function CreateLessonForm() {
   const cargarCursos = async () => {
     try {
       setLoadingCursos(true)
+      console.log('🔄 Cargando cursos...')
+      
+      // ✅ USAR cursosAPI.listar() en lugar de fetch directo
       const data = await cursosAPI.listar({ activo: true })
+      
+      console.log('✅ Cursos recibidos:', data)
+      
       setCursos(data.cursos || [])
       
       if (data.cursos && data.cursos.length > 0) {
         toast.success(`${data.cursos.length} cursos cargados`)
       } else {
-        toast.warning('No hay cursos disponibles')
+        toast.warning('No hay cursos disponibles. Crea un curso primero.')
       }
     } catch (error: any) {
-      console.error('Error al cargar cursos:', error)
+      console.error('❌ Error al cargar cursos:', error)
       toast.error(error.message || 'Error al cargar cursos')
     } finally {
       setLoadingCursos(false)
     }
+  }
+
+  // Función para mapear nivel del curso a nivel de lección
+  const mapearNivelCursoALeccion = (nivelCurso: string): NivelLeccion => {
+    if (nivelCurso === 'A1' || nivelCurso === 'A2') return 'principiante'
+    if (nivelCurso === 'B1' || nivelCurso === 'B2') return 'intermedio'
+    return 'avanzado'
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,7 +157,7 @@ export function CreateLessonForm() {
         curso_id: formData.curso_id,
         titulo: formData.titulo,
         descripcion: formData.descripcion,
-        contenido: JSON.stringify(formData.contenido), // FIX: Convertir a string
+        contenido: formData.contenido,
         nivel: formData.nivel,
         idioma: formData.idioma,
         categoria: formData.categoria,
@@ -141,7 +165,7 @@ export function CreateLessonForm() {
         duracion_estimada: formData.duracion_estimada,
         puntos_xp: formData.puntos_xp,
         orden: formData.orden,
-        estado: 'borrador' as const // Usar 'as const' para tipado estricto
+        estado: "borrador" as const
       }
       
       console.log('📤 Enviando lección:', leccionData)
@@ -162,11 +186,10 @@ export function CreateLessonForm() {
       
       for (const actividad of formData.actividades) {
         try {
-          // Esta línea ahora es funcional gracias a la corrección de tipos
           await actividadesAPI.agregar(leccionId, actividad)
           console.log(`✅ Actividad "${actividad.pregunta}" creada`)
         } catch (actError: any) {
-          console.error('Error al crear actividad:', actError)
+          console.error('❌ Error al crear actividad:', actError)
           toast.error(`Error al crear actividad: ${actError.message}`)
         }
       }
@@ -319,8 +342,7 @@ export function CreateLessonForm() {
                       ...formData, 
                       curso_id: cursoId,
                       idioma: curso?.idioma || formData.idioma,
-                      nivel: curso?.nivel === 'A1' || curso?.nivel === 'A2' ? 'principiante' : 
-                             curso?.nivel === 'B1' || curso?.nivel === 'B2' ? 'intermedio' : 'avanzado'
+                      nivel: curso ? mapearNivelCursoALeccion(curso.nivel) : formData.nivel
                     })
                   }}
                 >
@@ -329,9 +351,13 @@ export function CreateLessonForm() {
                   </SelectTrigger>
                   <SelectContent>
                     {loadingCursos ? (
-                      <SelectItem value="loading" disabled>Cargando cursos...</SelectItem>
+                      <SelectItem value="loading-placeholder" disabled>
+                        Cargando cursos...
+                      </SelectItem>
                     ) : cursos.length === 0 ? (
-                      <SelectItem value="empty" disabled>No hay cursos disponibles</SelectItem>
+                      <SelectItem value="empty-placeholder" disabled>
+                        No hay cursos disponibles
+                      </SelectItem>
                     ) : (
                       cursos.map((curso) => (
                         <SelectItem key={curso.id} value={curso.id.toString()}>
@@ -412,7 +438,7 @@ export function CreateLessonForm() {
                     type="number" 
                     min="1"
                     value={formData.duracion_estimada}
-                    onChange={(e) => setFormData({...formData, duracion_estimada: parseInt(e.target.value) || 1})}
+                    onChange={(e) => setFormData({...formData, duracion_estimada: parseInt(e.target.value)})}
                     required
                   />
                 </div>
@@ -424,7 +450,7 @@ export function CreateLessonForm() {
                     type="number"
                     min="0"
                     value={formData.puntos_xp}
-                    onChange={(e) => setFormData({...formData, puntos_xp: parseInt(e.target.value) || 0})}
+                    onChange={(e) => setFormData({...formData, puntos_xp: parseInt(e.target.value)})}
                     required
                   />
                 </div>
@@ -436,7 +462,7 @@ export function CreateLessonForm() {
                     type="number"
                     min="0"
                     value={formData.orden}
-                    onChange={(e) => setFormData({...formData, orden: parseInt(e.target.value) || 0})}
+                    onChange={(e) => setFormData({...formData, orden: parseInt(e.target.value)})}
                   />
                 </div>
               </div>
@@ -458,6 +484,7 @@ export function CreateLessonForm() {
           </Card>
         )}
 
+        {/* Resto del código se mantiene igual... */}
         {/* PASO 2: Contenido Detallado */}
         {step === 2 && (
           <Card>
@@ -606,8 +633,7 @@ export function CreateLessonForm() {
                       variant="outline"
                       className="justify-start h-auto p-4"
                       onClick={() => {
-                        // El tipo 'tipo.value' ahora se valida contra 'Actividad['tipo']'
-                        setTipoActividadModal(tipo.value as Actividad['tipo']) 
+                        setTipoActividadModal(tipo.value)
                         setActividadEditando(null)
                         setIndiceEditando(null)
                         setModalActividadOpen(true)

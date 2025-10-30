@@ -1,0 +1,71 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components_teacher_teacher-stats.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components_teacher_teacher-stats.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:42:18
+# ==================================================
+
+# ARCHIVO: front-end/components/teacher/teacher-stats.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/teacher/teacher-stats.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:14
+# ==================================================
+
+import { Card } from "@/components/ui/card"
+import { Users, BookOpen, MessageSquare, TrendingUp } from "lucide-react"
+
+export function TeacherStats() {
+  const stats = [
+    {
+      label: "Estudiantes Activos",
+      value: 45,
+      change: "+5",
+      icon: Users,
+      color: "text-primary",
+    },
+    {
+      label: "Lecciones Completadas",
+      value: 234,
+      change: "+12",
+      icon: BookOpen,
+      color: "text-secondary",
+    },
+    {
+      label: "Comentarios Pendientes",
+      value: 8,
+      change: "-3",
+      icon: MessageSquare,
+      color: "text-accent",
+    },
+    {
+      label: "Tasa de Éxito Promedio",
+      value: "87%",
+      change: "+2%",
+      icon: TrendingUp,
+      color: "text-success",
+    },
+  ]
+
+  return (
+    <Card className="p-6">
+      <h2 className="mb-4 text-xl font-bold">Estadísticas Generales</h2>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {stats.map((stat, index) => {
+          const Icon = stat.icon
+          return (
+            <div key={index} className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-background ${stat.color}`}>
+                <Icon className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">{stat.label}</p>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-2xl font-bold">{stat.value}</span>
+                  <span className="text-sm font-medium text-success">{stat.change}</span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}

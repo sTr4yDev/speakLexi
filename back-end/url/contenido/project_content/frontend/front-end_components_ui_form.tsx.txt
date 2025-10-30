@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/ui/form.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/form.tsx
-# FECHA DESCARGA: 2025-10-28 22:56:34
+# FECHA DESCARGA: 2025-10-29 18:45:34
 # ==================================================
 
 'use client'

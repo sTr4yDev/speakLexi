@@ -1,0 +1,21 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components_ui_aspect-ratio.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components_ui_aspect-ratio.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:42:22
+# ==================================================
+
+# ARCHIVO: front-end/components/ui/aspect-ratio.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/aspect-ratio.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:19
+# ==================================================
+
+'use client'
+
+import * as AspectRatioPrimitive from '@radix-ui/react-aspect-ratio'
+
+function AspectRatio({
+  ...props
+}: React.ComponentProps<typeof AspectRatioPrimitive.Root>) {
+  return <AspectRatioPrimitive.Root data-slot="aspect-ratio" {...props} />
+}
+
+export { AspectRatio }

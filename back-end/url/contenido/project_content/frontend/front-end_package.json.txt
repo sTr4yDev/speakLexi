@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/package.json
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/package.json
-# FECHA DESCARGA: 2025-10-28 22:57:14
+# FECHA DESCARGA: 2025-10-29 18:46:16
 # ==================================================
 
 {

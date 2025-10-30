@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/services/gestor_lecciones.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_lecciones.py
-# FECHA DESCARGA: 2025-10-28 22:54:27
+# FECHA DESCARGA: 2025-10-29 18:40:01
 # ==================================================
 
 """
@@ -110,6 +110,16 @@ class GestorLecciones:
             if not datos_leccion.get('contenido'):
                 return {"error": "El contenido es obligatorio"}, 400
             
+            # ← NUEVO: Validar curso_id
+            if not datos_leccion.get('curso_id'):
+                return {"error": "El curso_id es obligatorio"}, 400
+            
+            # Validar que el curso existe
+            from models.cursos import Curso
+            curso = Curso.query.get(datos_leccion['curso_id'])
+            if not curso:
+                return {"error": f"El curso con ID {datos_leccion['curso_id']} no existe"}, 404
+            
             # Validar y convertir nivel
             nivel_str = datos_leccion.get('nivel', 'principiante')
             try:
@@ -119,6 +129,7 @@ class GestorLecciones:
             
             # Crear nueva lección
             nueva_leccion = Leccion(
+                curso_id=datos_leccion['curso_id'],  # ← NUEVO
                 titulo=datos_leccion['titulo'],
                 descripcion=datos_leccion.get('descripcion', ''),
                 contenido=datos_leccion['contenido'],
@@ -190,6 +201,10 @@ class GestorLecciones:
             
             # Aplicar filtros si existen
             if filtros:
+                # ← NUEVO: Filtrar por curso
+                if filtros.get('curso_id'):
+                    query = query.filter_by(curso_id=filtros['curso_id'])
+                
                 if filtros.get('nivel'):
                     try:
                         nivel = self._obtener_nivel_enum(filtros['nivel'])
@@ -254,11 +269,18 @@ class GestorLecciones:
             if not leccion:
                 return {"error": "Lección no encontrada"}, 404
             
+            # ← NUEVO: Si se actualiza curso_id, validar que existe
+            if 'curso_id' in datos_actualizados:
+                from models.cursos import Curso
+                curso = Curso.query.get(datos_actualizados['curso_id'])
+                if not curso:
+                    return {"error": "El curso especificado no existe"}, 404
+            
             # Actualizar campos permitidos
             campos_editables = [
                 'titulo', 'descripcion', 'contenido', 'categoria',
                 'etiquetas', 'orden', 'requisitos', 'duracion_estimada',
-                'puntos_xp', 'idioma'
+                'puntos_xp', 'idioma', 'curso_id'  # ← AGREGADO
             ]
             
             for campo in campos_editables:
@@ -520,6 +542,42 @@ class GestorLecciones:
             
         except Exception as e:
             return {"error": f"Error al obtener lecciones: {str(e)}"}, 500
+    
+    # ← NUEVO: Método para obtener lecciones por curso
+    def obtener_lecciones_por_curso(self, curso_id, solo_publicadas=True):
+        """
+        Obtiene todas las lecciones de un curso específico.
+        
+        Args:
+            curso_id (int): ID del curso
+            solo_publicadas (bool): Si solo retornar lecciones publicadas
+        
+        Returns:
+            tuple: (dict con lecciones, código HTTP)
+        """
+        try:
+            from models.cursos import Curso
+            
+            curso = Curso.query.get(curso_id)
+            if not curso:
+                return {"error": "Curso no encontrado"}, 404
+            
+            query = Leccion.query.filter_by(curso_id=curso_id)
+            
+            if solo_publicadas:
+                query = query.filter_by(estado=EstadoLeccion.PUBLICADA)
+            
+            lecciones = query.order_by(Leccion.orden.asc()).all()
+            
+            return {
+                "curso_id": curso_id,
+                "curso_nombre": curso.nombre,
+                "total": len(lecciones),
+                "lecciones": [leccion.to_dict() for leccion in lecciones]
+            }, 200
+            
+        except Exception as e:
+            return {"error": f"Error al obtener lecciones del curso: {str(e)}"}, 500
 
 
 # Instancia global del gestor

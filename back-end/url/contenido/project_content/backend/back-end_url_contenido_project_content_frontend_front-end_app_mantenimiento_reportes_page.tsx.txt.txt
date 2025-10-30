@@ -1,0 +1,217 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_app_mantenimiento_reportes_page.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_app_mantenimiento_reportes_page.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:41:15
+# ==================================================
+
+# ARCHIVO: front-end/app/mantenimiento/reportes/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/mantenimiento/reportes/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:55:04
+# ==================================================
+
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AlertCircle, Bug, AlertTriangle, Info, Search } from "lucide-react"
+import Link from "next/link"
+
+export default function ReportesPage() {
+  const reports = [
+    {
+      id: 1,
+      title: "Error al cargar lección de gramática",
+      module: "Módulo Alumno",
+      severity: "alta",
+      status: "pendiente",
+      reporter: "Juan Pérez",
+      date: "2025-01-19",
+      description: "La lección no carga correctamente en dispositivos móviles",
+    },
+    {
+      id: 2,
+      title: "Problema con el sistema de logros",
+      module: "Gamificación",
+      severity: "media",
+      status: "en_revision",
+      reporter: "María García",
+      date: "2025-01-18",
+      description: "Los logros no se actualizan después de completar lecciones",
+    },
+    {
+      id: 3,
+      title: "Lentitud en la carga del dashboard",
+      module: "Dashboard",
+      severity: "baja",
+      status: "resuelto",
+      reporter: "Carlos López",
+      date: "2025-01-17",
+      description: "El dashboard tarda más de 5 segundos en cargar",
+    },
+    {
+      id: 4,
+      title: "Error en la tabla de clasificación",
+      module: "Leaderboard",
+      severity: "alta",
+      status: "en_progreso",
+      reporter: "Ana Martínez",
+      date: "2025-01-16",
+      description: "Los puntajes no se actualizan en tiempo real",
+    },
+  ]
+
+  const getSeverityIcon = (severity: string) => {
+    switch (severity) {
+      case "alta":
+        return <AlertCircle className="h-4 w-4" />
+      case "media":
+        return <AlertTriangle className="h-4 w-4" />
+      default:
+        return <Info className="h-4 w-4" />
+    }
+  }
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case "alta":
+        return "destructive"
+      case "media":
+        return "default"
+      default:
+        return "secondary"
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "resuelto":
+        return "default"
+      case "en_progreso":
+        return "default"
+      case "en_revision":
+        return "secondary"
+      default:
+        return "outline"
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "resuelto":
+        return "Resuelto"
+      case "en_progreso":
+        return "En Progreso"
+      case "en_revision":
+        return "En Revisión"
+      default:
+        return "Pendiente"
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Reportes de Fallas</h1>
+          <p className="text-muted-foreground">Gestiona y da seguimiento a los reportes del sistema</p>
+        </div>
+
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Buscar reportes..." className="pl-9" />
+              </div>
+              <Select defaultValue="todos">
+                <SelectTrigger>
+                  <SelectValue placeholder="Severidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas las severidades</SelectItem>
+                  <SelectItem value="alta">Alta</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                  <SelectItem value="baja">Baja</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select defaultValue="todos">
+                <SelectTrigger>
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos los estados</SelectItem>
+                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                  <SelectItem value="en_revision">En Revisión</SelectItem>
+                  <SelectItem value="en_progreso">En Progreso</SelectItem>
+                  <SelectItem value="resuelto">Resuelto</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select defaultValue="todos">
+                <SelectTrigger>
+                  <SelectValue placeholder="Módulo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos los módulos</SelectItem>
+                  <SelectItem value="alumno">Módulo Alumno</SelectItem>
+                  <SelectItem value="profesor">Módulo Profesor</SelectItem>
+                  <SelectItem value="admin">Módulo Admin</SelectItem>
+                  <SelectItem value="gamificacion">Gamificación</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Reports List */}
+        <div className="space-y-4">
+          {reports.map((report) => (
+            <Card key={report.id} className="hover:border-primary transition-colors">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Bug className="h-5 w-5 text-muted-foreground" />
+                      <CardTitle className="text-lg">
+                        #{report.id} - {report.title}
+                      </CardTitle>
+                    </div>
+                    <CardDescription>{report.description}</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Badge variant={getSeverityColor(report.severity) as any} className="gap-1">
+                      {getSeverityIcon(report.severity)}
+                      {report.severity.charAt(0).toUpperCase() + report.severity.slice(1)}
+                    </Badge>
+                    <Badge variant={getStatusColor(report.status) as any}>{getStatusLabel(report.status)}</Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-6 text-sm text-muted-foreground">
+                    <span>
+                      Módulo: <strong>{report.module}</strong>
+                    </span>
+                    <span>
+                      Reportado por: <strong>{report.reporter}</strong>
+                    </span>
+                    <span>
+                      Fecha: <strong>{report.date}</strong>
+                    </span>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/mantenimiento/reportes/${report.id}`}>Ver Detalles</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </main>
+    </div>
+  )
+}

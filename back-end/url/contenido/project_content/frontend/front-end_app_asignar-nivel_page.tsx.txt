@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/app/asignar-nivel/page.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/asignar-nivel/page.tsx
-# FECHA DESCARGA: 2025-10-28 22:54:47
+# FECHA DESCARGA: 2025-10-29 18:43:50
 # ==================================================
 
 import { LevelAssignmentFlow } from "@/components/auth/level-assignment-flow"

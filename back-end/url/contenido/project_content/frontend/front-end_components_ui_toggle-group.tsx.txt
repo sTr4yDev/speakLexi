@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/ui/toggle-group.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/toggle-group.tsx
-# FECHA DESCARGA: 2025-10-28 22:56:58
+# FECHA DESCARGA: 2025-10-29 18:46:03
 # ==================================================
 
 'use client'

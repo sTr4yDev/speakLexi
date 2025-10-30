@@ -1,0 +1,554 @@
+# ARCHIVO: back-end/url/contenido/project_content/backend/back-end_services_gestor_usuarios.py.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/backend/back-end_services_gestor_usuarios.py.txt
+# FECHA DESCARGA: 2025-10-29 18:40:27
+# ==================================================
+
+# ARCHIVO: back-end/services/gestor_usuarios.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_usuarios.py
+# FECHA DESCARGA: 2025-10-28 22:54:28
+# ==================================================
+
+from config.database import db
+from models.usuario import Usuario, PerfilUsuario, PerfilEstudiante, PerfilProfesor, PerfilAdministrador
+from services.correo_service import (
+    enviar_codigo_verificacion,
+    enviar_recuperacion_password
+)
+from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timedelta
+import random
+import secrets
+
+class GestorUsuarios:
+    # ========================================
+    # REGISTRO Y VERIFICACIÓN
+    # ========================================
+    def registrar_usuario(self, nombre, primer_apellido, segundo_apellido, correo, password, idioma, nivel_actual):
+        """
+        Registra un nuevo usuario ESTUDIANTE.
+        Crea: Usuario (rol='alumno') + PerfilUsuario (base) + PerfilEstudiante (específico)
+        """
+        # Evitar duplicados por correo
+        if Usuario.query.filter_by(correo=correo).first():
+            return {"error": "El correo electrónico ya está registrado."}, 400
+
+        try:
+            # 1. Crear usuario principal
+            nuevo_usuario = Usuario(
+                nombre=nombre,
+                primer_apellido=primer_apellido,
+                segundo_apellido=segundo_apellido,
+                correo=correo,
+                rol='alumno'  # Siempre alumno en registro público
+            )
+            nuevo_usuario.set_password(password)
+
+            # Generar ID público único
+            nuevo_usuario.id_publico = self.generar_id_publico(
+                nombre, primer_apellido, segundo_apellido, idioma, nivel_actual
+            )
+
+            # Crear código de verificación (válido por 10 minutos)
+            codigo = str(random.randint(100000, 999999))
+            nuevo_usuario.codigo_verificacion = codigo
+            nuevo_usuario.expira_verificacion = datetime.utcnow() + timedelta(minutes=10)
+
+            db.session.add(nuevo_usuario)
+            db.session.flush()  # Para obtener el ID del usuario
+
+            # 2. Crear perfil base (común para todos los roles)
+            nombre_completo = f"{nombre} {primer_apellido} {segundo_apellido or ''}".strip()
+            nuevo_perfil_base = PerfilUsuario(
+                usuario_id=nuevo_usuario.id,
+                nombre_completo=nombre_completo,
+                id_publico=nuevo_usuario.id_publico
+            )
+            db.session.add(nuevo_perfil_base)
+
+            # 3. Crear perfil específico de ESTUDIANTE
+            nuevo_perfil_estudiante = PerfilEstudiante(
+                usuario_id=nuevo_usuario.id,
+                nivel_actual=nivel_actual,
+                idioma_aprendizaje=idioma,
+                total_xp=0,
+                nivel_usuario=1,
+                dias_racha=0,
+                racha_maxima=0,
+                lecciones_completadas=0,
+                tiempo_estudio_total=0,
+                meta_diaria=30,
+                notificaciones_habilitadas=True
+            )
+            db.session.add(nuevo_perfil_estudiante)
+
+            # Guardar todo en BD
+            db.session.commit()
+
+            # Enviar correo de verificación
+            try:
+                enviar_codigo_verificacion(correo, codigo)
+                print(f"✅ Correo de verificación enviado a {correo}")
+            except Exception as e:
+                print(f"⚠️ Error al enviar correo de verificación a {correo}: {e}")
+                # No fallar el registro si el correo no se envía
+
+            return {
+                "mensaje": "Usuario registrado correctamente. Código de verificación enviado.",
+                "id_publico": nuevo_usuario.id_publico,
+                "usuario_id": nuevo_usuario.id
+            }, 201
+
+        except IntegrityError as e:
+            db.session.rollback()
+            print(f"❌ Error de integridad al registrar {correo}: {e}")
+            return {"error": "Error de integridad en la base de datos (posiblemente ID público duplicado)."}, 500
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error interno al registrar usuario {correo}: {str(e)}")
+            return {"error": "Error interno del servidor"}, 500
+
+    def verificar_correo(self, correo, codigo):
+        """Verifica el correo electrónico con el código de 6 dígitos"""
+        usuario = Usuario.query.filter_by(correo=correo).first()
+        if not usuario:
+            return {"error": "Usuario no encontrado"}, 404
+
+        if usuario.correo_verificado:
+            return {"mensaje": "El correo ya está verificado"}, 200
+
+        # Verificar expiración (10 minutos)
+        if usuario.expira_verificacion:
+            if datetime.utcnow() > usuario.expira_verificacion:
+                return {"error": "Código expirado. Solicita uno nuevo."}, 400
+        else:
+            return {"error": "No se pudo verificar la expiración del código."}, 400
+
+        # Verificar código
+        if usuario.codigo_verificacion == codigo:
+            usuario.correo_verificado = True
+            usuario.codigo_verificacion = None
+            usuario.expira_verificacion = None
+            try:
+                db.session.commit()
+                print(f"✅ Correo verificado para {correo}")
+                return {"mensaje": "Correo verificado correctamente"}, 200
+            except Exception as e:
+                db.session.rollback()
+                print(f"❌ Error al guardar verificación para {correo}: {str(e)}")
+                return {"error": "Error al guardar la verificación"}, 500
+        else:
+            return {"error": "Código incorrecto"}, 400
+
+    def reenviar_codigo(self, correo):
+        """Reenvía el código de verificación"""
+        usuario = Usuario.query.filter_by(correo=correo).first()
+        if not usuario:
+            return {"error": "Usuario no encontrado"}, 404
+
+        if usuario.correo_verificado:
+            return {"mensaje": "El correo ya fue verificado"}, 200
+
+        # Generar nuevo código y actualizar expiración
+        codigo = str(random.randint(100000, 999999))
+        usuario.codigo_verificacion = codigo
+        usuario.expira_verificacion = datetime.utcnow() + timedelta(minutes=10)
+        
+        try:
+            db.session.commit()
+            # Enviar correo (solo después de confirmar que se guardó en BD)
+            enviar_codigo_verificacion(correo, codigo)
+            print(f"✅ Código reenviado a {correo}")
+            return {"mensaje": "Código reenviado exitosamente"}, 200
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error al reenviar código para {correo}: {str(e)}")
+            return {"error": "Error al procesar el reenvío del código"}, 500
+
+    # ========================================
+    # AUTENTICACIÓN (ACTUALIZADO)
+    # ========================================
+    def autenticar_usuario(self, correo, password):
+        """
+        Autentica un usuario y retorna su información completa según su rol.
+        Funciona para: alumno, profesor, admin, mantenimiento.
+        """
+        usuario = Usuario.query.filter_by(correo=correo).first()
+        
+        # Verificar usuario y contraseña
+        if not usuario or not usuario.check_password(password):
+            return {"error": "Credenciales inválidas"}, 401
+
+        # Verificar estado de la cuenta
+        if usuario.estado_cuenta == 'desactivado':
+            dias_restantes = 0
+            if usuario.fecha_desactivacion:
+                if isinstance(usuario.fecha_desactivacion, datetime):
+                    dias_transcurridos = (datetime.utcnow() - usuario.fecha_desactivacion).days
+                    dias_restantes = max(0, 30 - dias_transcurridos)
+
+            return {
+                "error": "Tu cuenta ha sido desactivada",
+                "codigo": "CUENTA_DESACTIVADA",
+                "dias_restantes": dias_restantes,
+                "usuario_id": usuario.id
+            }, 403
+
+        if usuario.estado_cuenta == 'eliminado':
+            return {"error": "Esta cuenta ha sido eliminada permanentemente", "codigo": "CUENTA_ELIMINADA"}, 403
+
+        # Verificar si el correo está verificado
+        if not usuario.correo_verificado:
+            return {"error": "Debes verificar tu correo electrónico antes de iniciar sesión", "codigo": "EMAIL_NOT_VERIFIED"}, 403
+
+        # Construir respuesta base
+        perfil_base = usuario.perfil
+        datos_usuario_respuesta = {
+            "id": usuario.id,
+            "id_publico": usuario.id_publico,
+            "nombre": usuario.nombre,
+            "primer_apellido": usuario.primer_apellido,
+            "segundo_apellido": usuario.segundo_apellido,
+            "correo": usuario.correo,
+            "rol": usuario.rol,
+            "correo_verificado": usuario.correo_verificado,
+            "estado_cuenta": usuario.estado_cuenta,
+            "perfil_base": None,
+            "perfil_especifico": None
+        }
+
+        # Agregar perfil base si existe
+        if perfil_base:
+            datos_usuario_respuesta["perfil_base"] = {
+                "nombre_completo": perfil_base.nombre_completo,
+                "foto_perfil": perfil_base.foto_perfil,
+                "biografia": perfil_base.biografia
+            }
+
+        # Agregar perfil específico según el rol
+        if usuario.rol == 'alumno':
+            perfil_estudiante = PerfilEstudiante.query.filter_by(usuario_id=usuario.id).first()
+            if perfil_estudiante:
+                datos_usuario_respuesta["perfil_especifico"] = {
+                    "tipo": "estudiante",
+                    "nivel_actual": perfil_estudiante.nivel_actual,
+                    "idioma_aprendizaje": perfil_estudiante.idioma_aprendizaje,
+                    "total_xp": perfil_estudiante.total_xp,
+                    "nivel_usuario": perfil_estudiante.nivel_usuario,
+                    "dias_racha": perfil_estudiante.dias_racha,
+                    "racha_maxima": perfil_estudiante.racha_maxima,
+                    "lecciones_completadas": perfil_estudiante.lecciones_completadas,
+                    "tiempo_estudio_total": perfil_estudiante.tiempo_estudio_total,
+                    "meta_diaria": perfil_estudiante.meta_diaria,
+                    "ultima_actividad": perfil_estudiante.ultima_actividad.isoformat() if perfil_estudiante.ultima_actividad else None
+                }
+        
+        elif usuario.rol == 'profesor':
+            perfil_profesor = PerfilProfesor.query.filter_by(usuario_id=usuario.id).first()
+            if perfil_profesor:
+                datos_usuario_respuesta["perfil_especifico"] = {
+                    "tipo": "profesor",
+                    "especialidad": perfil_profesor.especialidad,
+                    "años_experiencia": perfil_profesor.años_experiencia,
+                    "estudiantes_totales": perfil_profesor.estudiantes_totales,
+                    "cursos_creados": perfil_profesor.cursos_creados
+                }
+        
+        elif usuario.rol in ('admin', 'mantenimiento'):
+            perfil_admin = PerfilAdministrador.query.filter_by(usuario_id=usuario.id).first()
+            if perfil_admin:
+                datos_usuario_respuesta["perfil_especifico"] = {
+                    "tipo": "administrador",
+                    "nivel_acceso": perfil_admin.nivel_acceso,
+                    "departamento": perfil_admin.departamento,
+                    "permisos": perfil_admin.permisos
+                }
+            
+        return {
+            "mensaje": "Inicio de sesión exitoso",
+            "usuario": datos_usuario_respuesta
+        }, 200
+
+    # ========================================
+    # PERFIL DE USUARIO (ACTUALIZADO)
+    # ========================================
+    def obtener_perfil(self, id_usuario):
+        """Obtiene el perfil completo de un usuario por su ID según su rol"""
+        try:
+            usuario = Usuario.query.get(id_usuario)
+            if not usuario:
+                return {"error": "Usuario no encontrado"}, 404
+
+            perfil_base = PerfilUsuario.query.filter_by(usuario_id=usuario.id).first()
+            if not perfil_base:
+                return {"error": "Perfil base no encontrado"}, 404
+
+            # Construir respuesta base
+            datos_respuesta = {
+                "id": usuario.id,
+                "id_publico": usuario.id_publico,
+                "nombre": usuario.nombre,
+                "primer_apellido": usuario.primer_apellido,
+                "segundo_apellido": usuario.segundo_apellido,
+                "correo": usuario.correo,
+                "rol": usuario.rol,
+                "correo_verificado": usuario.correo_verificado,
+                "estado_cuenta": usuario.estado_cuenta,
+                "creado_en": usuario.creado_en.isoformat() if usuario.creado_en else None,
+                "actualizado_en": usuario.actualizado_en.isoformat() if usuario.actualizado_en else None,
+                "perfil_base": {
+                    "nombre_completo": perfil_base.nombre_completo,
+                    "foto_perfil": perfil_base.foto_perfil,
+                    "biografia": perfil_base.biografia
+                }
+            }
+
+            # Agregar perfil específico según rol
+            if usuario.rol == 'alumno':
+                perfil_estudiante = PerfilEstudiante.query.filter_by(usuario_id=usuario.id).first()
+                if perfil_estudiante:
+                    datos_respuesta["perfil_estudiante"] = {
+                        "nivel_actual": perfil_estudiante.nivel_actual,
+                        "idioma_aprendizaje": perfil_estudiante.idioma_aprendizaje,
+                        "total_xp": perfil_estudiante.total_xp,
+                        "dias_racha": perfil_estudiante.dias_racha,
+                        "ultima_actividad": perfil_estudiante.ultima_actividad.isoformat() if perfil_estudiante.ultima_actividad else None
+                    }
+            
+            elif usuario.rol == 'profesor':
+                perfil_profesor = PerfilProfesor.query.filter_by(usuario_id=usuario.id).first()
+                if perfil_profesor:
+                    datos_respuesta["perfil_profesor"] = {
+                        "especialidad": perfil_profesor.especialidad,
+                        "estudiantes_totales": perfil_profesor.estudiantes_totales
+                    }
+            
+            elif usuario.rol in ('admin', 'mantenimiento'):
+                perfil_admin = PerfilAdministrador.query.filter_by(usuario_id=usuario.id).first()
+                if perfil_admin:
+                    datos_respuesta["perfil_admin"] = {
+                        "nivel_acceso": perfil_admin.nivel_acceso,
+                        "departamento": perfil_admin.departamento
+                    }
+
+            return datos_respuesta, 200
+
+        except Exception as e:
+            print(f"❌ Error obteniendo perfil para ID {id_usuario}: {str(e)}")
+            return {"error": "Error interno al obtener el perfil"}, 500
+
+    # ========================================
+    # CAMBIO DE CURSO/IDIOMA (SOLO ESTUDIANTES)
+    # ========================================
+    def cambiar_curso(self, usuario_id, nuevo_idioma, nuevo_nivel=None):
+        """
+        Cambia el idioma y/o nivel del ESTUDIANTE.
+        Solo funciona para usuarios con rol 'alumno'.
+        """
+        try:
+            usuario = Usuario.query.get(usuario_id)
+            if not usuario:
+                return {"error": "Usuario no encontrado"}, 404
+            
+            if usuario.rol != 'alumno':
+                return {"error": "Solo los estudiantes pueden cambiar de curso"}, 403
+
+            perfil_estudiante = PerfilEstudiante.query.filter_by(usuario_id=usuario_id).first()
+            if not perfil_estudiante:
+                return {"error": "Perfil de estudiante no encontrado"}, 404
+
+            # Validar idiomas disponibles
+            idiomas_disponibles = ["Inglés", "Español", "Francés", "Alemán"]
+            if nuevo_idioma not in idiomas_disponibles:
+                return {"error": f"Idioma '{nuevo_idioma}' no disponible actualmente"}, 400
+
+            idioma_anterior = perfil_estudiante.idioma_aprendizaje
+
+            # Actualizar idioma
+            perfil_estudiante.idioma_aprendizaje = nuevo_idioma
+            
+            # Actualizar nivel si se proporciona
+            if nuevo_nivel:
+                perfil_estudiante.nivel_actual = nuevo_nivel
+            
+            # Actualizar última actividad
+            perfil_estudiante.ultima_actividad = datetime.utcnow().date()
+            
+            db.session.commit()
+            
+            print(f"✅ Curso cambiado para usuario {usuario_id}: {idioma_anterior} → {nuevo_idioma}")
+            
+            return {
+                "mensaje": f"Curso cambiado exitosamente a {nuevo_idioma}",
+                "perfil": {
+                    "idioma_aprendizaje": perfil_estudiante.idioma_aprendizaje,
+                    "nivel_actual": perfil_estudiante.nivel_actual,
+                    "total_xp": perfil_estudiante.total_xp,
+                    "dias_racha": perfil_estudiante.dias_racha
+                }
+            }, 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error al cambiar curso para usuario {usuario_id}: {e}")
+            return {"error": "Error interno al cambiar el curso"}, 500
+
+    # ========================================
+    # SOFT DELETE Y RECUPERACIÓN DE CUENTA
+    # ========================================
+    def desactivar_cuenta(self, usuario_id, password):
+        """Desactiva temporalmente la cuenta del usuario (soft delete)"""
+        usuario = Usuario.query.get(usuario_id)
+        if not usuario:
+            return {"error": "Usuario no encontrado"}, 404
+
+        if not usuario.check_password(password):
+            return {"error": "Contraseña incorrecta"}, 401
+
+        if usuario.estado_cuenta == 'desactivado':
+            return {"mensaje": "La cuenta ya se encuentra desactivada"}, 200
+        if usuario.estado_cuenta == 'eliminado':
+            return {"error": "La cuenta ha sido eliminada permanentemente"}, 410
+
+        usuario.estado_cuenta = 'desactivado'
+        usuario.fecha_desactivacion = datetime.utcnow()
+        try:
+            db.session.commit()
+            print(f"⚠️ Cuenta desactivada: usuario {usuario_id}")
+            return {"mensaje": "Cuenta desactivada correctamente. Tienes 30 días para reactivarla."}, 200
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error al desactivar cuenta {usuario_id}: {e}")
+            return {"error": "Error al guardar el estado de desactivación"}, 500
+
+    def reactivar_cuenta(self, usuario_id, password):
+        """Reactiva una cuenta desactivada si está dentro del período de 30 días"""
+        usuario = Usuario.query.get(usuario_id)
+        if not usuario:
+            return {"error": "Usuario no encontrado"}, 404
+
+        if usuario.estado_cuenta != 'desactivado':
+            if usuario.estado_cuenta == 'activo':
+                return {"mensaje": "La cuenta ya está activa"}, 200
+            elif usuario.estado_cuenta == 'eliminado':
+                return {"error": "Esta cuenta ha sido eliminada permanentemente"}, 410
+            else:
+                return {"error": f"Estado de cuenta desconocido: '{usuario.estado_cuenta}'"}, 400
+
+        if not usuario.check_password(password):
+            return {"error": "Contraseña incorrecta"}, 401
+
+        # Verificar período de 30 días
+        if usuario.fecha_desactivacion:
+            if isinstance(usuario.fecha_desactivacion, datetime):
+                dias_transcurridos = (datetime.utcnow() - usuario.fecha_desactivacion).days
+                if dias_transcurridos > 30:
+                    return {"error": "El período de 30 días para reactivar ha expirado"}, 410
+            else:
+                print(f"⚠️ Fecha de desactivación inválida para usuario {usuario_id}")
+                return {"error": "No se pudo verificar el período de reactivación"}, 500
+        else:
+            print(f"⚠️ Intento de reactivar sin fecha de desactivación: usuario {usuario_id}")
+            return {"error": "Falta información para verificar el período"}, 500
+
+        usuario.estado_cuenta = 'activo'
+        usuario.fecha_desactivacion = None
+        try:
+            db.session.commit()
+            print(f"✅ Cuenta reactivada: usuario {usuario_id}")
+            return {"mensaje": "Cuenta reactivada correctamente"}, 200
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error al reactivar cuenta {usuario_id}: {e}")
+            return {"error": "Error al guardar el estado de reactivación"}, 500
+
+    # ========================================
+    # RECUPERACIÓN DE CONTRASEÑA
+    # ========================================
+    def solicitar_recuperacion_password(self, correo):
+        """Genera un token seguro y envía correo para restablecer contraseña"""
+        usuario = Usuario.query.filter_by(correo=correo).first()
+        if not usuario:
+            print(f"ℹ️ Solicitud de recuperación para correo no existente: {correo}")
+            return {"mensaje": "Si tu correo está registrado, recibirás instrucciones."}, 200
+
+        token = secrets.token_urlsafe(32)
+        usuario.token_recuperacion = token
+        usuario.expira_token_recuperacion = datetime.utcnow() + timedelta(hours=1)
+        
+        try:
+            db.session.commit()
+            enviar_recuperacion_password(correo, token)
+            print(f"🔑 Token de recuperación generado para {correo}")
+            return {"mensaje": "Si tu correo está registrado, recibirás instrucciones."}, 200
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error al solicitar recuperación para {correo}: {str(e)}")
+            return {"mensaje": "Ocurrió un error. Intenta de nuevo más tarde."}, 500
+
+    def validar_token_recuperacion(self, token):
+        """Valida si un token de recuperación es válido y no ha expirado"""
+        usuario = Usuario.query.filter_by(token_recuperacion=token).first()
+        
+        if not usuario or not usuario.expira_token_recuperacion or \
+           usuario.expira_token_recuperacion < datetime.utcnow():
+            return {"error": "El enlace es inválido o ha expirado. Solicita uno nuevo."}, 400
+            
+        return {"mensaje": "Token válido"}, 200
+
+    def restablecer_password(self, token, nueva_password):
+        """Restablece la contraseña usando un token válido"""
+        usuario = Usuario.query.filter_by(token_recuperacion=token).first()
+        
+        if not usuario or not usuario.expira_token_recuperacion or \
+           usuario.expira_token_recuperacion < datetime.utcnow():
+            return {"error": "El enlace es inválido o ha expirado."}, 400
+
+        if len(nueva_password) < 8:
+            return {"error": "La nueva contraseña debe tener al menos 8 caracteres"}, 400
+
+        try:
+            usuario.set_password(nueva_password)
+            usuario.token_recuperacion = None
+            usuario.expira_token_recuperacion = None
+            db.session.commit()
+            print(f"✅ Contraseña restablecida para usuario {usuario.id}")
+            return {"mensaje": "Tu contraseña ha sido restablecida. Ya puedes iniciar sesión."}, 200
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error al restablecer contraseña: {str(e)}")
+            return {"error": "Error al guardar la nueva contraseña"}, 500
+
+    # ========================================
+    # UTILIDAD INTERNA
+    # ========================================
+    def generar_id_publico(self, nombre, primer_apellido, segundo_apellido, idioma, nivel):
+        """
+        Genera un ID público único y legible.
+        Formato: YY+IDIOMA(3)+INICIALES(3)+NIVEL(2)
+        Ejemplo: 25INGPRAA1
+        """
+        año = str(datetime.now().year)[-2:]
+        idioma_codigo = idioma[:3].upper() if idioma else "XXX"
+        
+        i1 = primer_apellido[0].upper() if primer_apellido else ""
+        i2 = segundo_apellido[0].upper() if segundo_apellido else ""
+        i3 = nombre[0].upper() if nombre else ""
+        iniciales = f"{i1}{i2}{i3}"[:3].ljust(3, 'X')
+
+        nivel_codigo = nivel.upper() if nivel else "XX"
+
+        base_id = f"{año}{idioma_codigo}{iniciales}{nivel_codigo}"
+        
+        # Manejo de colisiones
+        contador = 0
+        id_publico_final = base_id
+        while Usuario.query.filter_by(id_publico=id_publico_final).first() or \
+              PerfilUsuario.query.filter_by(id_publico=id_publico_final).first():
+            contador += 1
+            id_publico_final = f"{base_id}{contador}"
+            if contador > 99:
+                print(f"⚠️ Problema generando ID único para base {base_id}")
+                id_publico_final = f"{base_id}{secrets.token_hex(2).upper()}"
+                break
+
+        return id_publico_final

@@ -1,0 +1,144 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components_lessons_activities_translation-activity.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components_lessons_activities_translation-activity.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:42:07
+# ==================================================
+
+# ARCHIVO: front-end/components/lessons/activities/translation-activity.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/activities/translation-activity.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:00
+# ==================================================
+
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
+import { Check, X, Volume2 } from "lucide-react"
+
+interface TranslationActivityProps {
+  sourceText: string
+  sourceLang: string
+  targetLang: string
+  correctTranslation: string
+  onComplete: (correct: boolean) => void
+}
+
+export function TranslationActivity({
+  sourceText,
+  sourceLang,
+  targetLang,
+  correctTranslation,
+  onComplete,
+}: TranslationActivityProps) {
+  const [translation, setTranslation] = useState("")
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [isCorrect, setIsCorrect] = useState(false)
+
+  const handlePlayAudio = () => {
+    const utterance = new SpeechSynthesisUtterance(sourceText)
+    utterance.lang = sourceLang === "Inglés" ? "en-US" : "es-ES"
+    window.speechSynthesis.speak(utterance)
+  }
+
+  const handleCheck = () => {
+    // Simple similarity check (in production, use more sophisticated NLP)
+    const userWords = translation.toLowerCase().trim().split(/\s+/)
+    const correctWords = correctTranslation.toLowerCase().trim().split(/\s+/)
+    const matchCount = userWords.filter((word) => correctWords.includes(word)).length
+    const similarity = matchCount / correctWords.length
+
+    const correct = similarity >= 0.7 // 70% similarity threshold
+    setIsCorrect(correct)
+    setShowFeedback(true)
+    setTimeout(() => {
+      onComplete(correct)
+    }, 2500)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h3 className="text-2xl font-bold mb-2">Traducción</h3>
+        <p className="text-lg text-muted-foreground">
+          Traduce la siguiente frase de {sourceLang} a {targetLang}
+        </p>
+      </div>
+
+      {/* Source Text */}
+      <Card className="bg-primary/5">
+        <CardContent className="p-8">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-medium text-muted-foreground">{sourceLang}</span>
+            <Button onClick={handlePlayAudio} variant="ghost" size="sm">
+              <Volume2 className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-2xl font-bold text-center">{sourceText}</p>
+        </CardContent>
+      </Card>
+
+      {/* Translation Input */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">{targetLang}</span>
+              <span className="text-xs text-muted-foreground">{translation.length} caracteres</span>
+            </div>
+            <Textarea
+              placeholder={`Escribe tu traducción en ${targetLang}...`}
+              value={translation}
+              onChange={(e) => setTranslation(e.target.value)}
+              disabled={showFeedback}
+              className="min-h-[120px] text-lg"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Action Button */}
+      {!showFeedback && (
+        <div className="flex justify-center">
+          <Button onClick={handleCheck} disabled={translation.trim().length < 3} size="lg" className="min-w-[200px]">
+            Verificar Traducción
+          </Button>
+        </div>
+      )}
+
+      {/* Feedback */}
+      {showFeedback && (
+        <Card
+          className={
+            isCorrect ? "border-green-500 bg-green-50 dark:bg-green-950" : "border-red-500 bg-red-50 dark:bg-red-950"
+          }
+        >
+          <CardContent className="p-6">
+            <div className="flex items-start gap-3">
+              {isCorrect ? (
+                <Check className="h-6 w-6 text-green-600 flex-shrink-0 mt-1" />
+              ) : (
+                <X className="h-6 w-6 text-red-600 flex-shrink-0 mt-1" />
+              )}
+              <div className="flex-1">
+                <p className="font-semibold mb-2">{isCorrect ? "¡Muy bien!" : "Casi correcto"}</p>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Tu traducción:</p>
+                    <p className="text-sm">{translation}</p>
+                  </div>
+                  {!isCorrect && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Traducción sugerida:</p>
+                      <p className="text-sm font-medium">{correctTranslation}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}

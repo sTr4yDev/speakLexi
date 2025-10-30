@@ -1,0 +1,30 @@
+# ARCHIVO: back-end/url/contenido/project_content/backend/back-end_url_urls_backend_organizado.txt.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/backend/back-end_url_urls_backend_organizado.txt.txt
+# FECHA DESCARGA: 2025-10-29 18:40:36
+# ==================================================
+
+# ARCHIVO: back-end/url/urls_backend_organizado.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/urls_backend_organizado.txt
+# FECHA DESCARGA: 2025-10-28 22:54:36
+# ==================================================
+
+# Backend - SpeakLexi
+# Total: 11 archivos
+
+# ===== CONFIG (3) =====
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/__init__.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/database.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/settings.py
+
+# ===== MODELS (1) =====
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/usuario.py
+
+# ===== SERVICES (2) =====
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/correo_service.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_usuarios.py
+
+# ===== ROUTES (3) =====
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/__init__.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/auth.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/usuario_routes.py
+

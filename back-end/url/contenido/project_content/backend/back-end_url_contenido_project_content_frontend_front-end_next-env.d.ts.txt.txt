@@ -1,0 +1,15 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_next-env.d.ts.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_next-env.d.ts.txt
+# FECHA DESCARGA: 2025-10-29 18:43:27
+# ==================================================
+
+# ARCHIVO: front-end/next-env.d.ts
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/next-env.d.ts
+# FECHA DESCARGA: 2025-10-28 22:57:13
+# ==================================================
+
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.

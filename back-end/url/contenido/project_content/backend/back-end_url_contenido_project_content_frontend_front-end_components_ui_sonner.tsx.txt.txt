@@ -1,0 +1,35 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components_ui_sonner.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components_ui_sonner.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:43:04
+# ==================================================
+
+# ARCHIVO: front-end/components/ui/sonner.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/sonner.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:50
+# ==================================================
+
+'use client'
+
+import { useTheme } from 'next-themes'
+import { Toaster as Sonner, ToasterProps } from 'sonner'
+
+const Toaster = ({ ...props }: ToasterProps) => {
+  const { theme = 'system' } = useTheme()
+
+  return (
+    <Sonner
+      theme={theme as ToasterProps['theme']}
+      className="toaster group"
+      style={
+        {
+          '--normal-bg': 'var(--popover)',
+          '--normal-text': 'var(--popover-foreground)',
+          '--normal-border': 'var(--border)',
+        } as React.CSSProperties
+      }
+      {...props}
+    />
+  )
+}
+
+export { Toaster }

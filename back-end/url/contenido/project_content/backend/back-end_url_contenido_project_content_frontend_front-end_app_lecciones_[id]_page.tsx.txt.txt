@@ -1,0 +1,21 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_app_lecciones_[id]_page.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_app_lecciones_[id]_page.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:41:07
+# ==================================================
+
+# ARCHIVO: front-end/app/lecciones/[id]/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/lecciones/[id]/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:54:56
+# ==================================================
+
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { LessonViewer } from "@/components/lessons/lesson-viewer"
+
+export default function LessonPage({ params }: { params: { id: string } }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <DashboardHeader />
+      <LessonViewer lessonId={params.id} />
+    </div>
+  )
+}

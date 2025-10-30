@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/tsconfig.json
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/tsconfig.json
-# FECHA DESCARGA: 2025-10-28 22:57:19
+# FECHA DESCARGA: 2025-10-29 18:46:20
 # ==================================================
 
 {

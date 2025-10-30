@@ -1,0 +1,38 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_app_lecciones_page.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_app_lecciones_page.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:41:08
+# ==================================================
+
+# ARCHIVO: front-end/app/lecciones/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/lecciones/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:54:57
+# ==================================================
+
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { LessonList } from "@/components/lessons/lesson-list"
+import { LessonFilters } from "@/components/lessons/lesson-filters"
+
+export default function LessonsPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <DashboardHeader />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-balance">Lecciones</h1>
+          <p className="mt-1 text-muted-foreground">Explora y completa lecciones para mejorar tu nivel</p>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-4">
+          <aside className="lg:col-span-1">
+            <LessonFilters />
+          </aside>
+
+          <div className="lg:col-span-3">
+            <LessonList />
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}

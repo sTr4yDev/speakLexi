@@ -105,7 +105,7 @@ class GestorLecciones:
             if not datos_leccion.get('contenido'):
                 return {"error": "El contenido es obligatorio"}, 400
             
-            # ← NUEVO: Validar curso_id
+            # Validar curso_id
             if not datos_leccion.get('curso_id'):
                 return {"error": "El curso_id es obligatorio"}, 400
             
@@ -124,7 +124,7 @@ class GestorLecciones:
             
             # Crear nueva lección
             nueva_leccion = Leccion(
-                curso_id=datos_leccion['curso_id'],  # ← NUEVO
+                curso_id=datos_leccion['curso_id'],
                 titulo=datos_leccion['titulo'],
                 descripcion=datos_leccion.get('descripcion', ''),
                 contenido=datos_leccion['contenido'],
@@ -196,7 +196,7 @@ class GestorLecciones:
             
             # Aplicar filtros si existen
             if filtros:
-                # ← NUEVO: Filtrar por curso
+                # Filtrar por curso
                 if filtros.get('curso_id'):
                     query = query.filter_by(curso_id=filtros['curso_id'])
                 
@@ -264,7 +264,7 @@ class GestorLecciones:
             if not leccion:
                 return {"error": "Lección no encontrada"}, 404
             
-            # ← NUEVO: Si se actualiza curso_id, validar que existe
+            # Si se actualiza curso_id, validar que existe
             if 'curso_id' in datos_actualizados:
                 from models.cursos import Curso
                 curso = Curso.query.get(datos_actualizados['curso_id'])
@@ -275,7 +275,7 @@ class GestorLecciones:
             campos_editables = [
                 'titulo', 'descripcion', 'contenido', 'categoria',
                 'etiquetas', 'orden', 'requisitos', 'duracion_estimada',
-                'puntos_xp', 'idioma', 'curso_id'  # ← AGREGADO
+                'puntos_xp', 'idioma', 'curso_id'
             ]
             
             for campo in campos_editables:
@@ -333,7 +333,8 @@ class GestorLecciones:
             if leccion.estado == EstadoLeccion.PUBLICADA:
                 return {"mensaje": "La lección ya está publicada"}, 200
             
-            if leccion.actividades.count() == 0:
+            # ✅ CORRECCIÓN APLICADA: Cambiar .count() por len()
+            if len(leccion.actividades) == 0:
                 return {
                     "error": "La lección debe tener al menos una actividad para publicarse"
                 }, 400
@@ -492,7 +493,8 @@ class GestorLecciones:
             if not leccion:
                 return {"error": "Lección no encontrada"}, 404
             
-            total_actividades = leccion.actividades.count()
+            # ✅ CORRECCIÓN APLICADA: Cambiar .count() por len()
+            total_actividades = len(leccion.actividades)
             total_puntos = db.session.query(
                 db.func.sum(Actividad.puntos)
             ).filter_by(leccion_id=leccion_id).scalar() or 0
@@ -538,7 +540,7 @@ class GestorLecciones:
         except Exception as e:
             return {"error": f"Error al obtener lecciones: {str(e)}"}, 500
     
-    # ← NUEVO: Método para obtener lecciones por curso
+    # Método para obtener lecciones por curso
     def obtener_lecciones_por_curso(self, curso_id, solo_publicadas=True):
         """
         Obtiene todas las lecciones de un curso específico.

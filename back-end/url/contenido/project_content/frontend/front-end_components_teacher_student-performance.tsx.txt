@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/teacher/student-performance.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/teacher/student-performance.tsx
-# FECHA DESCARGA: 2025-10-28 22:56:13
+# FECHA DESCARGA: 2025-10-29 18:45:09
 # ==================================================
 
 import { Card } from "@/components/ui/card"

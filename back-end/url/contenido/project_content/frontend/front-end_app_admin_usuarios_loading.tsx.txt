@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/app/admin/usuarios/loading.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/usuarios/loading.tsx
-# FECHA DESCARGA: 2025-10-28 22:54:45
+# FECHA DESCARGA: 2025-10-29 18:43:48
 # ==================================================
 
 export default function Loading() {

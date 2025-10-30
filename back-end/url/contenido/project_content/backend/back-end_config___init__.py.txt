@@ -1,5 +1,5 @@
 # ARCHIVO: back-end/config/__init__.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/__init__.py
-# FECHA DESCARGA: 2025-10-28 22:54:12
+# FECHA DESCARGA: 2025-10-29 18:39:43
 # ==================================================
 

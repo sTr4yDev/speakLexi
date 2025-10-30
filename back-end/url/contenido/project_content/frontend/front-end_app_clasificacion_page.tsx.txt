@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/app/clasificacion/page.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/clasificacion/page.tsx
-# FECHA DESCARGA: 2025-10-28 22:54:49
+# FECHA DESCARGA: 2025-10-29 18:43:52
 # ==================================================
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"

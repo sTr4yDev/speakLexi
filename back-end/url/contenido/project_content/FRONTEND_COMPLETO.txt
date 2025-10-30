@@ -1,6 +1,6 @@
 # FRONTEND COMPLETO - SpeakLexi
 # Total archivos: 167
-# Generado: 2025-10-28 22:58:05
+# Generado: 2025-10-29 18:49:59
 
 
 ================================================================================
@@ -5514,55 +5514,123 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Save, X, Plus, Trash2 } from "lucide-react"
+import { Save, X, Plus, Trash2, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
+import { type Actividad } from "@/lib/api"
 
 interface ActivityFormProps {
-  onGuardar: (actividad: any) => void
+  onGuardar: (actividad: Actividad) => void
   onCancelar: () => void
-  actividadEditar?: any
+  actividadEditar?: Actividad | null
+}
+
+interface Hueco {
+  id: string
+  posicion: number
+  respuesta: string
+  respuestasAlternativas: string[]
+  pistaEspecifica?: string
 }
 
 export function FillBlankForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
-  const [instrucciones, setInstrucciones] = useState("")
+  const [instrucciones, setInstrucciones] = useState("Completa los espacios en blanco con las palabras correctas.")
   const [oracion, setOracion] = useState("")
-  const [huecos, setHuecos] = useState<{ posicion: number; respuesta: string }[]>([])
+  const [huecos, setHuecos] = useState<Hueco[]>([])
   const [palabraHueco, setPalabraHueco] = useState("")
+  const [respuestaAlternativa, setRespuestaAlternativa] = useState("")
   const [pista, setPista] = useState("")
   const [puntos, setPuntos] = useState(10)
+  const [huecoEditando, setHuecoEditando] = useState<Hueco | null>(null)
+  const [mostrarPrevisualizacion, setMostrarPrevisualizacion] = useState(false)
+  const [permiteMayusculas, setPermiteMayusculas] = useState(true)
+  const [permiteAcentos, setPermiteAcentos] = useState(true)
 
   useEffect(() => {
     if (actividadEditar) {
-      setInstrucciones(actividadEditar.instrucciones || "")
+      setInstrucciones(actividadEditar.instrucciones || "Completa los espacios en blanco con las palabras correctas.")
       setOracion(actividadEditar.pregunta || "")
       setHuecos(actividadEditar.opciones?.huecos || [])
       setPista(actividadEditar.pista || "")
       setPuntos(actividadEditar.puntos || 10)
+      setPermiteMayusculas(actividadEditar.opciones?.permiteMayusculas ?? true)
+      setPermiteAcentos(actividadEditar.opciones?.permiteAcentos ?? true)
     }
   }, [actividadEditar])
 
+  const generarId = () => Math.random().toString(36).substr(2, 9)
+
   const agregarHueco = () => {
     if (!palabraHueco.trim()) {
-      toast.error("Escribe una palabra para el hueco")
+      toast.error("Escribe la palabra correcta para el hueco")
       return
     }
 
-    const posicion = huecos.length
-    setHuecos([...huecos, { posicion, respuesta: palabraHueco.trim() }])
+    const nuevoHueco: Hueco = {
+      id: generarId(),
+      posicion: huecos.length,
+      respuesta: palabraHueco.trim(),
+      respuestasAlternativas: []
+    }
+
+    setHuecos([...huecos, nuevoHueco])
     setPalabraHueco("")
-    toast.success(`Hueco #${posicion + 1} agregado`)
+    toast.success(`Hueco #${huecos.length + 1} agregado`)
   }
 
-  const eliminarHueco = (index: number) => {
-    setHuecos(huecos.filter((_, i) => i !== index))
+  const agregarRespuestaAlternativa = (huecoId: string) => {
+    if (!respuestaAlternativa.trim()) {
+      toast.error("Escribe una respuesta alternativa")
+      return
+    }
+
+    setHuecos(huecos.map(hueco => 
+      hueco.id === huecoId 
+        ? { ...hueco, respuestasAlternativas: [...hueco.respuestasAlternativas, respuestaAlternativa.trim()] }
+        : hueco
+    ))
+    setRespuestaAlternativa("")
+    toast.success("Respuesta alternativa agregada")
+  }
+
+  const eliminarHueco = (id: string) => {
+    setHuecos(huecos.filter(hueco => hueco.id !== id))
+    if (huecoEditando?.id === id) {
+      setHuecoEditando(null)
+    }
+  }
+
+  const eliminarRespuestaAlternativa = (huecoId: string, index: number) => {
+    setHuecos(huecos.map(hueco => 
+      hueco.id === huecoId 
+        ? { ...hueco, respuestasAlternativas: hueco.respuestasAlternativas.filter((_, i) => i !== index) }
+        : hueco
+    ))
+  }
+
+  const actualizarPistaEspecifica = (huecoId: string, pista: string) => {
+    setHuecos(huecos.map(hueco => 
+      hueco.id === huecoId 
+        ? { ...hueco, pistaEspecifica: pista }
+        : hueco
+    ))
+  }
+
+  const generarPrevisualizacion = () => {
+    let oracionConHuecos = oracion
+    huecos.forEach((hueco, index) => {
+      oracionConHuecos = oracionConHuecos.replace(`____`, `[${index + 1}]`)
+    })
+    return oracionConHuecos
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!oracion.trim()) {
-      toast.error("Escribe la oración")
+      toast.error("Escribe la oración con espacios en blanco")
       return
     }
 
@@ -5571,113 +5639,260 @@ export function FillBlankForm({ onGuardar, onCancelar, actividadEditar }: Activi
       return
     }
 
-    const actividad = {
+    // Validar que la oración tenga suficientes espacios para los huecos
+    const espaciosEnBlanco = (oracion.match(/____/g) || []).length
+    if (espaciosEnBlanco !== huecos.length) {
+      toast.error(`La oración tiene ${espaciosEnBlanco} espacios, pero has definido ${huecos.length} huecos`)
+      return
+    }
+
+    const actividad: Actividad = {
       tipo: 'fill_blank',
       pregunta: oracion.trim(),
-      instrucciones: instrucciones.trim() || "Completa los espacios en blanco",
+      instrucciones: instrucciones.trim(),
       opciones: {
-        huecos: huecos
+        huecos: huecos,
+        permiteMayusculas,
+        permiteAcentos,
+        formato: 'texto'
       },
-      respuesta_correcta: huecos.map(h => h.respuesta),
-      pista: pista.trim(),
-      puntos,
-      orden: actividadEditar?.orden || 0
+      respuesta_correcta: huecos.map(h => ({
+        respuesta: h.respuesta,
+        alternativas: h.respuestasAlternativas,
+        pista: h.pistaEspecifica
+      })),
+      retroalimentacion: {
+        correcto: "¡Excelente! Has completado correctamente todos los espacios.",
+        incorrecto: "Revisa tus respuestas. Algunos espacios no están correctos."
+      },
+      pista: pista.trim() || undefined,
+      puntos: puntos,
+      orden: actividadEditar?.orden || 0,
+      tiempo_limite: undefined,
+      multimedia_id: undefined
     }
 
     onGuardar(actividad)
-    toast.success("Actividad guardada")
+    toast.success(actividadEditar ? "Actividad actualizada" : "Actividad creada")
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="oracion">Oración completa *</Label>
-        <Textarea
-          id="oracion"
-          placeholder="Ej: The cat is ____ the table"
-          value={oracion}
-          onChange={(e) => setOracion(e.target.value)}
-          rows={3}
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          💡 Usa ____ para indicar dónde irán los huecos
-        </p>
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Previsualización */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Previsualización</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMostrarPrevisualizacion(!mostrarPrevisualizacion)}
+            >
+              {mostrarPrevisualizacion ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {mostrarPrevisualizacion ? "Ocultar" : "Mostrar"}
+            </Button>
+          </div>
+        </CardHeader>
+        {mostrarPrevisualizacion && (
+          <CardContent>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-2">Así verá el estudiante:</p>
+              <p className="text-lg">{generarPrevisualizacion()}</p>
+              <div className="mt-2 text-xs text-muted-foreground">
+                {huecos.length} espacio{huecos.length !== 1 ? 's' : ''} en blanco
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
-      <div className="space-y-2">
-        <Label>Palabras para los huecos *</Label>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Escribe la palabra correcta"
-            value={palabraHueco}
-            onChange={(e) => setPalabraHueco(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarHueco())}
-          />
-          <Button type="button" onClick={agregarHueco} size="icon">
-            <Plus className="h-4 w-4" />
-          </Button>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Columna Izquierda */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="oracion">Oración con espacios en blanco *</Label>
+            <Textarea
+              id="oracion"
+              placeholder="Ej: El ____ es un animal muy ____ que vive en la ____."
+              value={oracion}
+              onChange={(e) => setOracion(e.target.value)}
+              rows={3}
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              💡 Usa <strong>____</strong> (cuatro guiones bajos) para cada espacio en blanco
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="instrucciones">Instrucciones *</Label>
+            <Textarea
+              id="instrucciones"
+              placeholder="Instrucciones para el estudiante..."
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={2}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Configuración de evaluación</Label>
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="mayusculas" className="text-sm">Permitir mayúsculas/minúsculas</Label>
+                <Switch
+                  id="mayusculas"
+                  checked={permiteMayusculas}
+                  onCheckedChange={setPermiteMayusculas}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="acentos" className="text-sm">Permitir acentos</Label>
+                <Switch
+                  id="acentos"
+                  checked={permiteAcentos}
+                  onCheckedChange={setPermiteAcentos}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-        
-        {huecos.length > 0 && (
-          <div className="space-y-2 mt-2">
-            {huecos.map((hueco, i) => (
-              <div key={i} className="flex items-center gap-2 p-2 bg-secondary rounded">
-                <Badge>Hueco #{i + 1}</Badge>
-                <span className="flex-1 font-mono">{hueco.respuesta}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => eliminarHueco(i)}
-                >
-                  <Trash2 className="h-4 w-4" />
+
+        {/* Columna Derecha */}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <Label>Gestión de Huecos</Label>
+            
+            {/* Agregar nuevo hueco */}
+            <div className="space-y-2">
+              <Label>Agregar nuevo hueco</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Palabra correcta para el hueco"
+                  value={palabraHueco}
+                  onChange={(e) => setPalabraHueco(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarHueco())}
+                />
+                <Button type="button" onClick={agregarHueco} size="icon">
+                  <Plus className="h-4 w-4" />
                 </Button>
               </div>
-            ))}
+            </div>
+
+            {/* Lista de huecos */}
+            {huecos.length > 0 && (
+              <div className="space-y-3 mt-4">
+                <Label>Huecos definidos ({huecos.length})</Label>
+                {huecos.map((hueco, index) => (
+                  <Card key={hueco.id} className={`${huecoEditando?.id === hueco.id ? 'border-primary' : ''}`}>
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="secondary">Hueco #{index + 1}</Badge>
+                            <span className="font-mono text-sm bg-primary/10 px-2 py-1 rounded">
+                              {hueco.respuesta}
+                            </span>
+                          </div>
+                          
+                          {/* Respuestas alternativas */}
+                          <div className="space-y-2 mt-2">
+                            <Label className="text-xs">Respuestas alternativas:</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Agregar respuesta alternativa"
+                                value={huecoEditando?.id === hueco.id ? respuestaAlternativa : ''}
+                                onChange={(e) => setRespuestaAlternativa(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarRespuestaAlternativa(hueco.id))}
+                              />
+                              <Button
+                                type="button"
+                                onClick={() => agregarRespuestaAlternativa(hueco.id)}
+                                size="sm"
+                                variant="outline"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            
+                            {hueco.respuestasAlternativas.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {hueco.respuestasAlternativas.map((alt, altIndex) => (
+                                  <Badge key={altIndex} variant="outline" className="text-xs">
+                                    {alt}
+                                    <button
+                                      type="button"
+                                      onClick={() => eliminarRespuestaAlternativa(hueco.id, altIndex)}
+                                      className="ml-1"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Pista específica */}
+                          <div className="space-y-1 mt-2">
+                            <Label className="text-xs">Pista para este hueco:</Label>
+                            <Input
+                              placeholder="Pista específica..."
+                              value={hueco.pistaEspecifica || ''}
+                              onChange={(e) => actualizarPistaEspecifica(hueco.id, e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => eliminarHueco(hueco.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="space-y-2">
+            <Label htmlFor="pista">Pista general (Opcional)</Label>
+            <Input
+              id="pista"
+              placeholder="Pista general para toda la actividad..."
+              value={pista}
+              onChange={(e) => setPista(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="puntos">Puntos</Label>
+            <Input
+              id="puntos"
+              type="number"
+              min="1"
+              max="100"
+              value={puntos}
+              onChange={(e) => setPuntos(parseInt(e.target.value) || 10)}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="instrucciones">Instrucciones</Label>
-        <Input
-          id="instrucciones"
-          placeholder="Ej: Completa con la preposición correcta"
-          value={instrucciones}
-          onChange={(e) => setInstrucciones(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="pista">Pista (Opcional)</Label>
-        <Input
-          id="pista"
-          placeholder="Ej: Piensa en posiciones espaciales..."
-          value={pista}
-          onChange={(e) => setPista(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="puntos">Puntos</Label>
-        <Input
-          id="puntos"
-          type="number"
-          min="1"
-          value={puntos}
-          onChange={(e) => setPuntos(parseInt(e.target.value))}
-        />
-      </div>
-
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
           <X className="mr-2 h-4 w-4" />
           Cancelar
         </Button>
-        <Button type="submit" className="flex-1">
+        <Button type="submit" className="flex-1" disabled={huecos.length === 0}>
           <Save className="mr-2 h-4 w-4" />
-          Guardar Actividad
+          {actividadEditar ? 'Actualizar' : 'Crear'} Actividad
         </Button>
       </div>
     </form>
@@ -5696,39 +5911,56 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, X, Plus, Trash2 } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Save, X, Plus, Trash2, Eye, EyeOff, Shuffle } from "lucide-react"
 import { toast } from "sonner"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { type Actividad } from "@/lib/api"
 
 interface ActivityFormProps {
-  onGuardar: (actividad: any) => void
+  onGuardar: (actividad: Actividad) => void
   onCancelar: () => void
-  actividadEditar?: any
+  actividadEditar?: Actividad | null
 }
 
 interface Par {
+  id: string
   izquierda: string
   derecha: string
+  pista?: string
+  grupo?: string
 }
 
 export function MatchingForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
-  const [pregunta, setPregunta] = useState("")
-  const [instrucciones, setInstrucciones] = useState("")
+  const [titulo, setTitulo] = useState("")
+  const [instrucciones, setInstrucciones] = useState("Empareja los elementos de la columna izquierda con los de la derecha.")
   const [pares, setPares] = useState<Par[]>([])
   const [izquierda, setIzquierda] = useState("")
   const [derecha, setDerecha] = useState("")
+  const [grupo, setGrupo] = useState("")
   const [pista, setPista] = useState("")
   const [puntos, setPuntos] = useState(10)
+  const [mostrarPrevisualizacion, setMostrarPrevisualizacion] = useState(false)
+  const [mezclarOpciones, setMezclarOpciones] = useState(true)
+  const [permiteArrastrar, setPermiteArrastrar] = useState(true)
+  const [modoGrupos, setModoGrupos] = useState(false)
 
   useEffect(() => {
     if (actividadEditar) {
-      setPregunta(actividadEditar.pregunta || "")
-      setInstrucciones(actividadEditar.instrucciones || "")
+      setTitulo(actividadEditar.pregunta || "")
+      setInstrucciones(actividadEditar.instrucciones || "Empareja los elementos de la columna izquierda con los de la derecha.")
       setPares(actividadEditar.opciones?.pares || [])
       setPista(actividadEditar.pista || "")
       setPuntos(actividadEditar.puntos || 10)
+      setMezclarOpciones(actividadEditar.opciones?.mezclarOpciones ?? true)
+      setPermiteArrastrar(actividadEditar.opciones?.permiteArrastrar ?? true)
+      setModoGrupos(actividadEditar.opciones?.modoGrupos ?? false)
     }
   }, [actividadEditar])
+
+  const generarId = () => Math.random().toString(36).substr(2, 9)
 
   const agregarPar = () => {
     if (!izquierda.trim() || !derecha.trim()) {
@@ -5736,21 +5968,41 @@ export function MatchingForm({ onGuardar, onCancelar, actividadEditar }: Activit
       return
     }
 
-    setPares([...pares, { izquierda: izquierda.trim(), derecha: derecha.trim() }])
+    const nuevoPar: Par = {
+      id: generarId(),
+      izquierda: izquierda.trim(),
+      derecha: derecha.trim(),
+      pista: pista.trim() || undefined,
+      grupo: grupo.trim() || undefined
+    }
+
+    setPares([...pares, nuevoPar])
     setIzquierda("")
     setDerecha("")
+    setPista("")
+    setGrupo("")
     toast.success("Par agregado")
   }
 
-  const eliminarPar = (index: number) => {
-    setPares(pares.filter((_, i) => i !== index))
+  const eliminarPar = (id: string) => {
+    setPares(pares.filter(par => par.id !== id))
   }
+
+  const mezclarPares = () => {
+    const paresMezclados = [...pares]
+      .map(par => ({ ...par, id: generarId() })) // Nuevos IDs al mezclar
+      .sort(() => Math.random() - 0.5)
+    setPares(paresMezclados)
+    toast.success("Pares mezclados")
+  }
+
+  const gruposUnicos = [...new Set(pares.map(par => par.grupo).filter(Boolean))]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!pregunta.trim()) {
-      toast.error("Agrega una instrucción/pregunta")
+    if (!titulo.trim()) {
+      toast.error("Agrega un título para la actividad")
       return
     }
 
@@ -5759,122 +6011,296 @@ export function MatchingForm({ onGuardar, onCancelar, actividadEditar }: Activit
       return
     }
 
-    const actividad = {
+    if (modoGrupos && gruposUnicos.length < 2) {
+      toast.error("En modo grupos, debes tener al menos 2 grupos diferentes")
+      return
+    }
+
+    const actividad: Actividad = {
       tipo: 'matching',
-      pregunta: pregunta.trim(),
-      instrucciones: instrucciones.trim() || "Empareja los elementos correctamente",
+      pregunta: titulo.trim(),
+      instrucciones: instrucciones.trim(),
       opciones: {
-        pares: pares
+        pares: pares,
+        mezclarOpciones,
+        permiteArrastrar,
+        modoGrupos,
+        grupos: modoGrupos ? gruposUnicos : undefined
       },
-      respuesta_correcta: pares.map((p, i) => ({ izquierda: i, derecha: i })),
-      pista: pista.trim(),
-      puntos,
-      orden: actividadEditar?.orden || 0
+      respuesta_correcta: pares.map((par, index) => ({
+        izquierda: par.izquierda,
+        derecha: par.derecha,
+        grupo: par.grupo,
+        id: par.id
+      })),
+      retroalimentacion: {
+        correcto: "¡Excelente! Has emparejado correctamente todos los elementos.",
+        incorrecto: "Algunos emparejamientos no son correctos. Revísalos nuevamente."
+      },
+      pista: pista.trim() || undefined,
+      puntos: puntos,
+      orden: actividadEditar?.orden || 0,
+      tiempo_limite: undefined,
+      multimedia_id: undefined
     }
 
     onGuardar(actividad)
-    toast.success("Actividad guardada")
+    toast.success(actividadEditar ? "Actividad actualizada" : "Actividad creada")
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="pregunta">Título/Instrucción *</Label>
-        <Input
-          id="pregunta"
-          placeholder="Ej: Empareja las palabras con sus traducciones"
-          value={pregunta}
-          onChange={(e) => setPregunta(e.target.value)}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="instrucciones">Instrucciones adicionales</Label>
-        <Input
-          id="instrucciones"
-          placeholder="Ej: Arrastra para conectar los pares"
-          value={instrucciones}
-          onChange={(e) => setInstrucciones(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-3">
-        <Label>Pares a emparejar * (mínimo 2)</Label>
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            placeholder="Columna izquierda (Ej: Apple)"
-            value={izquierda}
-            onChange={(e) => setIzquierda(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault())}
-          />
-          <Input
-            placeholder="Columna derecha (Ej: Manzana)"
-            value={derecha}
-            onChange={(e) => setDerecha(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault())}
-          />
-        </div>
-        <Button type="button" onClick={agregarPar} className="w-full" variant="outline">
-          <Plus className="mr-2 h-4 w-4" />
-          Agregar Par
-        </Button>
-
-        {pares.length > 0 && (
-          <div className="space-y-2 mt-4">
-            {pares.map((par, i) => (
-              <Card key={i}>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 grid grid-cols-2 gap-2 text-sm">
-                      <div className="font-medium">{par.izquierda}</div>
-                      <div className="text-muted-foreground">↔ {par.derecha}</div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => eliminarPar(i)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Previsualización */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Previsualización</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMostrarPrevisualizacion(!mostrarPrevisualizacion)}
+            >
+              {mostrarPrevisualizacion ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {mostrarPrevisualizacion ? "Ocultar" : "Mostrar"}
+            </Button>
           </div>
+        </CardHeader>
+        {mostrarPrevisualizacion && (
+          <CardContent>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-2">Así verá el estudiante:</p>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="font-semibold mb-2">Columna A</div>
+                  {pares.slice(0, 3).map((par, i) => (
+                    <div key={i} className="p-2 border-b">{par.izquierda}</div>
+                  ))}
+                  {pares.length > 3 && <div className="p-2 text-muted-foreground">... y {pares.length - 3} más</div>}
+                </div>
+                <div>
+                  <div className="font-semibold mb-2">Columna B</div>
+                  {pares.slice(0, 3).map((par, i) => (
+                    <div key={i} className="p-2 border-b">{mezclarOpciones ? "¿?" : par.derecha}</div>
+                  ))}
+                  {pares.length > 3 && <div className="p-2 text-muted-foreground">... y {pares.length - 3} más</div>}
+                </div>
+              </div>
+            </div>
+          </CardContent>
         )}
+      </Card>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Columna Izquierda */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="titulo">Título de la actividad *</Label>
+            <Input
+              id="titulo"
+              placeholder="Ej: Empareja países con sus capitales"
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="instrucciones">Instrucciones *</Label>
+            <Textarea
+              id="instrucciones"
+              placeholder="Instrucciones detalladas para el estudiante..."
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={3}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Configuración de la actividad</Label>
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="mezclar" className="text-sm">Mezclar opciones</Label>
+                <Switch
+                  id="mezclar"
+                  checked={mezclarOpciones}
+                  onCheckedChange={setMezclarOpciones}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="arrastrar" className="text-sm">Permitir arrastrar</Label>
+                <Switch
+                  id="arrastrar"
+                  checked={permiteArrastrar}
+                  onCheckedChange={setPermiteArrastrar}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="grupos" className="text-sm">Modo grupos</Label>
+                <Switch
+                  id="grupos"
+                  checked={modoGrupos}
+                  onCheckedChange={setModoGrupos}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Columna Derecha */}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Pares a emparejar ({pares.length})</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={mezclarPares}
+                disabled={pares.length < 2}
+              >
+                <Shuffle className="h-4 w-4 mr-2" />
+                Mezclar
+              </Button>
+            </div>
+
+            {/* Formulario para agregar nuevo par */}
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Columna izquierda *</Label>
+                    <Input
+                      placeholder="Ej: Francia"
+                      value={izquierda}
+                      onChange={(e) => setIzquierda(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Columna derecha *</Label>
+                    <Input
+                      placeholder="Ej: París"
+                      value={derecha}
+                      onChange={(e) => setDerecha(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                {modoGrupos && (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Grupo (opcional)</Label>
+                    <Input
+                      placeholder="Ej: Europa"
+                      value={grupo}
+                      onChange={(e) => setGrupo(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Pista específica (opcional)</Label>
+                  <Input
+                    placeholder="Pista para este par específico..."
+                    value={pista}
+                    onChange={(e) => setPista(e.target.value)}
+                  />
+                </div>
+
+                <Button type="button" onClick={agregarPar} className="w-full" variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Par
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Lista de pares existentes */}
+            {pares.length > 0 && (
+              <div className="space-y-3">
+                <Label>Pares agregados:</Label>
+                {pares.map((par, index) => (
+                  <Card key={par.id}>
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Badge variant="secondary">#{index + 1}</Badge>
+                            <div className="grid grid-cols-2 gap-4 flex-1">
+                              <div className="font-medium">{par.izquierda}</div>
+                              <div className="text-muted-foreground">↔ {par.derecha}</div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2 text-xs">
+                            {par.grupo && (
+                              <Badge variant="outline">Grupo: {par.grupo}</Badge>
+                            )}
+                            {par.pista && (
+                              <Badge variant="outline">💡 {par.pista}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => eliminarPar(par.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {modoGrupos && gruposUnicos.length > 0 && (
+            <div className="space-y-2">
+              <Label>Grupos definidos:</Label>
+              <div className="flex flex-wrap gap-2">
+                {gruposUnicos.map((grupo, index) => (
+                  <Badge key={index} variant="secondary">
+                    {grupo}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="pistaGeneral">Pista general (Opcional)</Label>
+            <Input
+              id="pistaGeneral"
+              placeholder="Pista general para toda la actividad..."
+              value={pista}
+              onChange={(e) => setPista(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="puntos">Puntos</Label>
+            <Input
+              id="puntos"
+              type="number"
+              min="1"
+              max="100"
+              value={puntos}
+              onChange={(e) => setPuntos(parseInt(e.target.value) || 10)}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="pista">Pista (Opcional)</Label>
-        <Input
-          id="pista"
-          placeholder="Ej: Fíjate en las primeras letras..."
-          value={pista}
-          onChange={(e) => setPista(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="puntos">Puntos</Label>
-        <Input
-          id="puntos"
-          type="number"
-          min="1"
-          value={puntos}
-          onChange={(e) => setPuntos(parseInt(e.target.value))}
-        />
-      </div>
-
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
           <X className="mr-2 h-4 w-4" />
           Cancelar
         </Button>
         <Button type="submit" className="flex-1" disabled={pares.length < 2}>
           <Save className="mr-2 h-4 w-4" />
-          Guardar Actividad
+          {actividadEditar ? 'Actualizar' : 'Crear'} Actividad
         </Button>
       </div>
     </form>
@@ -5895,39 +6321,122 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Save, X } from "lucide-react"
+import { Save, X, Plus, Trash2, Eye, EyeOff, Shuffle } from "lucide-react"
 import { toast } from "sonner"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { type Actividad } from "@/lib/api"
 
 interface ActivityFormProps {
-  onGuardar: (actividad: any) => void
+  onGuardar: (actividad: Actividad) => void
   onCancelar: () => void
-  actividadEditar?: any
+  actividadEditar?: Actividad | null
+}
+
+interface Opcion {
+  id: string
+  texto: string
+  retroalimentacion?: string
+  esCorrecta: boolean
 }
 
 export function MultipleChoiceForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
   const [pregunta, setPregunta] = useState("")
-  const [instrucciones, setInstrucciones] = useState("")
-  const [opciones, setOpciones] = useState<string[]>(["", "", "", ""])
-  const [respuestaCorrecta, setRespuestaCorrecta] = useState<number>(0)
+  const [instrucciones, setInstrucciones] = useState("Selecciona la respuesta correcta.")
+  const [opciones, setOpciones] = useState<Opcion[]>([
+    { id: '1', texto: "", retroalimentacion: "", esCorrecta: false },
+    { id: '2', texto: "", retroalimentacion: "", esCorrecta: false },
+    { id: '3', texto: "", retroalimentacion: "", esCorrecta: false },
+    { id: '4', texto: "", retroalimentacion: "", esCorrecta: false }
+  ])
   const [pista, setPista] = useState("")
   const [puntos, setPuntos] = useState(10)
+  const [mostrarPrevisualizacion, setMostrarPrevisualizacion] = useState(false)
+  const [mezclarOpciones, setMezclarOpciones] = useState(true)
+  const [permiteMultiple, setPermiteMultiple] = useState(false)
+  const [explicacion, setExplicacion] = useState("")
 
   useEffect(() => {
     if (actividadEditar) {
       setPregunta(actividadEditar.pregunta || "")
-      setInstrucciones(actividadEditar.instrucciones || "")
-      setOpciones(actividadEditar.opciones || ["", "", "", ""])
-      setRespuestaCorrecta(actividadEditar.respuesta_correcta || 0)
+      setInstrucciones(actividadEditar.instrucciones || "Selecciona la respuesta correcta.")
+      
+      // Procesar opciones existentes
+      if (actividadEditar.opciones?.opciones) {
+        const opcionesExistentes = actividadEditar.opciones.opciones.map((op: string, index: number) => ({
+          id: (index + 1).toString(),
+          texto: op,
+          retroalimentacion: "",
+          esCorrecta: index === actividadEditar.respuesta_correcta
+        }))
+        setOpciones(opcionesExistentes)
+      }
+      
       setPista(actividadEditar.pista || "")
       setPuntos(actividadEditar.puntos || 10)
+      setMezclarOpciones(actividadEditar.opciones?.mezclarOpciones ?? true)
+      setPermiteMultiple(actividadEditar.opciones?.permiteMultiple ?? false)
+      setExplicacion(actividadEditar.retroalimentacion?.explicacion || "")
     }
   }, [actividadEditar])
 
-  const handleOpcionChange = (index: number, valor: string) => {
-    const nuevasOpciones = [...opciones]
-    nuevasOpciones[index] = valor
-    setOpciones(nuevasOpciones)
+  const generarId = () => Math.random().toString(36).substr(2, 9)
+
+  const agregarOpcion = () => {
+    if (opciones.length >= 6) {
+      toast.error("Máximo 6 opciones permitidas")
+      return
+    }
+    
+    const nuevaOpcion: Opcion = {
+      id: generarId(),
+      texto: "",
+      retroalimentacion: "",
+      esCorrecta: false
+    }
+    
+    setOpciones([...opciones, nuevaOpcion])
   }
+
+  const eliminarOpcion = (id: string) => {
+    if (opciones.length <= 2) {
+      toast.error("Debe haber al menos 2 opciones")
+      return
+    }
+    
+    const opcionAEliminar = opciones.find(op => op.id === id)
+    if (opcionAEliminar?.esCorrecta) {
+      toast.error("No puedes eliminar la opción correcta. Cambia primero la respuesta correcta.")
+      return
+    }
+    
+    setOpciones(opciones.filter(op => op.id !== id))
+  }
+
+  const actualizarOpcion = (id: string, campo: keyof Opcion, valor: string | boolean) => {
+    setOpciones(opciones.map(op => 
+      op.id === id ? { ...op, [campo]: valor } : op
+    ))
+  }
+
+  const marcarComoCorrecta = (id: string) => {
+    setOpciones(opciones.map(op => ({
+      ...op,
+      esCorrecta: op.id === id
+    })))
+  }
+
+  const mezclarOpcionesLista = () => {
+    const opcionesMezcladas = [...opciones]
+      .map(op => ({ ...op, id: generarId() }))
+      .sort(() => Math.random() - 0.5)
+    setOpciones(opcionesMezcladas)
+    toast.success("Opciones mezcladas")
+  }
+
+  const opcionesValidas = opciones.filter(op => op.texto.trim())
+  const opcionCorrecta = opciones.find(op => op.esCorrecta)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -5937,108 +6446,282 @@ export function MultipleChoiceForm({ onGuardar, onCancelar, actividadEditar }: A
       return
     }
 
-    const opcionesLlenas = opciones.filter(o => o.trim())
-    if (opcionesLlenas.length < 2) {
-      toast.error("Debes agregar al menos 2 opciones")
+    if (opcionesValidas.length < 2) {
+      toast.error("Debes agregar al menos 2 opciones válidas")
       return
     }
 
-    if (!opciones[respuestaCorrecta]?.trim()) {
-      toast.error("Debes seleccionar una respuesta correcta válida")
+    if (!opcionCorrecta) {
+      toast.error("Debes seleccionar una respuesta correcta")
       return
     }
 
-    const actividad = {
+    const indiceCorrecto = opciones.findIndex(op => op.id === opcionCorrecta.id)
+
+    const actividad: Actividad = {
       tipo: 'multiple_choice',
       pregunta: pregunta.trim(),
-      instrucciones: instrucciones.trim() || "Selecciona la respuesta correcta",
-      opciones: opciones.filter(o => o.trim()),
-      respuesta_correcta: respuestaCorrecta,
-      pista: pista.trim(),
-      puntos,
-      orden: actividadEditar?.orden || 0
+      instrucciones: instrucciones.trim(),
+      opciones: {
+        opciones: opcionesValidas.map(op => op.texto),
+        mezclarOpciones,
+        permiteMultiple,
+        retroalimentaciones: opcionesValidas.reduce((acc, op, index) => {
+          if (op.retroalimentacion) {
+            acc[index] = op.retroalimentacion
+          }
+          return acc
+        }, {} as Record<number, string>)
+      },
+      respuesta_correcta: indiceCorrecto,
+      retroalimentacion: {
+        correcto: "¡Correcto! Has seleccionado la respuesta adecuada.",
+        incorrecto: "La respuesta seleccionada no es correcta.",
+        explicacion: explicacion.trim() || undefined
+      },
+      pista: pista.trim() || undefined,
+      puntos: puntos,
+      orden: actividadEditar?.orden || 0,
+      tiempo_limite: undefined,
+      multimedia_id: undefined
     }
 
     onGuardar(actividad)
-    toast.success("Actividad guardada")
+    toast.success(actividadEditar ? "Actividad actualizada" : "Actividad creada")
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="pregunta">Pregunta *</Label>
-        <Textarea
-          id="pregunta"
-          placeholder="Ej: What does 'Hello' mean in Spanish?"
-          value={pregunta}
-          onChange={(e) => setPregunta(e.target.value)}
-          rows={2}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="instrucciones">Instrucciones</Label>
-        <Input
-          id="instrucciones"
-          placeholder="Ej: Selecciona la traducción correcta"
-          value={instrucciones}
-          onChange={(e) => setInstrucciones(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-3">
-        <Label>Opciones * (mínimo 2)</Label>
-        <RadioGroup value={respuestaCorrecta.toString()} onValueChange={(v) => setRespuestaCorrecta(parseInt(v))}>
-          {opciones.map((opcion, index) => (
-            <div key={index} className="flex items-center gap-3">
-              <RadioGroupItem value={index.toString()} id={`opcion-${index}`} />
-              <Input
-                placeholder={`Opción ${index + 1}`}
-                value={opcion}
-                onChange={(e) => handleOpcionChange(index, e.target.value)}
-                className="flex-1"
-              />
-              <Label htmlFor={`opcion-${index}`} className="text-xs text-muted-foreground min-w-[80px]">
-                {index === respuestaCorrecta && opcion ? "✓ Correcta" : ""}
-              </Label>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Previsualización */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Previsualización</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMostrarPrevisualizacion(!mostrarPrevisualizacion)}
+            >
+              {mostrarPrevisualizacion ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {mostrarPrevisualizacion ? "Ocultar" : "Mostrar"}
+            </Button>
+          </div>
+        </CardHeader>
+        {mostrarPrevisualizacion && (
+          <CardContent>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-2">Así verá el estudiante:</p>
+              <p className="font-medium mb-3">{pregunta || "¿Pregunta?"}</p>
+              <div className="space-y-2">
+                {opcionesValidas.slice(0, 4).map((opcion, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2 border rounded">
+                    <input 
+                      type={permiteMultiple ? "checkbox" : "radio"} 
+                      name="preview" 
+                      disabled 
+                      checked={opcion.esCorrecta}
+                      onChange={() => {}}
+                    />
+                    <label className="flex-1">{opcion.texto}</label>
+                    {opcion.esCorrecta && (
+                      <Badge variant="default" className="text-xs">Correcta</Badge>
+                    )}
+                  </div>
+                ))}
+                {opcionesValidas.length > 4 && (
+                  <div className="text-center text-muted-foreground text-sm">
+                    ... y {opcionesValidas.length - 4} opciones más
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
-        </RadioGroup>
-        <p className="text-xs text-muted-foreground">
-          💡 Selecciona el círculo para marcar la respuesta correcta
-        </p>
+          </CardContent>
+        )}
+      </Card>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Columna Izquierda */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="pregunta">Pregunta *</Label>
+            <Textarea
+              id="pregunta"
+              placeholder="Ej: ¿Cuál es la capital de Francia?"
+              value={pregunta}
+              onChange={(e) => setPregunta(e.target.value)}
+              rows={3}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="instrucciones">Instrucciones *</Label>
+            <Textarea
+              id="instrucciones"
+              placeholder="Instrucciones detalladas para el estudiante..."
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={2}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="explicacion">Explicación (Opcional)</Label>
+            <Textarea
+              id="explicacion"
+              placeholder="Explicación que verá el estudiante después de responder..."
+              value={explicacion}
+              onChange={(e) => setExplicacion(e.target.value)}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Configuración</Label>
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="mezclar" className="text-sm">Mezclar opciones</Label>
+                <Switch
+                  id="mezclar"
+                  checked={mezclarOpciones}
+                  onCheckedChange={setMezclarOpciones}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="multiple" className="text-sm">Permitir múltiple selección</Label>
+                <Switch
+                  id="multiple"
+                  checked={permiteMultiple}
+                  onCheckedChange={setPermiteMultiple}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Columna Derecha */}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>
+                Opciones de respuesta ({opcionesValidas.length})
+                {opcionCorrecta && (
+                  <Badge variant="default" className="ml-2">
+                    ✓ Correcta seleccionada
+                  </Badge>
+                )}
+              </Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={mezclarOpcionesLista}
+                  disabled={opcionesValidas.length < 2}
+                >
+                  <Shuffle className="h-4 w-4 mr-2" />
+                  Mezclar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={agregarOpcion}
+                  disabled={opciones.length >= 6}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {opciones.map((opcion, index) => (
+                <Card key={opcion.id} className={opcion.esCorrecta ? "border-green-500 bg-green-50 dark:bg-green-950/20" : ""}>
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type={permiteMultiple ? "checkbox" : "radio"}
+                          checked={opcion.esCorrecta}
+                          onChange={() => marcarComoCorrecta(opcion.id)}
+                          className="text-green-600"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          placeholder={`Opción ${index + 1}`}
+                          value={opcion.texto}
+                          onChange={(e) => actualizarOpcion(opcion.id, 'texto', e.target.value)}
+                          className="flex-1"
+                        />
+                        <Input
+                          placeholder="Retroalimentación específica (opcional)"
+                          value={opcion.retroalimentacion || ''}
+                          onChange={(e) => actualizarOpcion(opcion.id, 'retroalimentacion', e.target.value)}
+                          className="flex-1 text-xs"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => eliminarOpcion(opcion.id)}
+                        disabled={opciones.length <= 2 || opcion.esCorrecta}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {opcion.esCorrecta && (
+                      <div className="mt-2 flex items-center gap-2 text-green-600 text-xs">
+                        <Badge variant="default">Respuesta correcta</Badge>
+                        <span>Esta opción se marcará como la respuesta correcta</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pista">Pista general (Opcional)</Label>
+            <Input
+              id="pista"
+              placeholder="Pista para ayudar al estudiante..."
+              value={pista}
+              onChange={(e) => setPista(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="puntos">Puntos</Label>
+            <Input
+              id="puntos"
+              type="number"
+              min="1"
+              max="100"
+              value={puntos}
+              onChange={(e) => setPuntos(parseInt(e.target.value) || 10)}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="pista">Pista (Opcional)</Label>
-        <Input
-          id="pista"
-          placeholder="Ej: Es un saludo común..."
-          value={pista}
-          onChange={(e) => setPista(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="puntos">Puntos</Label>
-        <Input
-          id="puntos"
-          type="number"
-          min="1"
-          value={puntos}
-          onChange={(e) => setPuntos(parseInt(e.target.value))}
-        />
-      </div>
-
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
           <X className="mr-2 h-4 w-4" />
           Cancelar
         </Button>
-        <Button type="submit" className="flex-1">
+        <Button 
+          type="submit" 
+          className="flex-1" 
+          disabled={opcionesValidas.length < 2 || !opcionCorrecta}
+        >
           <Save className="mr-2 h-4 w-4" />
-          Guardar Actividad
+          {actividadEditar ? 'Actualizar' : 'Crear'} Actividad
         </Button>
       </div>
     </form>
@@ -6059,35 +6742,109 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Save, X, ArrowRight } from "lucide-react"
+import { Save, X, Plus, Trash2, Eye, EyeOff, ArrowRight, Languages } from "lucide-react"
 import { toast } from "sonner"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { type Actividad } from "@/lib/api"
 
 interface ActivityFormProps {
-  onGuardar: (actividad: any) => void
+  onGuardar: (actividad: Actividad) => void
   onCancelar: () => void
-  actividadEditar?: any
+  actividadEditar?: Actividad | null
 }
+
+interface TraduccionAceptada {
+  id: string
+  texto: string
+  variante?: string
+}
+
+const IDIOMAS = [
+  { value: "ingles", label: "🇬🇧 Inglés", nativo: "English" },
+  { value: "espanol", label: "🇪🇸 Español", nativo: "Español" },
+  { value: "frances", label: "🇫🇷 Francés", nativo: "Français" },
+  { value: "aleman", label: "🇩🇪 Alemán", nativo: "Deutsch" },
+  { value: "italiano", label: "🇮🇹 Italiano", nativo: "Italiano" },
+  { value: "portugues", label: "🇵🇹 Portugués", nativo: "Português" },
+  { value: "chino", label: "🇨🇳 Chino", nativo: "中文" },
+  { value: "japones", label: "🇯🇵 Japonés", nativo: "日本語" },
+  { value: "ruso", label: "🇷🇺 Ruso", nativo: "Русский" },
+  { value: "arabe", label: "🇸🇦 Árabe", nativo: "العربية" }
+]
 
 export function TranslationForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
   const [textoOrigen, setTextoOrigen] = useState("")
   const [idiomaOrigen, setIdiomaOrigen] = useState("ingles")
-  const [textoDestino, setTextoDestino] = useState("")
+  const [traduccionesAceptadas, setTraduccionesAceptadas] = useState<TraduccionAceptada[]>([
+    { id: '1', texto: "", variante: "principal" }
+  ])
   const [idiomaDestino, setIdiomaDestino] = useState("espanol")
-  const [instrucciones, setInstrucciones] = useState("")
+  const [instrucciones, setInstrucciones] = useState("Traduce la siguiente frase.")
   const [pista, setPista] = useState("")
   const [puntos, setPuntos] = useState(15)
+  const [mostrarPrevisualizacion, setMostrarPrevisualizacion] = useState(false)
+  const [permiteMayusculas, setPermiteMayusculas] = useState(true)
+  const [permiteAcentos, setPermiteAcentos] = useState(true)
+  const [permitePuntuacion, setPermitePuntuacion] = useState(true)
+  const [dificultad, setDificultad] = useState<"facil" | "medio" | "dificil">("medio")
+  const [contexto, setContexto] = useState("")
 
   useEffect(() => {
     if (actividadEditar) {
       setTextoOrigen(actividadEditar.pregunta || "")
       setIdiomaOrigen(actividadEditar.opciones?.idioma_origen || "ingles")
-      setTextoDestino(actividadEditar.respuesta_correcta || "")
+      
+      // Procesar traducciones aceptadas
+      if (actividadEditar.opciones?.traducciones_aceptadas) {
+        setTraduccionesAceptadas(actividadEditar.opciones.traducciones_aceptadas)
+      } else if (actividadEditar.respuesta_correcta) {
+        setTraduccionesAceptadas([{ id: '1', texto: actividadEditar.respuesta_correcta, variante: "principal" }])
+      }
+      
       setIdiomaDestino(actividadEditar.opciones?.idioma_destino || "espanol")
-      setInstrucciones(actividadEditar.instrucciones || "")
+      setInstrucciones(actividadEditar.instrucciones || "Traduce la siguiente frase.")
       setPista(actividadEditar.pista || "")
       setPuntos(actividadEditar.puntos || 15)
+      setPermiteMayusculas(actividadEditar.opciones?.permiteMayusculas ?? true)
+      setPermiteAcentos(actividadEditar.opciones?.permiteAcentos ?? true)
+      setPermitePuntuacion(actividadEditar.opciones?.permitePuntuacion ?? true)
+      setDificultad(actividadEditar.opciones?.dificultad || "medio")
+      setContexto(actividadEditar.opciones?.contexto || "")
     }
   }, [actividadEditar])
+
+  const generarId = () => Math.random().toString(36).substr(2, 9)
+
+  const agregarTraduccion = () => {
+    if (traduccionesAceptadas.length >= 5) {
+      toast.error("Máximo 5 traducciones aceptadas")
+      return
+    }
+    
+    setTraduccionesAceptadas([
+      ...traduccionesAceptadas, 
+      { id: generarId(), texto: "", variante: "alternativa" }
+    ])
+  }
+
+  const eliminarTraduccion = (id: string) => {
+    if (traduccionesAceptadas.length <= 1) {
+      toast.error("Debe haber al menos una traducción aceptada")
+      return
+    }
+    
+    setTraduccionesAceptadas(traduccionesAceptadas.filter(t => t.id !== id))
+  }
+
+  const actualizarTraduccion = (id: string, campo: keyof TraduccionAceptada, valor: string) => {
+    setTraduccionesAceptadas(traduccionesAceptadas.map(t => 
+      t.id === id ? { ...t, [campo]: valor } : t
+    ))
+  }
+
+  const traduccionesValidas = traduccionesAceptadas.filter(t => t.texto.trim())
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -6097,8 +6854,8 @@ export function TranslationForm({ onGuardar, onCancelar, actividadEditar }: Acti
       return
     }
 
-    if (!textoDestino.trim()) {
-      toast.error("Escribe la traducción correcta")
+    if (traduccionesValidas.length === 0) {
+      toast.error("Debes agregar al menos una traducción aceptada")
       return
     }
 
@@ -6107,127 +6864,304 @@ export function TranslationForm({ onGuardar, onCancelar, actividadEditar }: Acti
       return
     }
 
-    const actividad = {
+    const actividad: Actividad = {
       tipo: 'translation',
       pregunta: textoOrigen.trim(),
-      instrucciones: instrucciones.trim() || `Traduce del ${idiomaOrigen} al ${idiomaDestino}`,
+      instrucciones: instrucciones.trim(),
       opciones: {
         idioma_origen: idiomaOrigen,
-        idioma_destino: idiomaDestino
+        idioma_destino: idiomaDestino,
+        traducciones_aceptadas: traduccionesValidas,
+        permiteMayusculas,
+        permiteAcentos,
+        permitePuntuacion,
+        dificultad,
+        contexto: contexto.trim() || undefined
       },
-      respuesta_correcta: textoDestino.trim(),
-      pista: pista.trim(),
-      puntos,
-      orden: actividadEditar?.orden || 0
+      respuesta_correcta: traduccionesValidas[0].texto.trim(),
+      retroalimentacion: {
+        correcto: "¡Traducción correcta!",
+        incorrecto: "La traducción no coincide con ninguna de las respuestas aceptadas.",
+        explicacion: `Traducción correcta: "${traduccionesValidas[0].texto}"`
+      },
+      pista: pista.trim() || undefined,
+      puntos: puntos,
+      orden: actividadEditar?.orden || 0,
+      tiempo_limite: undefined,
+      multimedia_id: undefined
     }
 
     onGuardar(actividad)
-    toast.success("Actividad guardada")
+    toast.success(actividadEditar ? "Actividad actualizada" : "Actividad creada")
   }
 
+  const idiomaOrigenInfo = IDIOMAS.find(i => i.value === idiomaOrigen)
+  const idiomaDestinoInfo = IDIOMAS.find(i => i.value === idiomaDestino)
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="instrucciones">Instrucciones</Label>
-        <Input
-          id="instrucciones"
-          placeholder="Ej: Traduce la siguiente frase al español"
-          value={instrucciones}
-          onChange={(e) => setInstrucciones(e.target.value)}
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Previsualización */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Previsualización</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMostrarPrevisualizacion(!mostrarPrevisualizacion)}
+            >
+              {mostrarPrevisualizacion ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {mostrarPrevisualizacion ? "Ocultar" : "Mostrar"}
+            </Button>
+          </div>
+        </CardHeader>
+        {mostrarPrevisualizacion && (
+          <CardContent>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-2">Así verá el estudiante:</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Languages className="h-4 w-4" />
+                    <span className="font-medium">{idiomaOrigenInfo?.label} → {idiomaDestinoInfo?.label}</span>
+                  </div>
+                  <Badge variant={dificultad === "facil" ? "default" : dificultad === "medio" ? "secondary" : "destructive"}>
+                    {dificultad}
+                  </Badge>
+                </div>
+                <div className="p-3 bg-background rounded border">
+                  <p className="font-medium mb-1">Texto a traducir:</p>
+                  <p>{textoOrigen || "Texto de ejemplo"}</p>
+                </div>
+                {contexto && (
+                  <div className="p-2 bg-blue-50 dark:bg-blue-950/20 rounded text-sm">
+                    <p className="font-medium mb-1">📝 Contexto:</p>
+                    <p>{contexto}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label>Idioma Origen</Label>
-          <Select value={idiomaOrigen} onValueChange={setIdiomaOrigen}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ingles">🇬🇧 Inglés</SelectItem>
-              <SelectItem value="espanol">🇪🇸 Español</SelectItem>
-              <SelectItem value="frances">🇫🇷 Francés</SelectItem>
-              <SelectItem value="aleman">🇩🇪 Alemán</SelectItem>
-              <SelectItem value="italiano">🇮🇹 Italiano</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Columna Izquierda */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="instrucciones">Instrucciones *</Label>
+            <Textarea
+              id="instrucciones"
+              placeholder="Instrucciones detalladas para el estudiante..."
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={2}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Idioma Origen</Label>
+              <Select value={idiomaOrigen} onValueChange={setIdiomaOrigen}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {IDIOMAS.map(idioma => (
+                    <SelectItem key={idioma.value} value={idioma.value}>
+                      {idioma.label} ({idioma.nativo})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Idioma Destino</Label>
+              <Select value={idiomaDestino} onValueChange={setIdiomaDestino}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {IDIOMAS.map(idioma => (
+                    <SelectItem key={idioma.value} value={idioma.value}>
+                      {idioma.label} ({idioma.nativo})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="textoOrigen">Texto a traducir *</Label>
+            <Textarea
+              id="textoOrigen"
+              placeholder="Ej: Hello, how are you today?"
+              value={textoOrigen}
+              onChange={(e) => setTextoOrigen(e.target.value)}
+              rows={3}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="contexto">Contexto (Opcional)</Label>
+            <Textarea
+              id="contexto"
+              placeholder="Ej: Esta frase se usa en un contexto formal..."
+              value={contexto}
+              onChange={(e) => setContexto(e.target.value)}
+              rows={2}
+            />
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Idioma Destino</Label>
-          <Select value={idiomaDestino} onValueChange={setIdiomaDestino}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="espanol">🇪🇸 Español</SelectItem>
-              <SelectItem value="ingles">🇬🇧 Inglés</SelectItem>
-              <SelectItem value="frances">🇫🇷 Francés</SelectItem>
-              <SelectItem value="aleman">🇩🇪 Alemán</SelectItem>
-              <SelectItem value="italiano">🇮🇹 Italiano</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Columna Derecha */}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>
+                Traducciones aceptadas ({traduccionesValidas.length})
+                <Badge variant="secondary" className="ml-2">
+                  {permiteMayusculas ? "May/Min" : "Sens. May"} | 
+                  {permiteAcentos ? " Acentos" : " Sin acentos"} |
+                  {permitePuntuacion ? " Puntuación" : " Sin punt."}
+                </Badge>
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={agregarTraduccion}
+                disabled={traduccionesAceptadas.length >= 5}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar
+              </Button>
+            </div>
+
+            {traduccionesAceptadas.map((traduccion, index) => (
+              <Card key={traduccion.id}>
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2">
+                    <Badge 
+                      variant={index === 0 ? "default" : "outline"} 
+                      className="mt-2"
+                    >
+                      {index === 0 ? "Principal" : `Alt. ${index}`}
+                    </Badge>
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Traducción aceptada"
+                        value={traduccion.texto}
+                        onChange={(e) => actualizarTraduccion(traduccion.id, 'texto', e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => eliminarTraduccion(traduccion.id)}
+                      disabled={traduccionesAceptadas.length <= 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {index === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Esta será la traducción principal mostrada como correcta
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              💡 El estudiante podrá escribir cualquiera de estas traducciones y se considerará correcta.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Configuración de evaluación</Label>
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="mayusculas" className="text-sm">Permitir mayúsculas/minúsculas</Label>
+                <Switch
+                  id="mayusculas"
+                  checked={permiteMayusculas}
+                  onCheckedChange={setPermiteMayusculas}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="acentos" className="text-sm">Permitir acentos</Label>
+                <Switch
+                  id="acentos"
+                  checked={permiteAcentos}
+                  onCheckedChange={setPermiteAcentos}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="puntuacion" className="text-sm">Permitir puntuación diferente</Label>
+                <Switch
+                  id="puntuacion"
+                  checked={permitePuntuacion}
+                  onCheckedChange={setPermitePuntuacion}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dificultad" className="text-sm">Dificultad</Label>
+                <Select value={dificultad} onValueChange={(v: "facil" | "medio" | "dificil") => setDificultad(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="facil">Fácil</SelectItem>
+                    <SelectItem value="medio">Medio</SelectItem>
+                    <SelectItem value="dificil">Difícil</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pista">Pista (Opcional)</Label>
+            <Input
+              id="pista"
+              placeholder="Ej: Recuerda usar el pronombre correcto..."
+              value={pista}
+              onChange={(e) => setPista(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="puntos">Puntos</Label>
+            <Input
+              id="puntos"
+              type="number"
+              min="1"
+              max="100"
+              value={puntos}
+              onChange={(e) => setPuntos(parseInt(e.target.value) || 15)}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="textoOrigen">Texto a traducir *</Label>
-        <Textarea
-          id="textoOrigen"
-          placeholder="Ej: Hello, how are you?"
-          value={textoOrigen}
-          onChange={(e) => setTextoOrigen(e.target.value)}
-          rows={3}
-          required
-        />
-      </div>
-
-      <div className="flex justify-center">
-        <ArrowRight className="h-6 w-6 text-muted-foreground" />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="textoDestino">Traducción correcta *</Label>
-        <Textarea
-          id="textoDestino"
-          placeholder="Ej: Hola, ¿cómo estás?"
-          value={textoDestino}
-          onChange={(e) => setTextoDestino(e.target.value)}
-          rows={3}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="pista">Pista (Opcional)</Label>
-        <Input
-          id="pista"
-          placeholder="Ej: Recuerda usar el pronombre correcto..."
-          value={pista}
-          onChange={(e) => setPista(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="puntos">Puntos</Label>
-        <Input
-          id="puntos"
-          type="number"
-          min="1"
-          value={puntos}
-          onChange={(e) => setPuntos(parseInt(e.target.value))}
-        />
-      </div>
-
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
           <X className="mr-2 h-4 w-4" />
           Cancelar
         </Button>
-        <Button type="submit" className="flex-1">
+        <Button 
+          type="submit" 
+          className="flex-1" 
+          disabled={traduccionesValidas.length === 0}
+        >
           <Save className="mr-2 h-4 w-4" />
-          Guardar Actividad
+          {actividadEditar ? 'Actualizar' : 'Crear'} Actividad
         </Button>
       </div>
     </form>
@@ -6248,145 +7182,339 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Save, X } from "lucide-react"
+import { Save, X, Eye, EyeOff, Check, X as XIcon } from "lucide-react"
 import { toast } from "sonner"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { 
+  Select, 
+  SelectTrigger, 
+  SelectValue, 
+  SelectContent, 
+  SelectItem 
+} from "@/components/ui/select"
+import { type Actividad } from "@/lib/api"
 
 interface ActivityFormProps {
-  onGuardar: (actividad: any) => void
+  onGuardar: (actividad: Actividad) => void
   onCancelar: () => void
-  actividadEditar?: any
+  actividadEditar?: Actividad | null
 }
 
 export function TrueFalseForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
-  const [pregunta, setPregunta] = useState("")
-  const [instrucciones, setInstrucciones] = useState("")
+  const [afirmacion, setAfirmacion] = useState("")
+  const [instrucciones, setInstrucciones] = useState("Determina si la afirmación es verdadera o falsa.")
   const [respuestaCorrecta, setRespuestaCorrecta] = useState<boolean>(true)
-  const [explicacion, setExplicacion] = useState("")
+  const [explicacionVerdadero, setExplicacionVerdadero] = useState("")
+  const [explicacionFalso, setExplicacionFalso] = useState("")
   const [pista, setPista] = useState("")
   const [puntos, setPuntos] = useState(10)
+  const [mostrarPrevisualizacion, setMostrarPrevisualizacion] = useState(false)
+  const [dificultad, setDificultad] = useState<"facil" | "medio" | "dificil">("medio")
+  const [tema, setTema] = useState("")
+  const [contexto, setContexto] = useState("")
 
   useEffect(() => {
     if (actividadEditar) {
-      setPregunta(actividadEditar.pregunta || "")
-      setInstrucciones(actividadEditar.instrucciones || "")
+      setAfirmacion(actividadEditar.pregunta || "")
+      setInstrucciones(actividadEditar.instrucciones || "Determina si la afirmación es verdadera o falsa.")
       setRespuestaCorrecta(actividadEditar.respuesta_correcta || true)
-      setExplicacion(actividadEditar.retroalimentacion?.explicacion || "")
+      
+      // Procesar retroalimentación
+      if (actividadEditar.retroalimentacion) {
+        if (typeof actividadEditar.retroalimentacion === 'object') {
+          setExplicacionVerdadero(actividadEditar.retroalimentacion.explicacionVerdadero || "")
+          setExplicacionFalso(actividadEditar.retroalimentacion.explicacionFalso || "")
+        } else {
+          // Para compatibilidad con versiones anteriores
+          setExplicacionVerdadero(actividadEditar.retroalimentacion || "")
+        }
+      }
+      
       setPista(actividadEditar.pista || "")
       setPuntos(actividadEditar.puntos || 10)
+      setDificultad(actividadEditar.opciones?.dificultad || "medio")
+      setTema(actividadEditar.opciones?.tema || "")
+      setContexto(actividadEditar.opciones?.contexto || "")
     }
   }, [actividadEditar])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!pregunta.trim()) {
+    if (!afirmacion.trim()) {
       toast.error("La afirmación es obligatoria")
       return
     }
 
-    const actividad = {
+    const actividad: Actividad = {
       tipo: 'true_false',
-      pregunta: pregunta.trim(),
-      instrucciones: instrucciones.trim() || "¿Es verdadero o falso?",
-      opciones: ["Verdadero", "Falso"],
+      pregunta: afirmacion.trim(),
+      instrucciones: instrucciones.trim(),
+      opciones: {
+        dificultad,
+        tema: tema.trim() || undefined,
+        contexto: contexto.trim() || undefined
+      },
       respuesta_correcta: respuestaCorrecta,
       retroalimentacion: {
-        explicacion: explicacion.trim()
+        correcto: respuestaCorrecta
+          ? "¡Correcto! La afirmación es verdadera."
+          : "¡Correcto! La afirmación es falsa.",
+        incorrecto: respuestaCorrecta
+          ? "Incorrecto. La afirmación es verdadera."
+          : "Incorrecto. La afirmación es falsa.",
+        explicacionVerdadero: explicacionVerdadero || undefined,
+        explicacionFalso: explicacionFalso || undefined
       },
-      pista: pista.trim(),
-      puntos,
-      orden: actividadEditar?.orden || 0
+      pista: pista.trim() || undefined,
+      puntos: puntos,
+      orden: actividadEditar?.orden || 0,
+      tiempo_limite: undefined,
+      multimedia_id: undefined
     }
 
     onGuardar(actividad)
-    toast.success("Actividad guardada")
+    toast.success(actividadEditar ? "Actividad actualizada" : "Actividad creada")
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="pregunta">Afirmación *</Label>
-        <Textarea
-          id="pregunta"
-          placeholder="Ej: The capital of France is Paris"
-          value={pregunta}
-          onChange={(e) => setPregunta(e.target.value)}
-          rows={2}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="instrucciones">Instrucciones</Label>
-        <Input
-          id="instrucciones"
-          placeholder="Ej: Lee la afirmación y decide si es correcta"
-          value={instrucciones}
-          onChange={(e) => setInstrucciones(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-3">
-        <Label>Respuesta Correcta *</Label>
-        <RadioGroup 
-          value={respuestaCorrecta.toString()} 
-          onValueChange={(v) => setRespuestaCorrecta(v === 'true')}
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="true" id="verdadero" />
-            <Label htmlFor="verdadero" className="font-normal cursor-pointer">
-              ✓ Verdadero
-            </Label>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Previsualización */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Previsualización</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMostrarPrevisualizacion(!mostrarPrevisualizacion)}
+            >
+              {mostrarPrevisualizacion ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {mostrarPrevisualizacion ? "Ocultar" : "Mostrar"}
+            </Button>
           </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="false" id="falso" />
-            <Label htmlFor="falso" className="font-normal cursor-pointer">
-              ✗ Falso
-            </Label>
+        </CardHeader>
+        {mostrarPrevisualizacion && (
+          <CardContent>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-2">Así verá el estudiante:</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Badge variant={dificultad === "facil" ? "default" : dificultad === "medio" ? "secondary" : "destructive"}>
+                    {dificultad}
+                  </Badge>
+                  {tema && <Badge variant="outline">{tema}</Badge>}
+                </div>
+                <p className="font-medium text-lg">{afirmacion || "Afirmación de ejemplo"}</p>
+                {contexto && (
+                  <div className="p-2 bg-blue-50 dark:bg-blue-950/20 rounded text-sm">
+                    <p className="font-medium mb-1">📝 Contexto:</p>
+                    <p>{contexto}</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className={`p-3 border rounded-lg text-center ${
+                    respuestaCorrecta ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''
+                  }`}>
+                    <Check className="h-6 w-6 text-green-600 mx-auto mb-1" />
+                    <span className="font-medium">Verdadero</span>
+                  </div>
+                  <div className={`p-3 border rounded-lg text-center ${
+                    !respuestaCorrecta ? 'border-red-500 bg-red-50 dark:bg-red-950/20' : ''
+                  }`}>
+                    <XIcon className="h-6 w-6 text-red-600 mx-auto mb-1" />
+                    <span className="font-medium">Falso</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Columna Izquierda */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="afirmacion">Afirmación *</Label>
+            <Textarea
+              id="afirmacion"
+              placeholder="Ej: París es la capital de Francia."
+              value={afirmacion}
+              onChange={(e) => setAfirmacion(e.target.value)}
+              rows={3}
+              required
+            />
           </div>
-        </RadioGroup>
+
+          <div className="space-y-2">
+            <Label htmlFor="instrucciones">Instrucciones *</Label>
+            <Textarea
+              id="instrucciones"
+              placeholder="Instrucciones detalladas para el estudiante..."
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={2}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="contexto">Contexto (Opcional)</Label>
+            <Textarea
+              id="contexto"
+              placeholder="Contexto adicional para entender la afirmación..."
+              value={contexto}
+              onChange={(e) => setContexto(e.target.value)}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Configuración</Label>
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="space-y-2">
+                <Label htmlFor="dificultad" className="text-sm">Dificultad</Label>
+                <Select value={dificultad} onValueChange={(v: "facil" | "medio" | "dificil") => setDificultad(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="facil">Fácil</SelectItem>
+                    <SelectItem value="medio">Medio</SelectItem>
+                    <SelectItem value="dificil">Difícil</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tema" className="text-sm">Tema (Opcional)</Label>
+                <Input
+                  id="tema"
+                  placeholder="Ej: Geografía, Historia, Ciencia..."
+                  value={tema}
+                  onChange={(e) => setTema(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Columna Derecha */}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <Label>Respuesta Correcta *</Label>
+            <RadioGroup 
+              value={respuestaCorrecta.toString()} 
+              onValueChange={(v) => setRespuestaCorrecta(v === 'true')}
+              className="space-y-3"
+            >
+              <Card className={respuestaCorrecta ? "border-green-500 bg-green-50 dark:bg-green-950/20" : ""}>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <RadioGroupItem value="true" id="verdadero" />
+                    <div className="flex-1">
+                      <Label htmlFor="verdadero" className="font-medium cursor-pointer flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-600" />
+                        Verdadero
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        La afirmación es correcta y precisa.
+                      </p>
+                    </div>
+                    {respuestaCorrecta && (
+                      <Badge variant="default" className="ml-2">
+                        Correcta
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className={!respuestaCorrecta ? "border-red-500 bg-red-50 dark:bg-red-950/20" : ""}>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <RadioGroupItem value="false" id="falso" />
+                    <div className="flex-1">
+                      <Label htmlFor="falso" className="font-medium cursor-pointer flex items-center gap-2">
+                        <XIcon className="h-4 w-4 text-red-600" />
+                        Falso
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        La afirmación contiene errores o es incorrecta.
+                      </p>
+                    </div>
+                    {!respuestaCorrecta && (
+                      <Badge variant="default" className="ml-2">
+                        Correcta
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </RadioGroup>
+          </div>
+
+          <div className="space-y-3">
+            <Label>Explicaciones (Opcional)</Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="explicacionVerdadero" className="text-sm">Explicación si es Verdadero</Label>
+              <Textarea
+                id="explicacionVerdadero"
+                placeholder="Explica por qué la afirmación es verdadera..."
+                value={explicacionVerdadero}
+                onChange={(e) => setExplicacionVerdadero(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="explicacionFalso" className="text-sm">Explicación si es Falso</Label>
+              <Textarea
+                id="explicacionFalso"
+                placeholder="Explica por qué la afirmación es falsa..."
+                value={explicacionFalso}
+                onChange={(e) => setExplicacionFalso(e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pista">Pista (Opcional)</Label>
+            <Input
+              id="pista"
+              placeholder="Pista para ayudar al estudiante a decidir..."
+              value={pista}
+              onChange={(e) => setPista(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="puntos">Puntos</Label>
+            <Input
+              id="puntos"
+              type="number"
+              min="1"
+              max="100"
+              value={puntos}
+              onChange={(e) => setPuntos(parseInt(e.target.value) || 10)}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="explicacion">Explicación (Opcional)</Label>
-        <Textarea
-          id="explicacion"
-          placeholder="Explica por qué es verdadero o falso..."
-          value={explicacion}
-          onChange={(e) => setExplicacion(e.target.value)}
-          rows={2}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="pista">Pista (Opcional)</Label>
-        <Input
-          id="pista"
-          placeholder="Ej: Piensa en la geografía europea..."
-          value={pista}
-          onChange={(e) => setPista(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="puntos">Puntos</Label>
-        <Input
-          id="puntos"
-          type="number"
-          min="1"
-          value={puntos}
-          onChange={(e) => setPuntos(parseInt(e.target.value))}
-        />
-      </div>
-
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
           <X className="mr-2 h-4 w-4" />
           Cancelar
         </Button>
         <Button type="submit" className="flex-1">
           <Save className="mr-2 h-4 w-4" />
-          Guardar Actividad
+          {actividadEditar ? 'Actualizar' : 'Crear'} Actividad
         </Button>
       </div>
     </form>
@@ -6406,154 +7534,483 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Save, X, Shuffle } from "lucide-react"
+import { Save, X, Eye, EyeOff, Shuffle, Plus, Trash2, GripVertical } from "lucide-react"
 import { toast } from "sonner"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { type Actividad } from "@/lib/api"
 
 interface ActivityFormProps {
-  onGuardar: (actividad: any) => void
+  onGuardar: (actividad: Actividad) => void
   onCancelar: () => void
-  actividadEditar?: any
+  actividadEditar?: Actividad | null
+}
+
+interface Palabra {
+  id: string
+  texto: string
+  tipo: 'normal' | 'distractora'
+  categoria?: string
 }
 
 export function WordOrderForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
-  const [pregunta, setPregunta] = useState("")
-  const [instrucciones, setInstrucciones] = useState("")
-  const [oracionCorrecta, setOracionCorrecta] = useState("")
+  const [instruccion, setInstruccion] = useState("")
+  const [instrucciones, setInstrucciones] = useState("Ordena las palabras para formar una oración correcta.")
+  const [palabras, setPalabras] = useState<Palabra[]>([])
+  const [nuevaPalabra, setNuevaPalabra] = useState("")
+  const [tipoNuevaPalabra, setTipoNuevaPalabra] = useState<'normal' | 'distractora'>('normal')
+  const [categoriaPalabra, setCategoriaPalabra] = useState("")
   const [pista, setPista] = useState("")
   const [puntos, setPuntos] = useState(10)
+  const [mostrarPrevisualizacion, setMostrarPrevisualizacion] = useState(false)
+  const [mezclarAutomatico, setMezclarAutomatico] = useState(true)
+  const [permiteArrastrar, setPermiteArrastrar] = useState(true)
+  const [mostrarNumeros, setMostrarNumeros] = useState(false)
+  const [dificultad, setDificultad] = useState<"facil" | "medio" | "dificil">("medio")
+  const [estructura, setEstructura] = useState("")
 
   useEffect(() => {
     if (actividadEditar) {
-      setPregunta(actividadEditar.pregunta || "")
-      setInstrucciones(actividadEditar.instrucciones || "")
-      setOracionCorrecta(actividadEditar.respuesta_correcta?.join(" ") || "")
+      setInstruccion(actividadEditar.pregunta || "")
+      setInstrucciones(actividadEditar.instrucciones || "Ordena las palabras para formar una oración correcta.")
+      
+      // Procesar palabras existentes
+      if (actividadEditar.opciones?.palabras) {
+        const palabrasExistentes: Palabra[] = actividadEditar.opciones.palabras.map((palabra: string, index: number) => ({
+          id: `palabra-${index}`,
+          texto: palabra,
+          tipo: 'normal'
+        }))
+        setPalabras(palabrasExistentes)
+      }
+      
       setPista(actividadEditar.pista || "")
       setPuntos(actividadEditar.puntos || 10)
+      setMezclarAutomatico(actividadEditar.opciones?.mezclarAutomatico ?? true)
+      setPermiteArrastrar(actividadEditar.opciones?.permiteArrastrar ?? true)
+      setMostrarNumeros(actividadEditar.opciones?.mostrarNumeros ?? false)
+      setDificultad(actividadEditar.opciones?.dificultad || "medio")
+      setEstructura(actividadEditar.opciones?.estructura || "")
     }
   }, [actividadEditar])
 
-  const palabras = oracionCorrecta.trim().split(/\s+/).filter(p => p)
+  const generarId = () => Math.random().toString(36).substr(2, 9)
+
+  const agregarPalabra = () => {
+    if (!nuevaPalabra.trim()) {
+      toast.error("Escribe una palabra")
+      return
+    }
+
+    if (palabras.some(p => p.texto.toLowerCase() === nuevaPalabra.toLowerCase())) {
+      toast.error("Esta palabra ya existe")
+      return
+    }
+
+    const nuevaPalabraObj: Palabra = {
+      id: generarId(),
+      texto: nuevaPalabra.trim(),
+      tipo: tipoNuevaPalabra,
+      categoria: categoriaPalabra.trim() || undefined
+    }
+
+    setPalabras([...palabras, nuevaPalabraObj])
+    setNuevaPalabra("")
+    setCategoriaPalabra("")
+  }
+
+  const eliminarPalabra = (id: string) => {
+    if (palabras.filter(p => p.tipo === 'normal').length <= 2) {
+      toast.error("Debe haber al menos 3 palabras normales")
+      return
+    }
+    
+    setPalabras(palabras.filter(p => p.id !== id))
+  }
+
+  const moverPalabra = (fromIndex: number, toIndex: number) => {
+    const nuevasPalabras = [...palabras]
+    const [movedItem] = nuevasPalabras.splice(fromIndex, 1)
+    nuevasPalabras.splice(toIndex, 0, movedItem)
+    setPalabras(nuevasPalabras)
+  }
+
+  const mezclarPalabras = () => {
+    const palabrasMezcladas = [...palabras]
+      .map(palabra => ({ ...palabra, id: generarId() }))
+      .sort(() => Math.random() - 0.5)
+    setPalabras(palabrasMezcladas)
+    toast.success("Palabras mezcladas")
+  }
+
+  const palabrasNormales = palabras.filter(p => p.tipo === 'normal')
+  const palabrasDistractoras = palabras.filter(p => p.tipo === 'distractora')
+  const categoriasUnicas = [...new Set(palabras.map(p => p.categoria).filter(Boolean))]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!pregunta.trim()) {
-      toast.error("Escribe la instrucción")
+    if (!instruccion.trim()) {
+      toast.error("La instrucción es obligatoria")
       return
     }
 
-    if (!oracionCorrecta.trim()) {
-      toast.error("Escribe la oración correcta")
+    if (palabrasNormales.length < 3) {
+      toast.error("Debe haber al menos 3 palabras normales")
       return
     }
 
-    if (palabras.length < 3) {
-      toast.error("La oración debe tener al menos 3 palabras")
-      return
-    }
-
-    // Desordenar palabras para el estudiante
-    const palabrasDesordenadas = [...palabras].sort(() => Math.random() - 0.5)
-
-    const actividad = {
+    const actividad: Actividad = {
       tipo: 'word_order',
-      pregunta: pregunta.trim(),
-      instrucciones: instrucciones.trim() || "Ordena las palabras para formar una oración correcta",
+      pregunta: instruccion.trim(),
+      instrucciones: instrucciones.trim(),
       opciones: {
-        palabras: palabrasDesordenadas
+        palabras: palabrasNormales.map(p => p.texto),
+        palabrasDistractoras: palabrasDistractoras.map(p => p.texto),
+        categorias: categoriasUnicas,
+        estructura: estructura.trim() || undefined,
+        mezclarAutomatico,
+        permiteArrastrar,
+        mostrarNumeros,
+        dificultad
       },
-      respuesta_correcta: palabras,
-      pista: pista.trim(),
-      puntos,
-      orden: actividadEditar?.orden || 0
+      respuesta_correcta: palabrasNormales.map(p => p.texto),
+      retroalimentacion: {
+        correcto: "¡Excelente! Has ordenado la oración correctamente.",
+        incorrecto: "El orden no es correcto. Intenta nuevamente.",
+        explicacion: `La oración correcta es: "${palabrasNormales.map(p => p.texto).join(' ')}"`
+      },
+      pista: pista.trim() || undefined,
+      puntos: puntos,
+      orden: actividadEditar?.orden || 0,
+      tiempo_limite: undefined,
+      multimedia_id: undefined
     }
 
     onGuardar(actividad)
-    toast.success("Actividad guardada")
+    toast.success(actividadEditar ? "Actividad actualizada" : "Actividad creada")
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="pregunta">Instrucción/Contexto *</Label>
-        <Textarea
-          id="pregunta"
-          placeholder="Ej: Ordena las palabras para formar una pregunta en inglés"
-          value={pregunta}
-          onChange={(e) => setPregunta(e.target.value)}
-          rows={2}
-          required
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Previsualización */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Previsualización</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMostrarPrevisualizacion(!mostrarPrevisualizacion)}
+            >
+              {mostrarPrevisualizacion ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {mostrarPrevisualizacion ? "Ocultar" : "Mostrar"}
+            </Button>
+          </div>
+        </CardHeader>
+        {mostrarPrevisualizacion && (
+          <CardContent>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-2">Así verá el estudiante:</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Badge variant={dificultad === "facil" ? "default" : dificultad === "medio" ? "secondary" : "destructive"}>
+                    {dificultad}
+                  </Badge>
+                  <div className="flex gap-1 text-xs text-muted-foreground">
+                    <span>{palabrasNormales.length} palabras</span>
+                    {palabrasDistractoras.length > 0 && (
+                      <span>+ {palabrasDistractoras.length} distractoras</span>
+                    )}
+                  </div>
+                </div>
+                <p className="font-medium">{instruccion || "Instrucción de ejemplo"}</p>
+                <div className="flex flex-wrap gap-2 p-3 bg-background rounded border min-h-[60px]">
+                  {mezclarAutomatico ? (
+                    <div className="text-center text-muted-foreground w-full">
+                      Las palabras aparecerán mezcladas aquí
+                    </div>
+                  ) : (
+                    palabrasNormales.slice(0, 6).map((palabra, i) => (
+                      <Badge key={i} variant="outline" className="text-sm flex items-center gap-1">
+                        {mostrarNumeros && <span className="text-xs">{i + 1}</span>}
+                        {permiteArrastrar && <GripVertical className="h-3 w-3" />}
+                        {palabra.texto}
+                      </Badge>
+                    ))
+                  )}
+                  {palabrasNormales.length > 6 && (
+                    <div className="text-center text-muted-foreground w-full text-xs">
+                      ... y {palabrasNormales.length - 6} palabras más
+                    </div>
+                  )}
+                </div>
+                {permiteArrastrar && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    💡 Arrastra las palabras para ordenarlas
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
-      <div className="space-y-2">
-        <Label htmlFor="instrucciones">Instrucciones adicionales</Label>
-        <Input
-          id="instrucciones"
-          placeholder="Ej: Arrastra las palabras en el orden correcto"
-          value={instrucciones}
-          onChange={(e) => setInstrucciones(e.target.value)}
-        />
-      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Columna Izquierda */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="instruccion">Instrucción/Contexto *</Label>
+            <Textarea
+              id="instruccion"
+              placeholder="Ej: Ordena las palabras para formar una pregunta en inglés"
+              value={instruccion}
+              onChange={(e) => setInstruccion(e.target.value)}
+              rows={2}
+              required
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="oracion">Oración correcta * (mínimo 3 palabras)</Label>
-        <Textarea
-          id="oracion"
-          placeholder="Ej: How are you today"
-          value={oracionCorrecta}
-          onChange={(e) => setOracionCorrecta(e.target.value)}
-          rows={2}
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          💡 Separa las palabras con espacios. Se desordenarán automáticamente.
-        </p>
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="instrucciones">Instrucciones adicionales *</Label>
+            <Textarea
+              id="instrucciones"
+              placeholder="Instrucciones detalladas para el estudiante..."
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={2}
+              required
+            />
+          </div>
 
-      {palabras.length > 0 && (
-        <div className="space-y-2">
-          <Label>Vista previa (orden correcto):</Label>
-          <div className="flex flex-wrap gap-2 p-3 bg-secondary rounded-lg">
-            {palabras.map((palabra, i) => (
-              <Badge key={i} variant="outline" className="text-sm">
-                {i + 1}. {palabra}
-              </Badge>
-            ))}
+          <div className="space-y-2">
+            <Label htmlFor="estructura">Estructura gramatical (Opcional)</Label>
+            <Input
+              id="estructura"
+              placeholder="Ej: Sujeto + Verbo + Objeto, Pregunta WH..."
+              value={estructura}
+              onChange={(e) => setEstructura(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Configuración</Label>
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="mezclar" className="text-sm">Mezclar automáticamente</Label>
+                <Switch
+                  id="mezclar"
+                  checked={mezclarAutomatico}
+                  onCheckedChange={setMezclarAutomatico}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="arrastrar" className="text-sm">Permitir arrastrar</Label>
+                <Switch
+                  id="arrastrar"
+                  checked={permiteArrastrar}
+                  onCheckedChange={setPermiteArrastrar}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="numeros" className="text-sm">Mostrar números</Label>
+                <Switch
+                  id="numeros"
+                  checked={mostrarNumeros}
+                  onCheckedChange={setMostrarNumeros}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dificultad" className="text-sm">Dificultad</Label>
+                <Select value={dificultad} onValueChange={(v: "facil" | "medio" | "dificil") => setDificultad(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="facil">Fácil (3-5 palabras)</SelectItem>
+                    <SelectItem value="medio">Medio (6-8 palabras)</SelectItem>
+                    <SelectItem value="dificil">Difícil (9+ palabras)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </div>
-      )}
 
-      <div className="space-y-2">
-        <Label htmlFor="pista">Pista (Opcional)</Label>
-        <Input
-          id="pista"
-          placeholder="Ej: Recuerda que las preguntas en inglés empiezan con..."
-          value={pista}
-          onChange={(e) => setPista(e.target.value)}
-        />
+        {/* Columna Derecha */}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>
+                Gestión de Palabras
+                <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
+                  <Badge variant="outline">{palabrasNormales.length} normales</Badge>
+                  {palabrasDistractoras.length > 0 && (
+                    <Badge variant="secondary">{palabrasDistractoras.length} distractoras</Badge>
+                  )}
+                </div>
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={mezclarPalabras}
+                disabled={palabrasNormales.length < 2}
+              >
+                <Shuffle className="h-4 w-4 mr-2" />
+                Mezclar
+              </Button>
+            </div>
+
+            {/* Formulario para agregar nueva palabra */}
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Palabra *</Label>
+                    <Input
+                      placeholder="Nueva palabra..."
+                      value={nuevaPalabra}
+                      onChange={(e) => setNuevaPalabra(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarPalabra())}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Tipo</Label>
+                    <Select value={tipoNuevaPalabra} onValueChange={(v: 'normal' | 'distractora') => setTipoNuevaPalabra(v)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="distractora">Distractora</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs">Categoría (opcional)</Label>
+                  <Input
+                    placeholder="Ej: Verbo, Sustantivo, Adjetivo..."
+                    value={categoriaPalabra}
+                    onChange={(e) => setCategoriaPalabra(e.target.value)}
+                  />
+                </div>
+
+                <Button type="button" onClick={agregarPalabra} className="w-full" variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Palabra
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Lista de palabras */}
+            {palabras.length > 0 && (
+              <div className="space-y-3">
+                <Label>Palabras agregadas:</Label>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {palabras.map((palabra, index) => (
+                    <Card key={palabra.id}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            {permiteArrastrar && (
+                              <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+                            )}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{palabra.texto}</span>
+                                <Badge 
+                                  variant={palabra.tipo === 'normal' ? 'default' : 'secondary'}
+                                  className="text-xs"
+                                >
+                                  {palabra.tipo === 'normal' ? 'Normal' : 'Distractora'}
+                                </Badge>
+                                {palabra.categoria && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {palabra.categoria}
+                                  </Badge>
+                                )}
+                              </div>
+                              {palabra.tipo === 'normal' && (
+                                <div className="text-xs text-muted-foreground">
+                                  Posición: {index + 1}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => eliminarPalabra(palabra.id)}
+                            disabled={palabra.tipo === 'normal' && palabrasNormales.length <= 3}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {palabrasNormales.length > 0 && (
+            <div className="space-y-2">
+              <Label>Vista previa del orden correcto:</Label>
+              <div className="p-3 bg-secondary rounded-lg">
+                <div className="flex flex-wrap gap-2">
+                  {palabrasNormales.map((palabra, i) => (
+                    <Badge key={i} variant="default" className="text-sm">
+                      {i + 1}. {palabra.texto}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-sm mt-2">
+                  <strong>Oración:</strong> {palabrasNormales.map(p => p.texto).join(' ')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="pista">Pista (Opcional)</Label>
+            <Input
+              id="pista"
+              placeholder="Ej: Recuerda que las preguntas en inglés empiezan con..."
+              value={pista}
+              onChange={(e) => setPista(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="puntos">Puntos</Label>
+            <Input
+              id="puntos"
+              type="number"
+              min="1"
+              max="100"
+              value={puntos}
+              onChange={(e) => setPuntos(parseInt(e.target.value) || 10)}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="puntos">Puntos</Label>
-        <Input
-          id="puntos"
-          type="number"
-          min="1"
-          value={puntos}
-          onChange={(e) => setPuntos(parseInt(e.target.value))}
-        />
-      </div>
-
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
           <X className="mr-2 h-4 w-4" />
           Cancelar
         </Button>
-        <Button type="submit" className="flex-1" disabled={palabras.length < 3}>
+        <Button type="submit" className="flex-1" disabled={palabrasNormales.length < 3}>
           <Save className="mr-2 h-4 w-4" />
-          Guardar Actividad
+          {actividadEditar ? 'Actualizar' : 'Crear'} Actividad
         </Button>
       </div>
     </form>
@@ -6575,29 +8032,32 @@ import { MatchingForm } from "./activity-forms/matching-form"
 import { TranslationForm } from "./activity-forms/translation-form"
 import { TrueFalseForm } from "./activity-forms/true-false-form"
 import { WordOrderForm } from "./activity-forms/word-order-form"
+// ✅ IMPORTAR EL TIPO CORRECTO desde la API
+import { type Actividad } from "@/lib/api"
 
-interface Actividad {
-  tipo: string
-  pregunta: string
-  instrucciones?: string
-  opciones?: any
-  respuesta_correcta: any
-  retroalimentacion?: any
-  pista?: string
-  puntos: number
-  orden: number
-  multimedia_id?: number
-}
+// ✅ ELIMINAR la interfaz Actividad local duplicada
+// interface Actividad {
+//   tipo: string
+//   pregunta: string
+//   instrucciones?: string
+//   opciones?: any
+//   respuesta_correcta: any
+//   retroalimentacion?: any
+//   pista?: string
+//   puntos: number
+//   orden: number
+//   multimedia_id?: number
+// }
 
 interface ActivityModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  tipoActividad: string | null
-  onGuardar: (actividad: Actividad) => void
-  actividadEditar?: Actividad | null
+  tipoActividad: Actividad['tipo'] | null // ✅ Usar el tipo correcto
+  onGuardar: (actividad: Actividad) => void // ✅ Usar el tipo correcto
+  actividadEditar?: Actividad | null // ✅ Usar el tipo correcto
 }
 
-const TITULOS_ACTIVIDAD: Record<string, string> = {
+const TITULOS_ACTIVIDAD: Record<Actividad['tipo'], string> = {
   multiple_choice: "🎯 Opción Múltiple",
   fill_blank: "✏️ Completar Espacios",
   matching: "🔗 Emparejar",
@@ -6647,6 +8107,9 @@ export function ActivityModal({
           </div>
         )
       default:
+        // ✅ TypeScript ahora sabe que tipoActividad es uno de los valores válidos
+        // pero por seguridad retornamos null para casos inesperados
+        const _exhaustiveCheck: never = tipoActividad
         return null
     }
   }
@@ -6792,10 +8255,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Save, Loader2, Plus, X, Upload, PlayCircle, Image as ImageIcon, Volume2 } from "lucide-react"
+import { ArrowLeft, Save, Loader2, Plus, X, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { cursosAPI } from "@/lib/api" // ← ESTE ES EL CAMBIO CLAVE
+// FIX 1: Se importa el 'type Actividad' desde la API
+import { cursosAPI, leccionesAPI, actividadesAPI, type Actividad } from "@/lib/api"
+import { ActivityModal } from "@/components/admin/activity-modal"
 
 // Tipos de actividades gamificadas
 const TIPOS_ACTIVIDAD = [
@@ -6803,7 +8268,6 @@ const TIPOS_ACTIVIDAD = [
   { value: 'fill_blank', label: '✏️ Completar espacios', icon: '✏️' },
   { value: 'matching', label: '🔗 Emparejar', icon: '🔗' },
   { value: 'translation', label: '🌐 Traducción', icon: '🌐' },
-  { value: 'listen_repeat', label: '🎤 Escuchar y repetir', icon: '🎤' },
   { value: 'true_false', label: '✓✗ Verdadero/Falso', icon: '✓' },
   { value: 'word_order', label: '📝 Ordenar palabras', icon: '📝' },
 ]
@@ -6816,16 +8280,8 @@ interface Curso {
   idioma: string
 }
 
-interface Actividad {
-  tipo: string
-  pregunta: string
-  instrucciones?: string
-  opciones?: any
-  respuesta_correcta: any
-  pista?: string
-  puntos: number
-  multimedia_id?: number
-}
+// FIX 2: Se elimina la interfaz 'Actividad' local duplicada.
+// Ya no es necesaria porque la importamos desde 'lib/api'.
 
 export function CreateLessonForm() {
   const router = useRouter()
@@ -6834,12 +8290,20 @@ export function CreateLessonForm() {
   const [cursos, setCursos] = useState<Curso[]>([])
   const [loadingCursos, setLoadingCursos] = useState(false)
   
+  // Estados para modal de actividades
+  const [modalActividadOpen, setModalActividadOpen] = useState(false)
+  // FIX 3: Se usa el tipo importado 'Actividad['tipo']' para el estado del modal
+  const [tipoActividadModal, setTipoActividadModal] = useState<Actividad['tipo'] | null>(null)
+  const [actividadEditando, setActividadEditando] = useState<Actividad | null>(null)
+  const [indiceEditando, setIndiceEditando] = useState<number | null>(null)
+  
   const [formData, setFormData] = useState({
     // Paso 1: Básico + Curso
     curso_id: null as number | null,
     titulo: "",
     descripcion: "",
-    nivel: "principiante",
+    // Pequeña mejora: Usar los tipos exactos de la API de Leccion
+    nivel: "principiante" as 'principiante' | 'intermedio' | 'avanzado', 
     idioma: "ingles",
     categoria: "",
     duracion_estimada: 10,
@@ -6856,6 +8320,7 @@ export function CreateLessonForm() {
     etiquetas: [] as string[],
     
     // Paso 3: Actividades gamificadas
+    // Este array ahora usa correctamente el tipo 'Actividad' importado
     actividades: [] as Actividad[],
     
     // Paso 4: Multimedia
@@ -6866,22 +8331,16 @@ export function CreateLessonForm() {
   const [objetivoTemp, setObjetivoTemp] = useState("")
   const [vocabularioTemp, setVocabularioTemp] = useState("")
   const [etiquetaTemp, setEtiquetaTemp] = useState("")
-  const [ejemploTemp, setEjemploTemp] = useState("")
 
   // Cargar cursos disponibles
   useEffect(() => {
     cargarCursos()
   }, [])
 
-  // ← ESTE ES EL CAMBIO PRINCIPAL
   const cargarCursos = async () => {
     try {
       setLoadingCursos(true)
-      console.log('🔄 Cargando cursos con cursosAPI...')
-      
       const data = await cursosAPI.listar({ activo: true })
-      
-      console.log('✅ Cursos recibidos:', data)
       setCursos(data.cursos || [])
       
       if (data.cursos && data.cursos.length > 0) {
@@ -6890,7 +8349,7 @@ export function CreateLessonForm() {
         toast.warning('No hay cursos disponibles')
       }
     } catch (error: any) {
-      console.error('❌ Error al cargar cursos:', error)
+      console.error('Error al cargar cursos:', error)
       toast.error(error.message || 'Error al cargar cursos')
     } finally {
       setLoadingCursos(false)
@@ -6915,11 +8374,12 @@ export function CreateLessonForm() {
     try {
       setSaving(true)
       
+      // Preparar datos de la lección
       const leccionData = {
         curso_id: formData.curso_id,
         titulo: formData.titulo,
         descripcion: formData.descripcion,
-        contenido: formData.contenido,
+        contenido: JSON.stringify(formData.contenido), // FIX: Convertir a string
         nivel: formData.nivel,
         idioma: formData.idioma,
         categoria: formData.categoria,
@@ -6927,46 +8387,41 @@ export function CreateLessonForm() {
         duracion_estimada: formData.duracion_estimada,
         puntos_xp: formData.puntos_xp,
         orden: formData.orden,
-        estado: 'borrador'
+        estado: 'borrador' as const // Usar 'as const' para tipado estricto
       }
       
-      const response = await fetch('/api/lecciones', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(leccionData)
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Error al crear lección')
+      console.log('📤 Enviando lección:', leccionData)
+      
+      // ✅ USAR LA API EN LUGAR DE FETCH DIRECTO
+      const response = await leccionesAPI.crear(leccionData)
+      
+      console.log('✅ Lección creada:', response)
+      
+      const leccionId = response.leccion?.id || response.id
+      
+      if (!leccionId) {
+        throw new Error('No se recibió el ID de la lección creada')
       }
 
-      const data = await response.json()
-      const leccionId = data.leccion.id
-
-      // Crear actividades
+      // Crear actividades una por una
+      console.log(`📤 Creando ${formData.actividades.length} actividades...`)
+      
       for (const actividad of formData.actividades) {
-        await fetch('/api/actividades', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            leccion_id: leccionId,
-            ...actividad
-          })
-        })
+        try {
+          // Esta línea ahora es funcional gracias a la corrección de tipos
+          await actividadesAPI.agregar(leccionId, actividad)
+          console.log(`✅ Actividad "${actividad.pregunta}" creada`)
+        } catch (actError: any) {
+          console.error('Error al crear actividad:', actError)
+          toast.error(`Error al crear actividad: ${actError.message}`)
+        }
       }
       
-      toast.success("Lección creada exitosamente")
+      toast.success("✅ Lección creada exitosamente")
       router.push(`/admin/lecciones/${leccionId}/editar`)
       
     } catch (error: any) {
-      console.error("Error al crear lección:", error)
+      console.error("❌ Error al crear lección:", error)
       toast.error(error.message || "Error al crear lección")
     } finally {
       setSaving(false)
@@ -7020,467 +8475,506 @@ export function CreateLessonForm() {
     }
   }
 
+  const handleGuardarActividad = (actividad: Actividad) => {
+    if (indiceEditando !== null) {
+      // Editar existente
+      const nuevasActividades = [...formData.actividades]
+      nuevasActividades[indiceEditando] = { ...actividad, orden: indiceEditando }
+      setFormData({ ...formData, actividades: nuevasActividades })
+      toast.success("Actividad actualizada")
+    } else {
+      // Agregar nueva
+      setFormData({
+        ...formData,
+        actividades: [...formData.actividades, { ...actividad, orden: formData.actividades.length }]
+      })
+      toast.success("Actividad agregada")
+    }
+    
+    // Cerrar modal
+    setModalActividadOpen(false)
+    setTipoActividadModal(null)
+    setActividadEditando(null)
+    setIndiceEditando(null)
+  }
+
+  const handleEditarActividad = (actividad: Actividad, index: number) => {
+    setActividadEditando(actividad)
+    setIndiceEditando(index)
+    setTipoActividadModal(actividad.tipo)
+    setModalActividadOpen(true)
+  }
+
+  const handleEliminarActividad = (index: number) => {
+    setFormData({
+      ...formData,
+      actividades: formData.actividades.filter((_, i) => i !== index)
+    })
+    toast.success("Actividad eliminada")
+  }
+
   const cursoSeleccionado = cursos.find(c => c.id === formData.curso_id)
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Indicador de pasos */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            {[
-              { num: 1, label: 'Información Básica' },
-              { num: 2, label: 'Contenido' },
-              { num: 3, label: 'Actividades' },
-              { num: 4, label: 'Multimedia' }
-            ].map((s, idx) => (
-              <div key={s.num} className="flex items-center">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                  step >= s.num ? 'bg-primary text-primary-foreground' : 'bg-secondary'
-                }`}>
-                  {s.num}
-                </div>
-                <span className="ml-2 hidden sm:inline">{s.label}</span>
-                {idx < 3 && <div className="mx-4 h-1 w-12 bg-secondary" />}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* PASO 1: Información Básica + Curso */}
-      {step === 1 && (
+    <>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Indicador de pasos */}
         <Card>
-          <CardHeader>
-            <CardTitle>Paso 1: Información Básica</CardTitle>
-            <CardDescription>Selecciona el curso y completa los datos principales</CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-6">
-            {/* Selector de Curso - MÁS PROMINENTE */}
-            <div className="space-y-2 rounded-lg border-2 border-primary/50 bg-primary/5 p-4">
-              <Label htmlFor="curso" className="text-lg font-semibold">
-                🎓 Curso de la Lección *
-              </Label>
-              <Select 
-                value={formData.curso_id?.toString() || ""}
-                onValueChange={(value) => {
-                  const cursoId = parseInt(value)
-                  const curso = cursos.find(c => c.id === cursoId)
-                  setFormData({
-                    ...formData, 
-                    curso_id: cursoId,
-                    idioma: curso?.idioma || formData.idioma,
-                    nivel: curso?.nivel === 'A1' ? 'principiante' : 
-                           curso?.nivel === 'B1' || curso?.nivel === 'B2' ? 'intermedio' : 'avanzado'
-                  })
-                }}
-              >
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Selecciona el curso..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {loadingCursos ? (
-                    <SelectItem value="loading" disabled>Cargando cursos...</SelectItem>
-                  ) : cursos.length === 0 ? (
-                    <SelectItem value="empty" disabled>No hay cursos disponibles</SelectItem>
-                  ) : (
-                    cursos.map((curso) => (
-                      <SelectItem key={curso.id} value={curso.id.toString()}>
-                        {curso.codigo} - {curso.nombre} ({curso.nivel})
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              {cursoSeleccionado && (
-                <div className="mt-2 text-sm text-muted-foreground">
-                  ℹ️ Esta lección será parte de: <strong>{cursoSeleccionado.nombre}</strong>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              {[
+                { num: 1, label: 'Información Básica' },
+                { num: 2, label: 'Contenido' },
+                { num: 3, label: 'Actividades' },
+                { num: 4, label: 'Multimedia' }
+              ].map((s, idx) => (
+                <div key={s.num} className="flex items-center">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                    step >= s.num ? 'bg-primary text-primary-foreground' : 'bg-secondary'
+                  }`}>
+                    {s.num}
+                  </div>
+                  <span className="ml-2 hidden sm:inline">{s.label}</span>
+                  {idx < 3 && <div className="mx-4 h-1 w-12 bg-secondary" />}
                 </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="titulo">Título de la Lección *</Label>
-              <Input 
-                id="titulo" 
-                placeholder="Ej: Saludos y Presentaciones"
-                value={formData.titulo}
-                onChange={(e) => setFormData({...formData, titulo: e.target.value})}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="descripcion">Descripción *</Label>
-              <Textarea
-                id="descripcion"
-                placeholder="Describe brevemente de qué trata esta lección..."
-                value={formData.descripcion}
-                onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
-                rows={3}
-                required
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Nivel (según curso)</Label>
-                <Input value={formData.nivel} disabled className="bg-secondary" />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Idioma (según curso)</Label>
-                <Input value={formData.idioma} disabled className="bg-secondary" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="categoria">Categoría</Label>
-              <Select 
-                value={formData.categoria}
-                onValueChange={(value) => setFormData({...formData, categoria: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una categoría..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="vocabulario">📚 Vocabulario</SelectItem>
-                  <SelectItem value="gramatica">📖 Gramática</SelectItem>
-                  <SelectItem value="pronunciacion">🗣️ Pronunciación</SelectItem>
-                  <SelectItem value="conversacion">💬 Conversación</SelectItem>
-                  <SelectItem value="lectura">📰 Lectura</SelectItem>
-                  <SelectItem value="escritura">✍️ Escritura</SelectItem>
-                  <SelectItem value="comprension_auditiva">👂 Comprensión Auditiva</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="duracion">⏱️ Duración (min) *</Label>
-                <Input 
-                  id="duracion" 
-                  type="number" 
-                  min="1"
-                  value={formData.duracion_estimada}
-                  onChange={(e) => setFormData({...formData, duracion_estimada: parseInt(e.target.value)})}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="xp">⭐ Puntos XP *</Label>
-                <Input 
-                  id="xp" 
-                  type="number"
-                  min="0"
-                  value={formData.puntos_xp}
-                  onChange={(e) => setFormData({...formData, puntos_xp: parseInt(e.target.value)})}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="orden">🔢 Orden</Label>
-                <Input 
-                  id="orden" 
-                  type="number"
-                  min="0"
-                  value={formData.orden}
-                  onChange={(e) => setFormData({...formData, orden: parseInt(e.target.value)})}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button 
-                type="button" 
-                onClick={() => setStep(2)} 
-                className="flex-1"
-                disabled={!formData.curso_id || !formData.titulo || !formData.descripcion}
-              >
-                Siguiente
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/admin/lecciones">Cancelar</Link>
-              </Button>
+              ))}
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* PASO 2: Contenido Detallado */}
-      {step === 2 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Paso 2: Contenido Pedagógico</CardTitle>
-            <CardDescription>Objetivos, vocabulario y estructura</CardDescription>
-          </CardHeader>
+        {/* PASO 1: Información Básica + Curso */}
+        {step === 1 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Paso 1: Información Básica</CardTitle>
+              <CardDescription>Selecciona el curso y completa los datos principales</CardDescription>
+            </CardHeader>
 
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>📌 Objetivos de Aprendizaje</Label>
-              <div className="flex gap-2">
+            <CardContent className="space-y-6">
+              {/* Selector de Curso */}
+              <div className="space-y-2 rounded-lg border-2 border-primary/50 bg-primary/5 p-4">
+                <Label htmlFor="curso" className="text-lg font-semibold">
+                  🎓 Curso de la Lección *
+                </Label>
+                <Select 
+                  value={formData.curso_id?.toString() || ""}
+                  onValueChange={(value) => {
+                    const cursoId = parseInt(value)
+                    const curso = cursos.find(c => c.id === cursoId)
+                    setFormData({
+                      ...formData, 
+                      curso_id: cursoId,
+                      idioma: curso?.idioma || formData.idioma,
+                      nivel: curso?.nivel === 'A1' || curso?.nivel === 'A2' ? 'principiante' : 
+                             curso?.nivel === 'B1' || curso?.nivel === 'B2' ? 'intermedio' : 'avanzado'
+                    })
+                  }}
+                >
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Selecciona el curso..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingCursos ? (
+                      <SelectItem value="loading" disabled>Cargando cursos...</SelectItem>
+                    ) : cursos.length === 0 ? (
+                      <SelectItem value="empty" disabled>No hay cursos disponibles</SelectItem>
+                    ) : (
+                      cursos.map((curso) => (
+                        <SelectItem key={curso.id} value={curso.id.toString()}>
+                          {curso.codigo} - {curso.nombre} ({curso.nivel})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {cursoSeleccionado && (
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    ℹ️ Esta lección será parte de: <strong>{cursoSeleccionado.nombre}</strong>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="titulo">Título de la Lección *</Label>
                 <Input 
-                  placeholder="Ej: Aprender saludos formales en inglés"
-                  value={objetivoTemp}
-                  onChange={(e) => setObjetivoTemp(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarObjetivo())}
+                  id="titulo" 
+                  placeholder="Ej: Saludos y Presentaciones"
+                  value={formData.titulo}
+                  onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+                  required
                 />
-                <Button type="button" onClick={agregarObjetivo} size="icon">
-                  <Plus className="h-4 w-4" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="descripcion">Descripción *</Label>
+                <Textarea
+                  id="descripcion"
+                  placeholder="Describe brevemente de qué trata esta lección..."
+                  value={formData.descripcion}
+                  onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+                  rows={3}
+                  required
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Nivel (según curso)</Label>
+                  <Input value={formData.nivel} disabled className="bg-secondary" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Idioma (según curso)</Label>
+                  <Input value={formData.idioma} disabled className="bg-secondary" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="categoria">Categoría</Label>
+                <Select 
+                  value={formData.categoria}
+                  onValueChange={(value) => setFormData({...formData, categoria: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una categoría..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vocabulario">📚 Vocabulario</SelectItem>
+                    <SelectItem value="gramatica">📖 Gramática</SelectItem>
+                    <SelectItem value="pronunciacion">🗣️ Pronunciación</SelectItem>
+                    <SelectItem value="conversacion">💬 Conversación</SelectItem>
+                    <SelectItem value="lectura">📰 Lectura</SelectItem>
+                    <SelectItem value="escritura">✍️ Escritura</SelectItem>
+                    <SelectItem value="comprension_auditiva">👂 Comprensión Auditiva</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="duracion">⏱️ Duración (min) *</Label>
+                  <Input 
+                    id="duracion" 
+                    type="number" 
+                    min="1"
+                    value={formData.duracion_estimada}
+                    onChange={(e) => setFormData({...formData, duracion_estimada: parseInt(e.target.value) || 1})}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="xp">⭐ Puntos XP *</Label>
+                  <Input 
+                    id="xp" 
+                    type="number"
+                    min="0"
+                    value={formData.puntos_xp}
+                    onChange={(e) => setFormData({...formData, puntos_xp: parseInt(e.target.value) || 0})}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="orden">🔢 Orden</Label>
+                  <Input 
+                    id="orden" 
+                    type="number"
+                    min="0"
+                    value={formData.orden}
+                    onChange={(e) => setFormData({...formData, orden: parseInt(e.target.value) || 0})}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button 
+                  type="button" 
+                  onClick={() => setStep(2)} 
+                  className="flex-1"
+                  disabled={!formData.curso_id || !formData.titulo || !formData.descripcion}
+                >
+                  Siguiente
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/admin/lecciones">Cancelar</Link>
                 </Button>
               </div>
-              {formData.contenido.objetivos.length > 0 && (
-                <div className="space-y-2 mt-2">
-                  {formData.contenido.objetivos.map((obj, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2 bg-secondary rounded">
-                      <span className="flex-1 text-sm">{obj}</span>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => eliminarObjetivo(i)}>
-                        <X className="h-4 w-4" />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* PASO 2: Contenido Detallado */}
+        {step === 2 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Paso 2: Contenido Pedagógico</CardTitle>
+              <CardDescription>Objetivos, vocabulario y estructura</CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>📌 Objetivos de Aprendizaje</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="Ej: Aprender saludos formales en inglés"
+                    value={objetivoTemp}
+                    onChange={(e) => setObjetivoTemp(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarObjetivo())}
+                  />
+                  <Button type="button" onClick={agregarObjetivo} size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {formData.contenido.objetivos.length > 0 && (
+                  <div className="space-y-2 mt-2">
+                    {formData.contenido.objetivos.map((obj, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 bg-secondary rounded">
+                        <span className="flex-1 text-sm">{obj}</span>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => eliminarObjetivo(i)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>📖 Vocabulario Clave</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="Ej: Hello, Good morning, How are you?"
+                    value={vocabularioTemp}
+                    onChange={(e) => setVocabularioTemp(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarVocabulario())}
+                  />
+                  <Button type="button" onClick={agregarVocabulario} size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {formData.contenido.vocabulario_clave.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.contenido.vocabulario_clave.map((vocab, i) => (
+                      <Badge key={i} variant="secondary">
+                        {vocab}
+                        <button type="button" onClick={() => {
+                          setFormData({
+                            ...formData,
+                            contenido: {
+                              ...formData.contenido,
+                              vocabulario_clave: formData.contenido.vocabulario_clave.filter((_, idx) => idx !== i)
+                            }
+                          })
+                        }} className="ml-1">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="introduccion">💡 Introducción</Label>
+                <Textarea
+                  id="introduccion"
+                  placeholder="Breve introducción al tema de la lección..."
+                  value={formData.contenido.introduccion}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    contenido: {...formData.contenido, introduccion: e.target.value}
+                  })}
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>🏷️ Etiquetas</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="Ej: saludos, presentaciones, básico"
+                    value={etiquetaTemp}
+                    onChange={(e) => setEtiquetaTemp(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarEtiqueta())}
+                  />
+                  <Button type="button" onClick={agregarEtiqueta} size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {formData.etiquetas.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.etiquetas.map((tag, i) => (
+                      <Badge key={i} variant="outline">
+                        {tag}
+                        <button type="button" onClick={() => {
+                          setFormData({...formData, etiquetas: formData.etiquetas.filter((_, idx) => idx !== i)})
+                        }} className="ml-1">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Anterior
+                </Button>
+                <Button type="button" onClick={() => setStep(3)} className="flex-1">
+                  Siguiente: Agregar Actividades
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* PASO 3: Actividades Gamificadas */}
+        {step === 3 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Paso 3: Actividades Gamificadas 🎮</CardTitle>
+              <CardDescription>
+                Agrega juegos y ejercicios interactivos (mínimo 1 requerido)
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              <div className="rounded-lg border-2 border-dashed border-primary/30 p-6">
+                <h3 className="mb-4 font-semibold">Tipos de Actividades Disponibles</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {TIPOS_ACTIVIDAD.map((tipo) => (
+                    <Button
+                      key={tipo.value}
+                      type="button"
+                      variant="outline"
+                      className="justify-start h-auto p-4"
+                      onClick={() => {
+                        // El tipo 'tipo.value' ahora se valida contra 'Actividad['tipo']'
+                        setTipoActividadModal(tipo.value as Actividad['tipo']) 
+                        setActividadEditando(null)
+                        setIndiceEditando(null)
+                        setModalActividadOpen(true)
+                      }}
+                    >
+                      <span className="text-2xl mr-3">{tipo.icon}</span>
+                      <span>{tipo.label}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {formData.actividades.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Actividades Agregadas ({formData.actividades.length})</h3>
+                  {formData.actividades.map((act, idx) => (
+                    <div key={idx} className="flex items-center gap-3 rounded-lg border p-3">
+                      <span className="text-2xl">
+                        {TIPOS_ACTIVIDAD.find(t => t.value === act.tipo)?.icon || '🎮'}
+                      </span>
+                      <div className="flex-1">
+                        <p className="font-medium">{act.pregunta}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {TIPOS_ACTIVIDAD.find(t => t.value === act.tipo)?.label} • {act.puntos} pts
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditarActividad(act, idx)}
+                        title="Editar actividad"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEliminarActividad(idx)}
+                        title="Eliminar actividad"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
 
-            <div className="space-y-2">
-              <Label>📖 Vocabulario Clave</Label>
-              <div className="flex gap-2">
-                <Input 
-                  placeholder="Ej: Hello, Good morning, How are you?"
-                  value={vocabularioTemp}
-                  onChange={(e) => setVocabularioTemp(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarVocabulario())}
-                />
-                <Button type="button" onClick={agregarVocabulario} size="icon">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              {formData.contenido.vocabulario_clave.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.contenido.vocabulario_clave.map((vocab, i) => (
-                    <Badge key={i} variant="secondary">
-                      {vocab}
-                      <button type="button" onClick={() => {
-                        setFormData({
-                          ...formData,
-                          contenido: {
-                            ...formData.contenido,
-                            vocabulario_clave: formData.contenido.vocabulario_clave.filter((_, idx) => idx !== i)
-                          }
-                        })
-                      }} className="ml-1">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
+              {formData.actividades.length === 0 && (
+                <div className="rounded-lg bg-yellow-50 p-4 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-200">
+                  ⚠️ Debes agregar al menos una actividad para continuar
                 </div>
               )}
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="introduccion">💡 Introducción</Label>
-              <Textarea
-                id="introduccion"
-                placeholder="Breve introducción al tema de la lección..."
-                value={formData.contenido.introduccion}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  contenido: {...formData.contenido, introduccion: e.target.value}
-                })}
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>🏷️ Etiquetas</Label>
-              <div className="flex gap-2">
-                <Input 
-                  placeholder="Ej: saludos, presentaciones, básico"
-                  value={etiquetaTemp}
-                  onChange={(e) => setEtiquetaTemp(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarEtiqueta())}
-                />
-                <Button type="button" onClick={agregarEtiqueta} size="icon">
-                  <Plus className="h-4 w-4" />
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setStep(2)}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Anterior
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => setStep(4)} 
+                  className="flex-1"
+                  disabled={formData.actividades.length === 0}
+                >
+                  Siguiente: Multimedia
                 </Button>
               </div>
-              {formData.etiquetas.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.etiquetas.map((tag, i) => (
-                    <Badge key={i} variant="outline">
-                      {tag}
-                      <button type="button" onClick={() => {
-                        setFormData({...formData, etiquetas: formData.etiquetas.filter((_, idx) => idx !== i)})
-                      }} className="ml-1">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
+            </CardContent>
+          </Card>
+        )}
 
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={() => setStep(1)}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Anterior
-              </Button>
-              <Button type="button" onClick={() => setStep(3)} className="flex-1">
-                Siguiente: Agregar Actividades
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* PASO 4: Multimedia */}
+        {step === 4 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Paso 4: Recursos Multimedia 📸🎵 (Opcional)</CardTitle>
+              <CardDescription>Próximamente: subir imágenes, audios o videos</CardDescription>
+            </CardHeader>
 
-      {/* PASO 3: Actividades Gamificadas */}
-      {step === 3 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Paso 3: Actividades Gamificadas 🎮</CardTitle>
-            <CardDescription>
-              Agrega juegos y ejercicios interactivos (mínimo 1 requerido)
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-6">
-            <div className="rounded-lg border-2 border-dashed border-primary/30 p-6">
-              <h3 className="mb-4 font-semibold">Tipos de Actividades Disponibles</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {TIPOS_ACTIVIDAD.map((tipo) => (
-                  <Button
-                    key={tipo.value}
-                    type="button"
-                    variant="outline"
-                    className="justify-start h-auto p-4"
-                    onClick={() => {
-                      toast.info(`Creador de "${tipo.label}" próximamente`)
-                    }}
-                  >
-                    <span className="text-2xl mr-3">{tipo.icon}</span>
-                    <span>{tipo.label}</span>
-                  </Button>
-                ))}
+            <CardContent className="space-y-6">
+              <div className="text-center p-8 border-2 border-dashed rounded-lg">
+                <p className="text-muted-foreground">
+                  💡 La funcionalidad de multimedia se implementará próximamente
+                </p>
               </div>
-            </div>
 
-            {formData.actividades.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold">Actividades Agregadas ({formData.actividades.length})</h3>
-                {formData.actividades.map((act, idx) => (
-                  <div key={idx} className="flex items-center gap-3 rounded-lg border p-3">
-                    <span className="text-2xl">
-                      {TIPOS_ACTIVIDAD.find(t => t.value === act.tipo)?.icon || '🎮'}
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium">{act.pregunta}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {TIPOS_ACTIVIDAD.find(t => t.value === act.tipo)?.label} • {act.puntos} pts
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setFormData({
-                          ...formData,
-                          actividades: formData.actividades.filter((_, i) => i !== idx)
-                        })
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setStep(3)}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Anterior
+                </Button>
+                <Button type="submit" className="flex-1" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creando lección...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Crear Lección Completa
+                    </>
+                  )}
+                </Button>
               </div>
-            )}
+            </CardContent>
+          </Card>
+        )}
+      </form>
 
-            {formData.actividades.length === 0 && (
-              <div className="rounded-lg bg-yellow-50 p-4 text-yellow-900">
-                ⚠️ Debes agregar al menos una actividad para continuar
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={() => setStep(2)}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Anterior
-              </Button>
-              <Button 
-                type="button" 
-                onClick={() => setStep(4)} 
-                className="flex-1"
-                disabled={formData.actividades.length === 0}
-              >
-                Siguiente: Multimedia
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* PASO 4: Multimedia */}
-      {step === 4 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Paso 4: Recursos Multimedia 📸🎵</CardTitle>
-            <CardDescription>Agrega imágenes, audios o videos (opcional)</CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Button type="button" variant="outline" className="h-24">
-                <div className="text-center">
-                  <ImageIcon className="mx-auto mb-2 h-8 w-8" />
-                  <span>Subir Imagen</span>
-                </div>
-              </Button>
-              <Button type="button" variant="outline" className="h-24">
-                <div className="text-center">
-                  <Volume2 className="mx-auto mb-2 h-8 w-8" />
-                  <span>Subir Audio</span>
-                </div>
-              </Button>
-              <Button type="button" variant="outline" className="h-24">
-                <div className="text-center">
-                  <PlayCircle className="mx-auto mb-2 h-8 w-8" />
-                  <span>Subir Video</span>
-                </div>
-              </Button>
-            </div>
-
-            <p className="text-sm text-muted-foreground text-center">
-              💡 Los archivos multimedia se asociarán automáticamente a esta lección
-            </p>
-
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={() => setStep(3)}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Anterior
-              </Button>
-              <Button type="submit" className="flex-1" disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creando lección...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Crear Lección Completa
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </form>
+      {/* Modal de Actividades */}
+      <ActivityModal
+        open={modalActividadOpen}
+        onOpenChange={setModalActividadOpen}
+        tipoActividad={tipoActividadModal}
+        onGuardar={handleGuardarActividad}
+        actividadEditar={actividadEditando}
+      />
+    </>
   )
 }
 

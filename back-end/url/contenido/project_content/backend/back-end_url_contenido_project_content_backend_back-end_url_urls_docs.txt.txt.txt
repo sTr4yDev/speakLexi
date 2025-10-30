@@ -1,0 +1,23 @@
+# ARCHIVO: back-end/url/contenido/project_content/backend/back-end_url_urls_docs.txt.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/backend/back-end_url_urls_docs.txt.txt
+# FECHA DESCARGA: 2025-10-29 18:40:38
+# ==================================================
+
+# ARCHIVO: back-end/url/urls_docs.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/urls_docs.txt
+# FECHA DESCARGA: 2025-10-28 22:54:38
+# ==================================================
+
+# DOCUMENTACIÓN - SpeakLexi
+# Total: 9 archivos
+# Generado: 2025-10-28 20:45:16
+
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/README.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/architecture.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/database.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/errores/bitacoras/ERRORES - 27 OCT 25.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/best-practices.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/naming-conventions.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/requisitos-funcionales.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/lession-creation.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/user-registration.md

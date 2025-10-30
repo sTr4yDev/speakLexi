@@ -1,0 +1,21 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_components_theme-provider.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_components_theme-provider.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:42:19
+# ==================================================
+
+# ARCHIVO: front-end/components/theme-provider.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/theme-provider.tsx
+# FECHA DESCARGA: 2025-10-28 22:56:15
+# ==================================================
+
+'use client'
+
+import * as React from 'react'
+import {
+  ThemeProvider as NextThemesProvider,
+  type ThemeProviderProps,
+} from 'next-themes'
+
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+}

@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/app/mantenimiento/tareas/nueva/page.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/mantenimiento/tareas/nueva/page.tsx
-# FECHA DESCARGA: 2025-10-28 22:55:05
+# FECHA DESCARGA: 2025-10-29 18:44:07
 # ==================================================
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"

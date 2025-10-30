@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/profile/profile-settings.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/profile/profile-settings.tsx
-# FECHA DESCARGA: 2025-10-28 22:56:08
+# FECHA DESCARGA: 2025-10-29 18:45:03
 # ==================================================
 
 "use client"

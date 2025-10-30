@@ -1,0 +1,542 @@
+# ARCHIVO: back-end/url/contenido/project_content/backend/back-end_routes_curso_routes.py.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/backend/back-end_routes_curso_routes.py.txt
+# FECHA DESCARGA: 2025-10-29 18:40:21
+# ==================================================
+
+# ARCHIVO: back-end/routes/curso_routes.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/curso_routes.py
+# FECHA DESCARGA: 2025-10-28 22:54:22
+# ==================================================
+
+# back-end/routes/curso_routes.py
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from models.cursos import Curso, ProgresoCurso
+from models.usuario import Usuario
+from models.leccion import Leccion
+from extensions import db
+from sqlalchemy import func, or_
+
+curso_bp = Blueprint('cursos', __name__, url_prefix='/api/cursos')
+
+
+@curso_bp.route('', methods=['GET'])
+def obtener_cursos():
+    """
+    Obtener lista de cursos con filtros opcionales
+    Query params:
+    - idioma: filtrar por idioma (default: ingles)
+    - nivel: filtrar por nivel específico (A1, A2, etc)
+    - activos: solo cursos activos (default: true)
+    - profesor_id: cursos de un profesor específico
+    """
+    try:
+        idioma = request.args.get('idioma', 'ingles')
+        nivel = request.args.get('nivel')
+        solo_activos = request.args.get('activos', 'true').lower() == 'true'
+        profesor_id = request.args.get('profesor_id')
+        
+        query = Curso.query
+        
+        if solo_activos:
+            query = query.filter_by(activo=True)
+        
+        query = query.filter_by(idioma=idioma)
+        
+        if nivel:
+            query = query.filter_by(nivel=nivel)
+        
+        if profesor_id:
+            query = query.filter_by(profesor_id=profesor_id)
+        
+        cursos = query.order_by(Curso.orden).all()
+        
+        return jsonify({
+            'success': True,
+            'cursos': [c.to_dict() for c in cursos],
+            'total': len(cursos)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('/<int:curso_id>', methods=['GET'])
+def obtener_curso(curso_id):
+    """Obtener detalles de un curso específico"""
+    try:
+        incluir_lecciones = request.args.get('lecciones', 'false').lower() == 'true'
+        
+        curso = Curso.query.get_or_404(curso_id)
+        
+        return jsonify({
+            'success': True,
+            'curso': curso.to_dict(incluir_lecciones=incluir_lecciones)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('', methods=['POST'])
+@jwt_required()
+def crear_curso():
+    """
+    Crear nuevo curso (Solo Admin/Profesor)
+    Body JSON:
+    {
+        "nombre": "Inglés Básico A1",
+        "nivel": "A1",
+        "descripcion": "Curso para principiantes",
+        "idioma": "ingles",
+        "codigo": "ENG-A1",
+        "profesor_id": 2,
+        "objetivos_aprendizaje": ["Objetivo 1", "Objetivo 2"]
+    }
+    """
+    try:
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario.rol not in ['admin', 'profesor']:
+            return jsonify({
+                'success': False, 
+                'error': 'No autorizado. Solo administradores y profesores pueden crear cursos.'
+            }), 403
+        
+        data = request.json
+        
+        # Validar campos requeridos
+        campos_requeridos = ['nombre', 'nivel', 'idioma', 'codigo']
+        for campo in campos_requeridos:
+            if campo not in data:
+                return jsonify({
+                    'success': False, 
+                    'error': f'Campo requerido: {campo}'
+                }), 400
+        
+        # Validar que el código no exista
+        if Curso.query.filter_by(codigo=data['codigo']).first():
+            return jsonify({
+                'success': False, 
+                'error': 'El código de curso ya existe'
+            }), 400
+        
+        # Validar nivel
+        niveles_validos = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+        if data['nivel'].upper() not in niveles_validos:
+            return jsonify({
+                'success': False, 
+                'error': f'Nivel inválido. Use: {", ".join(niveles_validos)}'
+            }), 400
+        
+        # Si es profesor, asignarlo automáticamente
+        profesor_id = data.get('profesor_id')
+        if usuario.rol == 'profesor' and not profesor_id:
+            profesor_id = usuario_id
+        
+        nuevo_curso = Curso(
+            nombre=data['nombre'],
+            nivel=data['nivel'].upper(),
+            descripcion=data.get('descripcion'),
+            idioma=data['idioma'],
+            codigo=data['codigo'].upper(),
+            profesor_id=profesor_id,
+            imagen_portada=data.get('imagen_portada'),
+            orden=data.get('orden', 0),
+            activo=data.get('activo', True),
+            requisitos_previos=data.get('requisitos_previos'),
+            objetivos_aprendizaje=data.get('objetivos_aprendizaje')
+        )
+        
+        db.session.add(nuevo_curso)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'mensaje': 'Curso creado exitosamente',
+            'curso': nuevo_curso.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('/<int:curso_id>', methods=['PUT'])
+@jwt_required()
+def actualizar_curso(curso_id):
+    """Actualizar curso existente"""
+    try:
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario.rol not in ['admin', 'profesor']:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        curso = Curso.query.get_or_404(curso_id)
+        
+        # Si es profesor, verificar que sea su curso
+        if usuario.rol == 'profesor' and curso.profesor_id != usuario_id:
+            return jsonify({
+                'success': False, 
+                'error': 'No puedes editar este curso'
+            }), 403
+        
+        data = request.json
+        
+        # Actualizar campos permitidos
+        campos_actualizables = [
+            'nombre', 'descripcion', 'profesor_id', 'imagen_portada', 
+            'activo', 'requisitos_previos', 'objetivos_aprendizaje', 'orden'
+        ]
+        
+        for campo in campos_actualizables:
+            if campo in data:
+                setattr(curso, campo, data[campo])
+        
+        curso.actualizado_en = db.func.now()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'mensaje': 'Curso actualizado exitosamente',
+            'curso': curso.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('/<int:curso_id>', methods=['DELETE'])
+@jwt_required()
+def eliminar_curso(curso_id):
+    """Eliminar curso (Solo Admin)"""
+    try:
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario.rol != 'admin':
+            return jsonify({'success': False, 'error': 'Solo administradores'}), 403
+        
+        curso = Curso.query.get_or_404(curso_id)
+        
+        # Verificar si tiene lecciones
+        if curso.total_lecciones > 0:
+            return jsonify({
+                'success': False,
+                'error': 'No se puede eliminar un curso con lecciones. Elimina las lecciones primero.'
+            }), 400
+        
+        db.session.delete(curso)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'mensaje': f'Curso {curso.codigo} eliminado exitosamente'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('/<int:curso_id>/lecciones', methods=['GET'])
+def obtener_lecciones_curso(curso_id):
+    """Obtener todas las lecciones de un curso"""
+    try:
+        curso = Curso.query.get_or_404(curso_id)
+        
+        estado = request.args.get('estado', 'publicada')
+        
+        query = curso.lecciones
+        if estado:
+            query = query.filter_by(estado=estado)
+        
+        lecciones = query.order_by(Leccion.orden).all()
+        
+        return jsonify({
+            'success': True,
+            'curso_id': curso_id,
+            'curso_nombre': curso.nombre,
+            'lecciones': [l.to_dict() for l in lecciones],
+            'total': len(lecciones)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('/<int:curso_id>/progreso', methods=['GET'])
+@jwt_required()
+def obtener_progreso_curso(curso_id):
+    """Obtener progreso del usuario autenticado en un curso"""
+    try:
+        usuario_id = get_jwt_identity()
+        
+        progreso = ProgresoCurso.query.filter_by(
+            usuario_id=usuario_id,
+            curso_id=curso_id
+        ).first()
+        
+        if not progreso:
+            # Crear registro de progreso si no existe
+            curso = Curso.query.get_or_404(curso_id)
+            progreso = ProgresoCurso(
+                usuario_id=usuario_id,
+                curso_id=curso_id,
+                lecciones_totales=curso.total_lecciones
+            )
+            db.session.add(progreso)
+            db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'progreso': progreso.to_dict(incluir_curso=True)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('/<int:curso_id>/inscribir', methods=['POST'])
+@jwt_required()
+def inscribir_en_curso(curso_id):
+    """Inscribir al usuario en un curso"""
+    try:
+        usuario_id = get_jwt_identity()
+        
+        curso = Curso.query.get_or_404(curso_id)
+        
+        if not curso.activo:
+            return jsonify({
+                'success': False,
+                'error': 'Este curso no está activo'
+            }), 400
+        
+        # Verificar si ya está inscrito
+        progreso_existente = ProgresoCurso.query.filter_by(
+            usuario_id=usuario_id,
+            curso_id=curso_id
+        ).first()
+        
+        if progreso_existente:
+            return jsonify({
+                'success': False,
+                'error': 'Ya estás inscrito en este curso',
+                'progreso': progreso_existente.to_dict()
+            }), 400
+        
+        # Verificar prerequisitos
+        if not curso.tiene_prerequisitos_cumplidos(usuario_id):
+            return jsonify({
+                'success': False,
+                'error': 'No cumples con los prerequisitos de este curso'
+            }), 400
+        
+        # Crear progreso
+        from datetime import date
+        nuevo_progreso = ProgresoCurso(
+            usuario_id=usuario_id,
+            curso_id=curso_id,
+            lecciones_totales=curso.total_lecciones,
+            fecha_inicio=date.today(),
+            estado='en_progreso'
+        )
+        
+        db.session.add(nuevo_progreso)
+        
+        # Actualizar perfil del estudiante
+        from models.usuario import PerfilEstudiante
+        perfil = PerfilEstudiante.query.filter_by(usuario_id=usuario_id).first()
+        if perfil:
+            perfil.curso_actual_id = curso_id
+            perfil.nivel_asignado = curso.nivel
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'mensaje': f'Te has inscrito en {curso.nombre}',
+            'progreso': nuevo_progreso.to_dict(incluir_curso=True)
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('/<int:curso_id>/estadisticas', methods=['GET'])
+@jwt_required()
+def obtener_estadisticas_curso(curso_id):
+    """Obtener estadísticas generales del curso (Admin/Profesor)"""
+    try:
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario.rol not in ['admin', 'profesor']:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        curso = Curso.query.get_or_404(curso_id)
+        
+        # Si es profesor, verificar que sea su curso
+        if usuario.rol == 'profesor' and curso.profesor_id != usuario_id:
+            return jsonify({'success': False, 'error': 'No es tu curso'}), 403
+        
+        # Estadísticas de estudiantes
+        total_estudiantes = ProgresoCurso.query.filter_by(curso_id=curso_id).count()
+        estudiantes_completado = ProgresoCurso.query.filter_by(
+            curso_id=curso_id, 
+            estado='completado'
+        ).count()
+        estudiantes_en_progreso = ProgresoCurso.query.filter_by(
+            curso_id=curso_id,
+            estado='en_progreso'
+        ).count()
+        
+        # Promedio de progreso
+        promedio_progreso = db.session.query(
+            func.avg(ProgresoCurso.porcentaje_completado)
+        ).filter_by(curso_id=curso_id).scalar() or 0
+        
+        # Promedio de puntuación
+        promedio_puntuacion = db.session.query(
+            func.avg(ProgresoCurso.puntuacion_promedio)
+        ).filter_by(curso_id=curso_id).scalar() or 0
+        
+        # Tiempo promedio dedicado
+        tiempo_promedio = db.session.query(
+            func.avg(ProgresoCurso.tiempo_dedicado)
+        ).filter_by(curso_id=curso_id).scalar() or 0
+        
+        return jsonify({
+            'success': True,
+            'estadisticas': {
+                'curso_id': curso_id,
+                'curso_nombre': curso.nombre,
+                'nivel': curso.nivel,
+                'total_lecciones': curso.total_lecciones,
+                'duracion_total': curso.duracion_estimada_total,
+                'estudiantes': {
+                    'total': total_estudiantes,
+                    'completado': estudiantes_completado,
+                    'en_progreso': estudiantes_en_progreso,
+                    'no_iniciado': total_estudiantes - estudiantes_completado - estudiantes_en_progreso
+                },
+                'promedios': {
+                    'progreso': round(float(promedio_progreso), 2),
+                    'puntuacion': round(float(promedio_puntuacion), 2) if promedio_puntuacion else None,
+                    'tiempo_dedicado': round(float(tiempo_promedio), 2)
+                }
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('/<int:curso_id>/estudiantes', methods=['GET'])
+@jwt_required()
+def obtener_estudiantes_curso(curso_id):
+    """Obtener lista de estudiantes inscritos en el curso (Admin/Profesor)"""
+    try:
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario.rol not in ['admin', 'profesor']:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        
+        curso = Curso.query.get_or_404(curso_id)
+        
+        if usuario.rol == 'profesor' and curso.profesor_id != usuario_id:
+            return jsonify({'success': False, 'error': 'No es tu curso'}), 403
+        
+        progresos = ProgresoCurso.query.filter_by(curso_id=curso_id).all()
+        
+        estudiantes = []
+        for progreso in progresos:
+            estudiantes.append({
+                **progreso.to_dict(incluir_usuario=True),
+            })
+        
+        return jsonify({
+            'success': True,
+            'curso': curso.to_dict(incluir_profesor=False),
+            'estudiantes': estudiantes,
+            'total': len(estudiantes)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('/<int:curso_id>/activar', methods=['PATCH'])
+@jwt_required()
+def cambiar_estado_curso(curso_id):
+    """Activar/Desactivar curso (Solo Admin)"""
+    try:
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario.rol != 'admin':
+            return jsonify({'success': False, 'error': 'Solo administradores'}), 403
+        
+        curso = Curso.query.get_or_404(curso_id)
+        curso.activo = not curso.activo
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'mensaje': f'Curso {"activado" if curso.activo else "desactivado"}',
+            'activo': curso.activo
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@curso_bp.route('/mis-cursos', methods=['GET'])
+@jwt_required()
+def obtener_mis_cursos():
+    """Obtener cursos del usuario autenticado"""
+    try:
+        usuario_id = get_jwt_identity()
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario.rol == 'profesor':
+            # Cursos que imparte
+            cursos = Curso.query.filter_by(profesor_id=usuario_id).order_by(Curso.orden).all()
+            return jsonify({
+                'success': True,
+                'tipo': 'profesor',
+                'cursos': [c.to_dict() for c in cursos],
+                'total': len(cursos)
+            }), 200
+        
+        elif usuario.rol == 'alumno':
+            # Cursos en los que está inscrito
+            progresos = ProgresoCurso.query.filter_by(usuario_id=usuario_id).all()
+            cursos_data = [p.to_dict(incluir_curso=True) for p in progresos]
+            
+            return jsonify({
+                'success': True,
+                'tipo': 'estudiante',
+                'cursos': cursos_data,
+                'total': len(cursos_data)
+            }), 200
+        
+        else:
+            # Admin ve todos
+            cursos = Curso.query.order_by(Curso.orden).all()
+            return jsonify({
+                'success': True,
+                'tipo': 'admin',
+                'cursos': [c.to_dict() for c in cursos],
+                'total': len(cursos)
+            }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

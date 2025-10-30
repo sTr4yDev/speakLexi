@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/services/gestor_usuarios.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_usuarios.py
-# FECHA DESCARGA: 2025-10-28 22:54:28
+# FECHA DESCARGA: 2025-10-29 18:40:03
 # ==================================================
 
 from config.database import db

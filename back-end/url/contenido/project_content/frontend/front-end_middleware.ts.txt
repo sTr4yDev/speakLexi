@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/middleware.ts
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/middleware.ts
-# FECHA DESCARGA: 2025-10-28 22:57:12
+# FECHA DESCARGA: 2025-10-29 18:46:15
 # ==================================================
 
 import { NextResponse } from 'next/server'

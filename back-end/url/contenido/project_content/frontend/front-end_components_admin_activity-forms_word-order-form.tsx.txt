@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/admin/activity-forms/word-order-form.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/activity-forms/word-order-form.tsx
-# FECHA DESCARGA: 2025-10-28 22:55:30
+# FECHA DESCARGA: 2025-10-29 18:44:30
 # ==================================================
 
 "use client"
@@ -10,154 +10,483 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Save, X, Shuffle } from "lucide-react"
+import { Save, X, Eye, EyeOff, Shuffle, Plus, Trash2, GripVertical } from "lucide-react"
 import { toast } from "sonner"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { type Actividad } from "@/lib/api"
 
 interface ActivityFormProps {
-  onGuardar: (actividad: any) => void
+  onGuardar: (actividad: Actividad) => void
   onCancelar: () => void
-  actividadEditar?: any
+  actividadEditar?: Actividad | null
+}
+
+interface Palabra {
+  id: string
+  texto: string
+  tipo: 'normal' | 'distractora'
+  categoria?: string
 }
 
 export function WordOrderForm({ onGuardar, onCancelar, actividadEditar }: ActivityFormProps) {
-  const [pregunta, setPregunta] = useState("")
-  const [instrucciones, setInstrucciones] = useState("")
-  const [oracionCorrecta, setOracionCorrecta] = useState("")
+  const [instruccion, setInstruccion] = useState("")
+  const [instrucciones, setInstrucciones] = useState("Ordena las palabras para formar una oración correcta.")
+  const [palabras, setPalabras] = useState<Palabra[]>([])
+  const [nuevaPalabra, setNuevaPalabra] = useState("")
+  const [tipoNuevaPalabra, setTipoNuevaPalabra] = useState<'normal' | 'distractora'>('normal')
+  const [categoriaPalabra, setCategoriaPalabra] = useState("")
   const [pista, setPista] = useState("")
   const [puntos, setPuntos] = useState(10)
+  const [mostrarPrevisualizacion, setMostrarPrevisualizacion] = useState(false)
+  const [mezclarAutomatico, setMezclarAutomatico] = useState(true)
+  const [permiteArrastrar, setPermiteArrastrar] = useState(true)
+  const [mostrarNumeros, setMostrarNumeros] = useState(false)
+  const [dificultad, setDificultad] = useState<"facil" | "medio" | "dificil">("medio")
+  const [estructura, setEstructura] = useState("")
 
   useEffect(() => {
     if (actividadEditar) {
-      setPregunta(actividadEditar.pregunta || "")
-      setInstrucciones(actividadEditar.instrucciones || "")
-      setOracionCorrecta(actividadEditar.respuesta_correcta?.join(" ") || "")
+      setInstruccion(actividadEditar.pregunta || "")
+      setInstrucciones(actividadEditar.instrucciones || "Ordena las palabras para formar una oración correcta.")
+      
+      // Procesar palabras existentes
+      if (actividadEditar.opciones?.palabras) {
+        const palabrasExistentes: Palabra[] = actividadEditar.opciones.palabras.map((palabra: string, index: number) => ({
+          id: `palabra-${index}`,
+          texto: palabra,
+          tipo: 'normal'
+        }))
+        setPalabras(palabrasExistentes)
+      }
+      
       setPista(actividadEditar.pista || "")
       setPuntos(actividadEditar.puntos || 10)
+      setMezclarAutomatico(actividadEditar.opciones?.mezclarAutomatico ?? true)
+      setPermiteArrastrar(actividadEditar.opciones?.permiteArrastrar ?? true)
+      setMostrarNumeros(actividadEditar.opciones?.mostrarNumeros ?? false)
+      setDificultad(actividadEditar.opciones?.dificultad || "medio")
+      setEstructura(actividadEditar.opciones?.estructura || "")
     }
   }, [actividadEditar])
 
-  const palabras = oracionCorrecta.trim().split(/\s+/).filter(p => p)
+  const generarId = () => Math.random().toString(36).substr(2, 9)
+
+  const agregarPalabra = () => {
+    if (!nuevaPalabra.trim()) {
+      toast.error("Escribe una palabra")
+      return
+    }
+
+    if (palabras.some(p => p.texto.toLowerCase() === nuevaPalabra.toLowerCase())) {
+      toast.error("Esta palabra ya existe")
+      return
+    }
+
+    const nuevaPalabraObj: Palabra = {
+      id: generarId(),
+      texto: nuevaPalabra.trim(),
+      tipo: tipoNuevaPalabra,
+      categoria: categoriaPalabra.trim() || undefined
+    }
+
+    setPalabras([...palabras, nuevaPalabraObj])
+    setNuevaPalabra("")
+    setCategoriaPalabra("")
+  }
+
+  const eliminarPalabra = (id: string) => {
+    if (palabras.filter(p => p.tipo === 'normal').length <= 2) {
+      toast.error("Debe haber al menos 3 palabras normales")
+      return
+    }
+    
+    setPalabras(palabras.filter(p => p.id !== id))
+  }
+
+  const moverPalabra = (fromIndex: number, toIndex: number) => {
+    const nuevasPalabras = [...palabras]
+    const [movedItem] = nuevasPalabras.splice(fromIndex, 1)
+    nuevasPalabras.splice(toIndex, 0, movedItem)
+    setPalabras(nuevasPalabras)
+  }
+
+  const mezclarPalabras = () => {
+    const palabrasMezcladas = [...palabras]
+      .map(palabra => ({ ...palabra, id: generarId() }))
+      .sort(() => Math.random() - 0.5)
+    setPalabras(palabrasMezcladas)
+    toast.success("Palabras mezcladas")
+  }
+
+  const palabrasNormales = palabras.filter(p => p.tipo === 'normal')
+  const palabrasDistractoras = palabras.filter(p => p.tipo === 'distractora')
+  const categoriasUnicas = [...new Set(palabras.map(p => p.categoria).filter(Boolean))]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!pregunta.trim()) {
-      toast.error("Escribe la instrucción")
+    if (!instruccion.trim()) {
+      toast.error("La instrucción es obligatoria")
       return
     }
 
-    if (!oracionCorrecta.trim()) {
-      toast.error("Escribe la oración correcta")
+    if (palabrasNormales.length < 3) {
+      toast.error("Debe haber al menos 3 palabras normales")
       return
     }
 
-    if (palabras.length < 3) {
-      toast.error("La oración debe tener al menos 3 palabras")
-      return
-    }
-
-    // Desordenar palabras para el estudiante
-    const palabrasDesordenadas = [...palabras].sort(() => Math.random() - 0.5)
-
-    const actividad = {
+    const actividad: Actividad = {
       tipo: 'word_order',
-      pregunta: pregunta.trim(),
-      instrucciones: instrucciones.trim() || "Ordena las palabras para formar una oración correcta",
+      pregunta: instruccion.trim(),
+      instrucciones: instrucciones.trim(),
       opciones: {
-        palabras: palabrasDesordenadas
+        palabras: palabrasNormales.map(p => p.texto),
+        palabrasDistractoras: palabrasDistractoras.map(p => p.texto),
+        categorias: categoriasUnicas,
+        estructura: estructura.trim() || undefined,
+        mezclarAutomatico,
+        permiteArrastrar,
+        mostrarNumeros,
+        dificultad
       },
-      respuesta_correcta: palabras,
-      pista: pista.trim(),
-      puntos,
-      orden: actividadEditar?.orden || 0
+      respuesta_correcta: palabrasNormales.map(p => p.texto),
+      retroalimentacion: {
+        correcto: "¡Excelente! Has ordenado la oración correctamente.",
+        incorrecto: "El orden no es correcto. Intenta nuevamente.",
+        explicacion: `La oración correcta es: "${palabrasNormales.map(p => p.texto).join(' ')}"`
+      },
+      pista: pista.trim() || undefined,
+      puntos: puntos,
+      orden: actividadEditar?.orden || 0,
+      tiempo_limite: undefined,
+      multimedia_id: undefined
     }
 
     onGuardar(actividad)
-    toast.success("Actividad guardada")
+    toast.success(actividadEditar ? "Actividad actualizada" : "Actividad creada")
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="pregunta">Instrucción/Contexto *</Label>
-        <Textarea
-          id="pregunta"
-          placeholder="Ej: Ordena las palabras para formar una pregunta en inglés"
-          value={pregunta}
-          onChange={(e) => setPregunta(e.target.value)}
-          rows={2}
-          required
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Previsualización */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Previsualización</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMostrarPrevisualizacion(!mostrarPrevisualizacion)}
+            >
+              {mostrarPrevisualizacion ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {mostrarPrevisualizacion ? "Ocultar" : "Mostrar"}
+            </Button>
+          </div>
+        </CardHeader>
+        {mostrarPrevisualizacion && (
+          <CardContent>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-2">Así verá el estudiante:</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Badge variant={dificultad === "facil" ? "default" : dificultad === "medio" ? "secondary" : "destructive"}>
+                    {dificultad}
+                  </Badge>
+                  <div className="flex gap-1 text-xs text-muted-foreground">
+                    <span>{palabrasNormales.length} palabras</span>
+                    {palabrasDistractoras.length > 0 && (
+                      <span>+ {palabrasDistractoras.length} distractoras</span>
+                    )}
+                  </div>
+                </div>
+                <p className="font-medium">{instruccion || "Instrucción de ejemplo"}</p>
+                <div className="flex flex-wrap gap-2 p-3 bg-background rounded border min-h-[60px]">
+                  {mezclarAutomatico ? (
+                    <div className="text-center text-muted-foreground w-full">
+                      Las palabras aparecerán mezcladas aquí
+                    </div>
+                  ) : (
+                    palabrasNormales.slice(0, 6).map((palabra, i) => (
+                      <Badge key={i} variant="outline" className="text-sm flex items-center gap-1">
+                        {mostrarNumeros && <span className="text-xs">{i + 1}</span>}
+                        {permiteArrastrar && <GripVertical className="h-3 w-3" />}
+                        {palabra.texto}
+                      </Badge>
+                    ))
+                  )}
+                  {palabrasNormales.length > 6 && (
+                    <div className="text-center text-muted-foreground w-full text-xs">
+                      ... y {palabrasNormales.length - 6} palabras más
+                    </div>
+                  )}
+                </div>
+                {permiteArrastrar && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    💡 Arrastra las palabras para ordenarlas
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
-      <div className="space-y-2">
-        <Label htmlFor="instrucciones">Instrucciones adicionales</Label>
-        <Input
-          id="instrucciones"
-          placeholder="Ej: Arrastra las palabras en el orden correcto"
-          value={instrucciones}
-          onChange={(e) => setInstrucciones(e.target.value)}
-        />
-      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Columna Izquierda */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="instruccion">Instrucción/Contexto *</Label>
+            <Textarea
+              id="instruccion"
+              placeholder="Ej: Ordena las palabras para formar una pregunta en inglés"
+              value={instruccion}
+              onChange={(e) => setInstruccion(e.target.value)}
+              rows={2}
+              required
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="oracion">Oración correcta * (mínimo 3 palabras)</Label>
-        <Textarea
-          id="oracion"
-          placeholder="Ej: How are you today"
-          value={oracionCorrecta}
-          onChange={(e) => setOracionCorrecta(e.target.value)}
-          rows={2}
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          💡 Separa las palabras con espacios. Se desordenarán automáticamente.
-        </p>
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="instrucciones">Instrucciones adicionales *</Label>
+            <Textarea
+              id="instrucciones"
+              placeholder="Instrucciones detalladas para el estudiante..."
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={2}
+              required
+            />
+          </div>
 
-      {palabras.length > 0 && (
-        <div className="space-y-2">
-          <Label>Vista previa (orden correcto):</Label>
-          <div className="flex flex-wrap gap-2 p-3 bg-secondary rounded-lg">
-            {palabras.map((palabra, i) => (
-              <Badge key={i} variant="outline" className="text-sm">
-                {i + 1}. {palabra}
-              </Badge>
-            ))}
+          <div className="space-y-2">
+            <Label htmlFor="estructura">Estructura gramatical (Opcional)</Label>
+            <Input
+              id="estructura"
+              placeholder="Ej: Sujeto + Verbo + Objeto, Pregunta WH..."
+              value={estructura}
+              onChange={(e) => setEstructura(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Configuración</Label>
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="mezclar" className="text-sm">Mezclar automáticamente</Label>
+                <Switch
+                  id="mezclar"
+                  checked={mezclarAutomatico}
+                  onCheckedChange={setMezclarAutomatico}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="arrastrar" className="text-sm">Permitir arrastrar</Label>
+                <Switch
+                  id="arrastrar"
+                  checked={permiteArrastrar}
+                  onCheckedChange={setPermiteArrastrar}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="numeros" className="text-sm">Mostrar números</Label>
+                <Switch
+                  id="numeros"
+                  checked={mostrarNumeros}
+                  onCheckedChange={setMostrarNumeros}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dificultad" className="text-sm">Dificultad</Label>
+                <Select value={dificultad} onValueChange={(v: "facil" | "medio" | "dificil") => setDificultad(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="facil">Fácil (3-5 palabras)</SelectItem>
+                    <SelectItem value="medio">Medio (6-8 palabras)</SelectItem>
+                    <SelectItem value="dificil">Difícil (9+ palabras)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </div>
-      )}
 
-      <div className="space-y-2">
-        <Label htmlFor="pista">Pista (Opcional)</Label>
-        <Input
-          id="pista"
-          placeholder="Ej: Recuerda que las preguntas en inglés empiezan con..."
-          value={pista}
-          onChange={(e) => setPista(e.target.value)}
-        />
+        {/* Columna Derecha */}
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>
+                Gestión de Palabras
+                <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
+                  <Badge variant="outline">{palabrasNormales.length} normales</Badge>
+                  {palabrasDistractoras.length > 0 && (
+                    <Badge variant="secondary">{palabrasDistractoras.length} distractoras</Badge>
+                  )}
+                </div>
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={mezclarPalabras}
+                disabled={palabrasNormales.length < 2}
+              >
+                <Shuffle className="h-4 w-4 mr-2" />
+                Mezclar
+              </Button>
+            </div>
+
+            {/* Formulario para agregar nueva palabra */}
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Palabra *</Label>
+                    <Input
+                      placeholder="Nueva palabra..."
+                      value={nuevaPalabra}
+                      onChange={(e) => setNuevaPalabra(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarPalabra())}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Tipo</Label>
+                    <Select value={tipoNuevaPalabra} onValueChange={(v: 'normal' | 'distractora') => setTipoNuevaPalabra(v)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="distractora">Distractora</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs">Categoría (opcional)</Label>
+                  <Input
+                    placeholder="Ej: Verbo, Sustantivo, Adjetivo..."
+                    value={categoriaPalabra}
+                    onChange={(e) => setCategoriaPalabra(e.target.value)}
+                  />
+                </div>
+
+                <Button type="button" onClick={agregarPalabra} className="w-full" variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Palabra
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Lista de palabras */}
+            {palabras.length > 0 && (
+              <div className="space-y-3">
+                <Label>Palabras agregadas:</Label>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {palabras.map((palabra, index) => (
+                    <Card key={palabra.id}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            {permiteArrastrar && (
+                              <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+                            )}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{palabra.texto}</span>
+                                <Badge 
+                                  variant={palabra.tipo === 'normal' ? 'default' : 'secondary'}
+                                  className="text-xs"
+                                >
+                                  {palabra.tipo === 'normal' ? 'Normal' : 'Distractora'}
+                                </Badge>
+                                {palabra.categoria && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {palabra.categoria}
+                                  </Badge>
+                                )}
+                              </div>
+                              {palabra.tipo === 'normal' && (
+                                <div className="text-xs text-muted-foreground">
+                                  Posición: {index + 1}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => eliminarPalabra(palabra.id)}
+                            disabled={palabra.tipo === 'normal' && palabrasNormales.length <= 3}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {palabrasNormales.length > 0 && (
+            <div className="space-y-2">
+              <Label>Vista previa del orden correcto:</Label>
+              <div className="p-3 bg-secondary rounded-lg">
+                <div className="flex flex-wrap gap-2">
+                  {palabrasNormales.map((palabra, i) => (
+                    <Badge key={i} variant="default" className="text-sm">
+                      {i + 1}. {palabra.texto}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-sm mt-2">
+                  <strong>Oración:</strong> {palabrasNormales.map(p => p.texto).join(' ')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="pista">Pista (Opcional)</Label>
+            <Input
+              id="pista"
+              placeholder="Ej: Recuerda que las preguntas en inglés empiezan con..."
+              value={pista}
+              onChange={(e) => setPista(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="puntos">Puntos</Label>
+            <Input
+              id="puntos"
+              type="number"
+              min="1"
+              max="100"
+              value={puntos}
+              onChange={(e) => setPuntos(parseInt(e.target.value) || 10)}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="puntos">Puntos</Label>
-        <Input
-          id="puntos"
-          type="number"
-          min="1"
-          value={puntos}
-          onChange={(e) => setPuntos(parseInt(e.target.value))}
-        />
-      </div>
-
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancelar} className="flex-1">
           <X className="mr-2 h-4 w-4" />
           Cancelar
         </Button>
-        <Button type="submit" className="flex-1" disabled={palabras.length < 3}>
+        <Button type="submit" className="flex-1" disabled={palabrasNormales.length < 3}>
           <Save className="mr-2 h-4 w-4" />
-          Guardar Actividad
+          {actividadEditar ? 'Actualizar' : 'Crear'} Actividad
         </Button>
       </div>
     </form>

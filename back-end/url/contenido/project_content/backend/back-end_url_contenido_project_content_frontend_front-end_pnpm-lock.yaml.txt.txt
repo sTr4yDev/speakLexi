@@ -1,0 +1,15 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_pnpm-lock.yaml.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_pnpm-lock.yaml.txt
+# FECHA DESCARGA: 2025-10-29 18:43:28
+# ==================================================
+
+# ARCHIVO: front-end/pnpm-lock.yaml
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/pnpm-lock.yaml
+# FECHA DESCARGA: 2025-10-28 22:57:15
+# ==================================================
+
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false

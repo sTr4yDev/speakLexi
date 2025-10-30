@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/app/mantenimiento/dashboard/page.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/mantenimiento/dashboard/page.tsx
-# FECHA DESCARGA: 2025-10-28 22:55:00
+# FECHA DESCARGA: 2025-10-29 18:44:03
 # ==================================================
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

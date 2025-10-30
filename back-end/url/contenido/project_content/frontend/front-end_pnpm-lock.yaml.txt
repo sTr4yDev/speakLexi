@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/pnpm-lock.yaml
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/pnpm-lock.yaml
-# FECHA DESCARGA: 2025-10-28 22:57:15
+# FECHA DESCARGA: 2025-10-29 18:46:17
 # ==================================================
 
 lockfileVersion: '9.0'

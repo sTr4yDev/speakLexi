@@ -1,0 +1,10 @@
+# ARCHIVO: back-end/url/contenido/project_content/backend/back-end_config___init__.py.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/backend/back-end_config___init__.py.txt
+# FECHA DESCARGA: 2025-10-29 18:40:11
+# ==================================================
+
+# ARCHIVO: back-end/config/__init__.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/__init__.py
+# FECHA DESCARGA: 2025-10-28 22:54:12
+# ==================================================
+

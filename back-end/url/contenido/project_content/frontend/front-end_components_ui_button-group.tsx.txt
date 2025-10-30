@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/ui/button-group.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/button-group.tsx
-# FECHA DESCARGA: 2025-10-28 22:56:22
+# FECHA DESCARGA: 2025-10-29 18:45:18
 # ==================================================
 
 import { Slot } from '@radix-ui/react-slot'

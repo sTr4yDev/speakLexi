@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/components/auth/verify-email-form.tsx
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/auth/verify-email-form.tsx
-# FECHA DESCARGA: 2025-10-28 22:55:43
+# FECHA DESCARGA: 2025-10-29 18:44:38
 # ==================================================
 
 "use client"

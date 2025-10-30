@@ -1,6 +1,6 @@
 # ARCHIVO: front-end/hooks/use-user-data.ts
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-user-data.ts
-# FECHA DESCARGA: 2025-10-28 22:57:11
+# FECHA DESCARGA: 2025-10-29 18:46:14
 # ==================================================
 
 "use client"

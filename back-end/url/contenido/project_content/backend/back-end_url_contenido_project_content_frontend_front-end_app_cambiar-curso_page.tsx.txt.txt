@@ -1,0 +1,334 @@
+# ARCHIVO: back-end/url/contenido/project_content/frontend/front-end_app_cambiar-curso_page.tsx.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/frontend/front-end_app_cambiar-curso_page.tsx.txt
+# FECHA DESCARGA: 2025-10-29 18:40:58
+# ==================================================
+
+# ARCHIVO: front-end/app/cambiar-curso/page.tsx
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/cambiar-curso/page.tsx
+# FECHA DESCARGA: 2025-10-28 22:54:48
+# ==================================================
+
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { 
+  Globe, 
+  CheckCircle2, 
+  ArrowRight, 
+  Loader2,
+  AlertCircle,
+  ArrowLeft,
+  Languages
+} from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+
+interface Idioma {
+  id: string
+  nombre: string
+  icono: string
+  disponible: boolean
+  descripcion: string
+}
+
+const IDIOMAS_BASE: Idioma[] = [
+  {
+    id: "Inglés",
+    nombre: "Inglés",
+    icono: "🇺🇸",
+    disponible: true,
+    descripcion: "El idioma más hablado del mundo",
+  },
+  {
+    id: "Francés",
+    nombre: "Francés",
+    icono: "🇫🇷",
+    disponible: true,
+    descripcion: "El idioma del amor y la cultura",
+  },
+  {
+    id: "Alemán",
+    nombre: "Alemán",
+    icono: "🇩🇪",
+    disponible: true,
+    descripcion: "El idioma de la precisión",
+  },
+  {
+    id: "Italiano",
+    nombre: "Italiano",
+    icono: "🇮🇹",
+    disponible: true,
+    descripcion: "El idioma de la música",
+  },
+]
+
+export default function CambiarCursoPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
+  const [idiomaActual, setIdiomaActual] = useState("Inglés")
+  const [idiomas] = useState<Idioma[]>(IDIOMAS_BASE)
+  const [selectedIdioma, setSelectedIdioma] = useState<string | null>(null)
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [nivelActual, setNivelActual] = useState("A1")
+  const [xpActual, setXpActual] = useState(0)
+
+  useEffect(() => {
+    cargarPerfil()
+  }, [])
+
+  const cargarPerfil = async () => {
+    try {
+      const userId = localStorage.getItem("userId")
+      if (!userId) {
+        router.push("/login")
+        return
+      }
+
+      const res = await fetch(`http://localhost:5000/api/usuario/perfil/${userId}`)
+      const data = await res.json()
+
+      if (res.ok && data.perfil) {
+        setIdiomaActual(data.perfil.idioma || "Inglés")
+        setNivelActual(data.perfil.nivel_actual || "A1")
+        setXpActual(data.perfil.total_xp || 0)
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo cargar tu perfil.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error al cargar perfil:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo conectar con el servidor.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingData(false)
+    }
+  }
+
+  const handleCambiarIdioma = async () => {
+    if (!selectedIdioma) return
+
+    setLoading(true)
+    try {
+      const userId = localStorage.getItem("userId")
+      const res = await fetch("http://localhost:5000/api/usuario/cambiar-curso", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          usuario_id: parseInt(userId!),
+          idioma: selectedIdioma,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error al cambiar de idioma")
+      }
+
+      // ✅ Actualizar estado local inmediatamente
+      setIdiomaActual(selectedIdioma)
+      setNivelActual(data.nivel_actual || nivelActual)
+
+      // ✅ Actualizar localStorage
+      localStorage.setItem("idioma", selectedIdioma)
+      localStorage.setItem("nivel", data.nivel_actual || nivelActual)
+
+      toast({
+        title: "¡Idioma cambiado! 🎉",
+        description: `Ahora estás aprendiendo ${selectedIdioma}`,
+      })
+
+      // ✅ Redirigir al dashboard después de 1.5 segundos
+      setTimeout(() => {
+        router.push("/dashboard")
+        router.refresh() // Forzar recarga de datos
+      }, 1500)
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+      setShowConfirmation(false)
+    }
+  }
+
+  const handleSelectIdioma = (idiomaId: string) => {
+    const idioma = idiomas.find(i => i.id === idiomaId)
+    
+    if (!idioma?.disponible) {
+      toast({
+        title: "Idioma no disponible",
+        description: "Este idioma estará disponible próximamente",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (idiomaId === idiomaActual) {
+      toast({
+        title: "Idioma actual",
+        description: "Ya estás aprendiendo este idioma",
+      })
+      return
+    }
+
+    setSelectedIdioma(idiomaId)
+    setShowConfirmation(true)
+  }
+
+  if (loadingData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Cargando cursos disponibles...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const idiomaSeleccionadoInfo = idiomas.find(i => i.id === selectedIdioma)
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 py-8">
+      <div className="container max-w-6xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold flex items-center gap-3">
+              <Languages className="h-8 w-8 text-primary" />
+              Cambiar Curso
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Selecciona el idioma que deseas aprender
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => router.push("/perfil")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Volver al perfil
+          </Button>
+        </div>
+
+        {/* Idioma Actual */}
+        <Alert>
+          <Globe className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Idioma actual:</strong> {idiomaActual} — Nivel {nivelActual} ({xpActual} XP)
+          </AlertDescription>
+        </Alert>
+
+        {/* Grid de Idiomas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {idiomas.map((idioma) => (
+            <Card
+              key={idioma.id}
+              className={`cursor-pointer transition-all hover:shadow-lg ${
+                idioma.id === idiomaActual
+                  ? "border-primary ring-2 ring-primary"
+                  : idioma.disponible
+                  ? "hover:border-primary"
+                  : "opacity-60 cursor-not-allowed"
+              }`}
+              onClick={() => handleSelectIdioma(idioma.id)}
+            >
+              <CardHeader className="text-center pb-3">
+                <div className="text-6xl mb-4">{idioma.icono}</div>
+                <CardTitle className="text-2xl">{idioma.nombre}</CardTitle>
+                <CardDescription className="text-sm min-h-[2.5rem]">
+                  {idioma.descripcion}
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="space-y-3">
+                <div className="flex flex-col gap-2">
+                  {idioma.id === idiomaActual && (
+                    <Badge className="w-full justify-center">
+                      <CheckCircle2 className="mr-1 h-3 w-3" />
+                      Cursando actualmente
+                    </Badge>
+                  )}
+                  
+                  {idioma.disponible && idioma.id !== idiomaActual && (
+                    <Badge variant="secondary" className="w-full justify-center">
+                      Disponible
+                    </Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Modal de Confirmación */}
+        {showConfirmation && selectedIdioma && idiomaSeleccionadoInfo && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-md w-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-center">
+                  <AlertCircle className="h-5 w-5 text-orange-500" />
+                  Confirmar Cambio de Curso
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-center">
+                <div className="text-6xl">{idiomaSeleccionadoInfo.icono}</div>
+                <p>
+                  ¿Deseas cambiar a <strong>{selectedIdioma}</strong>?
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Tu progreso en {idiomaActual} se guardará automáticamente.
+                </p>
+
+                <div className="flex gap-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowConfirmation(false)
+                      setSelectedIdioma(null)
+                    }}
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleCambiarIdioma}
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Cambiando...
+                      </>
+                    ) : (
+                      <>
+                        Confirmar
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

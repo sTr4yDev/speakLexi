@@ -1,0 +1,216 @@
+# ARCHIVO: back-end/url/contenido/project_content/backend/back-end_url_urls_completo.txt.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/contenido/project_content/backend/back-end_url_urls_completo.txt.txt
+# FECHA DESCARGA: 2025-10-29 18:40:37
+# ==================================================
+
+# ARCHIVO: back-end/url/urls_completo.txt
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/urls_completo.txt
+# FECHA DESCARGA: 2025-10-28 22:54:37
+# ==================================================
+
+# PROYECTO COMPLETO - SpeakLexi
+# Backend: 28 archivos
+# Frontend: 147 archivos
+# Docs: 9 archivos
+# Total: 184 archivos
+# Generado: 2025-10-28 20:45:16
+
+# ==========================================================
+# BACKEND
+# ==========================================================
+
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/app.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/__init__.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/database.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/config/settings.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/extensions.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/cursos.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/leccion.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/multimedia.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/usuario.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/__init__.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/actividades_routes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/auth.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/curso_routes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/leccion_routes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/multimedia_routes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/usuario_routes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/correo_service.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_cursos.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_lecciones.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_multimedia.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/services/gestor_usuarios.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_password.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/test_routes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/crear_perfiles.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/generar_hashes.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_all_urls_opt.py
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/url/get_front_end.py
+
+# ==========================================================
+# FRONTEND
+# ==========================================================
+
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/dashboard/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/[id]/editar/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/crear/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/loading.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/lecciones/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/usuarios/[id]/editar/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/usuarios/loading.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/admin/usuarios/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/asignar-nivel/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/cambiar-curso/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/clasificacion/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/correo-enviado/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/cuenta-desactivada/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/dashboard/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/eliminar-cuenta/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/globals.css
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/layout.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/lecciones/[id]/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/lecciones/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/login/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/logros/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/mantenimiento/dashboard/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/mantenimiento/reportes/[id]/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/mantenimiento/reportes/loading.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/mantenimiento/reportes/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/mantenimiento/tareas/nueva/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/mantenimiento/tareas/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/perfil/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/dashboard/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/estadisticas/[id]/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/estadisticas/loading.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/estadisticas/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/planificacion/nuevo/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/planificacion/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/profesor/retroalimentacion/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/progreso/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/recuperar-contrasena/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/registro/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/restablecer-contrasena/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/restablecer-contrasena/reset-password-content.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/app/verificar-email/page.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/admin-stats.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/create-lesson-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/media-library-preview.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/quick-admin-actions.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/admin/recent-lessons.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/auth/level-assignment-flow.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/auth/login-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/auth/recover-password-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/auth/register-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/auth/verify-email-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/dashboard/dashboard-header.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/dashboard/progress-overview.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/dashboard/quick-actions.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/dashboard/recent-lessons.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/dashboard/streak-card.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/gamification/achievements-list.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/gamification/leaderboard-filters.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/gamification/leaderboard-table.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/gamification/level-progress.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/gamification/rewards-inventory.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/gamification/user-rank-card.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/abandon-lesson-modal.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/activities/fill-blank-activity.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/activities/listen-repeat-activity.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/activities/matching-activity.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/activities/multiple-choice-activity.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/activities/translation-activity.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/activities/true-false-activity.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/activities/word-order-activity.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/completion-modal.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/lesson-filters.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/lesson-list.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/lessons/lesson-viewer.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/maintenance/create-task-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/profile/profile-settings.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/teacher/create-planning-form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/teacher/quick-teacher-actions.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/teacher/recent-feedback.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/teacher/response-modal.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/teacher/student-performance.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/teacher/teacher-stats.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/theme-provider.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/accordion.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/alert-dialog.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/alert.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/aspect-ratio.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/avatar.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/badge.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/breadcrumb.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/button-group.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/button.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/calendar.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/card.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/carousel.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/chart.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/checkbox.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/collapsible.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/command.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/context-menu.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/dialog.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/drawer.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/dropdown-menu.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/empty.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/field.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/form.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/hover-card.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/input-group.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/input-otp.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/input.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/item.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/kbd.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/label.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/menubar.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/navigation-menu.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/pagination.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/popover.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/progress.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/radio-group.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/resizable.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/scroll-area.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/select.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/separator.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/sheet.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/sidebar.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/skeleton.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/slider.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/sonner.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/spinner.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/switch.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/table.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/tabs.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/textarea.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/toast.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/toaster.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/toggle-group.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/toggle.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/tooltip.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/use-mobile.tsx
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/components/ui/use-toast.ts
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-mobile.ts
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-toast.ts
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/hooks/use-user-data.ts
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/middleware.ts
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/next-env.d.ts
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/front-end/styles/globals.css
+
+# ==========================================================
+# DOCS
+# ==========================================================
+
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/README.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/architecture.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/database.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/errores/bitacoras/ERRORES - 27 OCT 25.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/best-practices.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/naming-conventions.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/requisitos-funcionales.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/lession-creation.md
+https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/workflows/user-registration.md
+
