@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Save, Loader2, Plus, X, Edit, Trash2 } from "lucide-react"
+import { ArrowLeft, Save, Loader2, Plus, X, Edit, Trash2, Upload, Image, Music, Video, FileText } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cursosAPI, leccionesAPI, actividadesAPI } from "@/lib/api"
@@ -48,6 +48,19 @@ interface Actividad {
   multimedia_id?: number
 }
 
+interface ArchivoMultimedia {
+  file: File
+  id: string
+  preview?: string
+}
+
+interface MultimediaSubido {
+  id: number
+  nombre_archivo: string
+  tipo: string
+  url: string
+}
+
 // Definir el tipo para el nivel de la lección
 type NivelLeccion = 'principiante' | 'intermedio' | 'avanzado'
 
@@ -63,6 +76,11 @@ export function CreateLessonForm() {
   const [tipoActividadModal, setTipoActividadModal] = useState<TipoActividad | null>(null)
   const [actividadEditando, setActividadEditando] = useState<Actividad | null>(null)
   const [indiceEditando, setIndiceEditando] = useState<number | null>(null)
+  
+  // Estados para multimedia
+  const [archivosMultimedia, setArchivosMultimedia] = useState<ArchivoMultimedia[]>([])
+  const [subiendoArchivos, setSubiendoArchivos] = useState(false)
+  const [archivosSubidos, setArchivosSubidos] = useState<MultimediaSubido[]>([])
   
   const [formData, setFormData] = useState({
     // Paso 1: Básico + Curso
@@ -107,7 +125,6 @@ export function CreateLessonForm() {
       setLoadingCursos(true)
       console.log('🔄 Cargando cursos...')
       
-      // ✅ USAR cursosAPI.listar() en lugar de fetch directo
       const data = await cursosAPI.listar({ activo: true })
       
       console.log('✅ Cursos recibidos:', data)
@@ -134,6 +151,90 @@ export function CreateLessonForm() {
     return 'avanzado'
   }
 
+  // ========== FUNCIONES MULTIMEDIA ==========
+  
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const nuevosArchivos = Array.from(e.target.files).map(file => ({
+        file,
+        id: Math.random().toString(36).substr(2, 9),
+        preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+      }))
+      setArchivosMultimedia([...archivosMultimedia, ...nuevosArchivos])
+      toast.success(`${nuevosArchivos.length} archivo(s) seleccionado(s)`)
+    }
+  }
+
+  const eliminarArchivo = (id: string) => {
+    setArchivosMultimedia(archivosMultimedia.filter(a => a.id !== id))
+    toast.success("Archivo eliminado")
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
+
+  const getFileIcon = (tipo: string) => {
+    if (tipo.startsWith('image/')) return <Image className="h-5 w-5" />
+    if (tipo.startsWith('audio/')) return <Music className="h-5 w-5" />
+    if (tipo.startsWith('video/')) return <Video className="h-5 w-5" />
+    return <FileText className="h-5 w-5" />
+  }
+
+  const subirArchivosMultimedia = async (leccionId: number) => {
+    if (archivosMultimedia.length === 0) return []
+
+    setSubiendoArchivos(true)
+    const multimediaSubida: MultimediaSubido[] = []
+
+    try {
+      for (const archivoData of archivosMultimedia) {
+        const formData = new FormData()
+        formData.append('archivo', archivoData.file)
+        formData.append('descripcion', `Archivo para lección ${leccionId}`)
+        formData.append('categoria', 'leccion')
+
+        console.log(`📤 Subiendo: ${archivoData.file.name}`)
+
+        // ✅ USAR EL ENDPOINT CORRECTO: /api/multimedia/upload
+        const response = await fetch('http://localhost:5000/api/multimedia/upload', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Error al subir archivo')
+        }
+
+        const data = await response.json()
+        console.log('✅ Archivo subido:', data)
+        
+        multimediaSubida.push(data.multimedia)
+
+        // ✅ ASOCIAR MULTIMEDIA CON LA LECCIÓN
+        await fetch(`http://localhost:5000/api/multimedia/${data.multimedia.id}/asociar-leccion/${leccionId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orden: multimediaSubida.length })
+        })
+      }
+
+      setArchivosSubidos(multimediaSubida)
+      return multimediaSubida.map(m => m.id)
+    } catch (error: any) {
+      console.error('❌ Error subiendo archivos:', error)
+      toast.error('Error al subir archivos: ' + error.message)
+      return []
+    } finally {
+      setSubiendoArchivos(false)
+    }
+  }
+
+  // ========== SUBMIT PRINCIPAL ==========
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -152,7 +253,7 @@ export function CreateLessonForm() {
     try {
       setSaving(true)
       
-      // Preparar datos de la lección
+      // 1. Crear lección
       const leccionData = {
         curso_id: formData.curso_id,
         titulo: formData.titulo,
@@ -170,7 +271,6 @@ export function CreateLessonForm() {
       
       console.log('📤 Enviando lección:', leccionData)
       
-      // ✅ USAR LA API EN LUGAR DE FETCH DIRECTO
       const response = await leccionesAPI.crear(leccionData)
       
       console.log('✅ Lección creada:', response)
@@ -181,7 +281,7 @@ export function CreateLessonForm() {
         throw new Error('No se recibió el ID de la lección creada')
       }
 
-      // Crear actividades una por una
+      // 2. Crear actividades
       console.log(`📤 Creando ${formData.actividades.length} actividades...`)
       
       for (const actividad of formData.actividades) {
@@ -193,8 +293,18 @@ export function CreateLessonForm() {
           toast.error(`Error al crear actividad: ${actError.message}`)
         }
       }
+
+      // 3. Subir archivos multimedia
+      if (archivosMultimedia.length > 0) {
+        console.log(`📤 Subiendo ${archivosMultimedia.length} archivos multimedia...`)
+        const multimediaIds = await subirArchivosMultimedia(leccionId)
+        
+        if (multimediaIds.length > 0) {
+          toast.success(`✅ ${multimediaIds.length} archivo(s) multimedia subido(s)`)
+        }
+      }
       
-      toast.success("✅ Lección creada exitosamente")
+      toast.success("✅ Lección creada exitosamente con todo su contenido")
       router.push(`/admin/lecciones/${leccionId}/editar`)
       
     } catch (error: any) {
@@ -484,7 +594,6 @@ export function CreateLessonForm() {
           </Card>
         )}
 
-        {/* Resto del código se mantiene igual... */}
         {/* PASO 2: Contenido Detallado */}
         {step === 2 && (
           <Card>
@@ -707,36 +816,160 @@ export function CreateLessonForm() {
           </Card>
         )}
 
-        {/* PASO 4: Multimedia */}
+        {/* PASO 4: Multimedia - COMPLETO Y FUNCIONAL */}
         {step === 4 && (
           <Card>
             <CardHeader>
               <CardTitle>Paso 4: Recursos Multimedia 📸🎵 (Opcional)</CardTitle>
-              <CardDescription>Próximamente: subir imágenes, audios o videos</CardDescription>
+              <CardDescription>
+                Sube imágenes, audios o videos para enriquecer tu lección
+              </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6">
-              <div className="text-center p-8 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">
-                  💡 La funcionalidad de multimedia se implementará próximamente
-                </p>
+              {/* Área de subida de archivos */}
+              <div>
+                <Label htmlFor="file-upload" className="block mb-2">
+                  📤 Subir Archivos Multimedia
+                </Label>
+                <div className="flex flex-col gap-4">
+                  <label
+                    htmlFor="file-upload"
+                    className="flex flex-col items-center justify-center w-full h-48 border-3 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition"
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="h-12 w-12 text-gray-400 mb-3" />
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Click para subir</span> o arrastra archivos
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Imágenes (JPG, PNG, GIF), Audio (MP3, WAV), Video (MP4) - Max 50MB
+                      </p>
+                    </div>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      multiple
+                      accept="image/*,audio/*,video/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
+
+              {/* Lista de archivos seleccionados */}
+              {archivosMultimedia.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                    📁 Archivos seleccionados ({archivosMultimedia.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {archivosMultimedia.map((archivoData) => (
+                      <div
+                        key={archivoData.id}
+                        className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200"
+                      >
+                        {archivoData.preview ? (
+                          <img
+                            src={archivoData.preview}
+                            alt={archivoData.file.name}
+                            className="h-12 w-12 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 flex items-center justify-center bg-blue-100 rounded">
+                            {getFileIcon(archivoData.file.type)}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {archivoData.file.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(archivoData.file.size)}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => eliminarArchivo(archivoData.id)}
+                        >
+                          <X className="h-5 w-5 text-red-600" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Archivos ya subidos */}
+              {archivosSubidos.length > 0 && (
+                <div className="space-y-3 pt-4 border-t">
+                  <h3 className="font-semibold text-green-700 flex items-center gap-2">
+                    ✅ Archivos subidos exitosamente ({archivosSubidos.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {archivosSubidos.map((archivo) => (
+                      <div
+                        key={archivo.id}
+                        className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200"
+                      >
+                        <div className="h-10 w-10 flex items-center justify-center bg-green-100 rounded">
+                          {archivo.tipo === 'imagen' && '🖼️'}
+                          {archivo.tipo === 'audio' && '🎵'}
+                          {archivo.tipo === 'video' && '🎥'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {archivo.nombre_archivo}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            ID: {archivo.id}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(archivo.url, '_blank')}
+                        >
+                          👁️ Ver
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Info cuando no hay archivos */}
+              {archivosMultimedia.length === 0 && archivosSubidos.length === 0 && (
+                <div className="text-center p-8 border-2 border-dashed rounded-lg bg-gray-50">
+                  <p className="text-gray-600 mb-2">
+                    💡 Los recursos multimedia son opcionales
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Puedes agregar imágenes, audios o videos para hacer tu lección más atractiva
+                  </p>
+                </div>
+              )}
 
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => setStep(3)}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Anterior
                 </Button>
-                <Button type="submit" className="flex-1" disabled={saving}>
-                  {saving ? (
+                <Button type="submit" className="flex-1" disabled={saving || subiendoArchivos}>
+                  {saving || subiendoArchivos ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creando lección...
+                      {subiendoArchivos ? 'Subiendo archivos...' : 'Creando lección...'}
                     </>
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
                       Crear Lección Completa
+                      {archivosMultimedia.length > 0 && ` (+${archivosMultimedia.length} archivos)`}
                     </>
                   )}
                 </Button>
