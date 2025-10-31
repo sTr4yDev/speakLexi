@@ -1,0 +1,164 @@
+# ARCHIVO: back-end/models/base.py
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/base.py
+# FECHA DESCARGA: 2025-10-30 08:46:24
+# ==================================================
+
+"""
+Modelos base y mixins reutilizables
+Evita duplicación de código en todos los modelos
+"""
+
+from extensions import db
+from datetime import datetime
+from typing import Dict, Any
+
+
+class TimestampMixin:
+    """
+    Mixin para agregar timestamps automáticos a los modelos
+    Uso: class MiModelo(db.Model, TimestampMixin)
+    """
+    creado_en = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )
+    actualizado_en = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+
+class SerializableMixin:
+    """
+    Mixin para convertir modelos a diccionarios fácilmente
+    Incluye método to_dict() base
+    """
+    
+    def to_dict_base(self) -> Dict[str, Any]:
+        """
+        Convierte el modelo a diccionario (campos básicos)
+        Excluye contraseñas y campos sensibles automáticamente
+        """
+        result = {}
+        
+        # Lista de campos a excluir siempre
+        exclude_fields = {'password_hash', 'password', '_sa_instance_state'}
+        
+        for column in self.__table__.columns:
+            field_name = column.name
+            
+            # Saltar campos excluidos
+            if field_name in exclude_fields:
+                continue
+            
+            value = getattr(self, field_name)
+            
+            # Convertir datetime a string ISO
+            if isinstance(value, datetime):
+                result[field_name] = value.isoformat()
+            # Convertir otros objetos a su representación
+            else:
+                result[field_name] = value
+        
+        return result
+
+
+class ModelHelpers:
+    """
+    Métodos de utilidad para modelos
+    """
+    
+    @classmethod
+    def get_by_id(cls, id: int):
+        """
+        Obtiene un registro por ID
+        
+        Args:
+            id: ID del registro
+            
+        Returns:
+            Instancia del modelo o None
+        """
+        return cls.query.get(id)
+    
+    @classmethod
+    def get_or_404(cls, id: int):
+        """
+        Obtiene un registro por ID o lanza 404
+        
+        Args:
+            id: ID del registro
+            
+        Returns:
+            Instancia del modelo
+            
+        Raises:
+            404: Si no se encuentra
+        """
+        return cls.query.get_or_404(id)
+    
+    @classmethod
+    def exists(cls, id: int) -> bool:
+        """
+        Verifica si existe un registro con ese ID
+        
+        Args:
+            id: ID a verificar
+            
+        Returns:
+            True si existe
+        """
+        return db.session.query(
+            cls.query.filter_by(id=id).exists()
+        ).scalar()
+    
+    def save(self):
+        """
+        Guarda el modelo en la base de datos
+        Maneja errores automáticamente
+        """
+        try:
+            db.session.add(self)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error al guardar {self.__class__.__name__}: {str(e)}")
+            return False
+    
+    def delete(self):
+        """
+        Elimina el modelo de la base de datos
+        """
+        try:
+            db.session.delete(self)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error al eliminar {self.__class__.__name__}: {str(e)}")
+            return False
+    
+    def update(self, **kwargs):
+        """
+        Actualiza múltiples campos del modelo
+        
+        Args:
+            **kwargs: Campos a actualizar
+            
+        Example:
+            usuario.update(nombre="Juan", email="juan@example.com")
+        """
+        try:
+            for key, value in kwargs.items():
+                if hasattr(self, key):
+                    setattr(self, key, value)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error al actualizar {self.__class__.__name__}: {str(e)}")
+            return False

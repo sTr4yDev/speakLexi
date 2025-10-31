@@ -7,14 +7,68 @@ from models.usuario import Usuario, PerfilUsuario, PerfilEstudiante, PerfilProfe
 usuario_bp = Blueprint("usuario_bp", __name__, url_prefix="/api/usuario")
 
 # ========================================
-# ACTUALIZAR NIVEL (SOLO PARA ESTUDIANTES)
+# 🆕 ACTUALIZAR NIVEL - ONBOARDING (SIN JWT)
 # ========================================
 @usuario_bp.route("/actualizar-nivel", methods=["PATCH"])
-@jwt_required()  # Protegida - usar JWT
-def actualizar_nivel():
+def actualizar_nivel_onboarding():
     """
-    Endpoint que actualiza el nivel del estudiante
-    tras completar el test o elegir manualmente.
+    Endpoint especial para actualizar nivel durante el proceso de registro.
+    No requiere JWT, pero sí correo del usuario.
+    Solo funciona si el usuario NO ha iniciado sesión aún.
+    """
+    try:
+        data = request.get_json()
+        correo = data.get("correo")
+        nuevo_nivel = data.get("nivel")
+
+        if not correo or not nuevo_nivel:
+            return jsonify({"error": "Correo y nivel son requeridos"}), 400
+
+        # Buscar usuario por correo
+        usuario = Usuario.query.filter_by(correo=correo).first()
+        if not usuario:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+        
+        # Verificar que sea estudiante
+        if usuario.rol != 'alumno':
+            return jsonify({"error": "Solo los estudiantes pueden actualizar su nivel"}), 403
+
+        # Verificar que el correo esté verificado
+        if not usuario.correo_verificado:
+            return jsonify({
+                "error": "Debes verificar tu correo antes de asignar un nivel"
+            }), 403
+
+        # Buscar perfil de estudiante
+        perfil_estudiante = PerfilEstudiante.query.filter_by(usuario_id=usuario.id).first()
+        if not perfil_estudiante:
+            return jsonify({"error": "Perfil de estudiante no encontrado"}), 404
+
+        # Actualizar nivel
+        perfil_estudiante.nivel_actual = nuevo_nivel
+        db.session.commit()
+        
+        return jsonify({
+            "mensaje": f"Nivel actualizado correctamente a {nuevo_nivel}",
+            "nivel": nuevo_nivel,
+            "usuario_id": usuario.id
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error al actualizar nivel (onboarding): {e}")
+        return jsonify({"error": "Error al guardar cambios en la base de datos"}), 500
+
+
+# ========================================
+# ACTUALIZAR NIVEL (CON JWT - Para usuarios logueados)
+# ========================================
+@usuario_bp.route("/actualizar-nivel-autenticado", methods=["PATCH"])
+@jwt_required()
+def actualizar_nivel_autenticado():
+    """
+    Endpoint que actualiza el nivel del estudiante cuando ya está logueado.
+    Requiere JWT.
     """
     try:
         identity = get_jwt_identity()

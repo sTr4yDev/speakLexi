@@ -11,16 +11,36 @@ import secrets
 
 class GestorUsuarios:
     # ========================================
-    # REGISTRO Y VERIFICACIÓN
+    # REGISTRO Y VERIFICACIÓN (ACTUALIZADO)
     # ========================================
-    def registrar_usuario(self, nombre, primer_apellido, segundo_apellido, correo, password, idioma, nivel_actual):
+    def registrar_usuario(self, nombre, primer_apellido, segundo_apellido, correo, password, idioma=None, nivel_actual=None, rol='alumno', datos_perfil=None):
         """
-        Registra un nuevo usuario ESTUDIANTE.
-        Crea: Usuario (rol='alumno') + PerfilUsuario (base) + PerfilEstudiante (específico)
+        Registra un nuevo usuario con soporte para múltiples roles.
+        Crea: Usuario (rol especificado) + PerfilUsuario (base) + Perfil específico según rol
+        
+        Args:
+            nombre: Nombre del usuario
+            primer_apellido: Primer apellido
+            segundo_apellido: Segundo apellido (opcional)
+            correo: Email del usuario
+            password: Contraseña
+            idioma: Idioma de aprendizaje (para estudiantes, opcional para otros roles)
+            nivel_actual: Nivel actual (para estudiantes, opcional para otros roles)
+            rol: Rol del usuario ('alumno', 'profesor', 'admin', 'mantenimiento'). Default: 'alumno'
+            datos_perfil: Dict con datos adicionales según el rol
         """
         # Evitar duplicados por correo
         if Usuario.query.filter_by(correo=correo).first():
             return {"error": "El correo electrónico ya está registrado."}, 400
+
+        # Validar rol
+        roles_validos = ['alumno', 'estudiante', 'profesor', 'admin', 'mantenimiento']
+        if rol not in roles_validos:
+            rol = 'alumno'  # Default fallback
+        
+        # Normalizar rol (estudiante -> alumno)
+        if rol == 'estudiante':
+            rol = 'alumno'
 
         try:
             # 1. Crear usuario principal
@@ -29,13 +49,13 @@ class GestorUsuarios:
                 primer_apellido=primer_apellido,
                 segundo_apellido=segundo_apellido,
                 correo=correo,
-                rol='alumno'  # Siempre alumno en registro público
+                rol=rol
             )
             nuevo_usuario.set_password(password)
 
             # Generar ID público único
             nuevo_usuario.id_publico = self.generar_id_publico(
-                nombre, primer_apellido, segundo_apellido, idioma, nivel_actual
+                nombre, primer_apellido, segundo_apellido, idioma, nivel_actual, rol
             )
 
             # Crear código de verificación (válido por 10 minutos)
@@ -55,21 +75,53 @@ class GestorUsuarios:
             )
             db.session.add(nuevo_perfil_base)
 
-            # 3. Crear perfil específico de ESTUDIANTE
-            nuevo_perfil_estudiante = PerfilEstudiante(
-                usuario_id=nuevo_usuario.id,
-                nivel_actual=nivel_actual,
-                idioma_aprendizaje=idioma,
-                total_xp=0,
-                nivel_usuario=1,
-                dias_racha=0,
-                racha_maxima=0,
-                lecciones_completadas=0,
-                tiempo_estudio_total=0,
-                meta_diaria=30,
-                notificaciones_habilitadas=True
-            )
-            db.session.add(nuevo_perfil_estudiante)
+            # 3. Crear perfil específico según el rol
+            if rol == 'alumno':
+                # Perfil de ESTUDIANTE
+                perfil_data = datos_perfil or {}
+                nuevo_perfil_estudiante = PerfilEstudiante(
+                    usuario_id=nuevo_usuario.id,
+                    nivel_actual=nivel_actual,
+                    idioma_aprendizaje=perfil_data.get('idioma_aprendizaje', idioma),
+                    total_xp=perfil_data.get('total_xp', 0),
+                    nivel_usuario=perfil_data.get('nivel_usuario', 1),
+                    dias_racha=perfil_data.get('dias_racha', 0),
+                    racha_maxima=perfil_data.get('racha_maxima', 0),
+                    lecciones_completadas=perfil_data.get('lecciones_completadas', 0),
+                    tiempo_estudio_total=perfil_data.get('tiempo_estudio_total', 0),
+                    meta_diaria=perfil_data.get('meta_diaria', 30),
+                    notificaciones_habilitadas=perfil_data.get('notificaciones_habilitadas', True)
+                )
+                db.session.add(nuevo_perfil_estudiante)
+                
+            elif rol == 'profesor':
+                # Perfil de PROFESOR
+                perfil_data = datos_perfil or {}
+                nuevo_perfil_profesor = PerfilProfesor(
+                    usuario_id=nuevo_usuario.id,
+                    especialidad=perfil_data.get('especialidad', 'General'),
+                    años_experiencia=perfil_data.get('años_experiencia', 0),
+                    certificaciones=perfil_data.get('certificaciones', []),
+                    idiomas_enseña=perfil_data.get('idiomas_enseña', [idioma] if idioma else []),
+                    estudiantes_totales=0,
+                    cursos_creados=0,
+                    calificacion_promedio=0.0,
+                    biografia_profesional=perfil_data.get('biografia_profesional', '')
+                )
+                db.session.add(nuevo_perfil_profesor)
+                
+            elif rol in ('admin', 'mantenimiento'):
+                # Perfil de ADMINISTRADOR
+                perfil_data = datos_perfil or {}
+                nivel_acceso = 'super_admin' if rol == 'admin' else 'mantenimiento'
+                nuevo_perfil_admin = PerfilAdministrador(
+                    usuario_id=nuevo_usuario.id,
+                    nivel_acceso=nivel_acceso,
+                    departamento=perfil_data.get('departamento', 'Operaciones'),
+                    permisos=perfil_data.get('permisos', {}),
+                    fecha_nombramiento=datetime.utcnow()
+                )
+                db.session.add(nuevo_perfil_admin)
 
             # Guardar todo en BD
             db.session.commit()
@@ -77,7 +129,7 @@ class GestorUsuarios:
             # Enviar correo de verificación
             try:
                 enviar_codigo_verificacion(correo, codigo)
-                print(f"✅ Correo de verificación enviado a {correo}")
+                print(f"✅ Correo de verificación enviado a {correo} (rol: {rol})")
             except Exception as e:
                 print(f"⚠️ Error al enviar correo de verificación a {correo}: {e}")
                 # No fallar el registro si el correo no se envía
@@ -85,7 +137,8 @@ class GestorUsuarios:
             return {
                 "mensaje": "Usuario registrado correctamente. Código de verificación enviado.",
                 "id_publico": nuevo_usuario.id_publico,
-                "usuario_id": nuevo_usuario.id
+                "usuario_id": nuevo_usuario.id,
+                "rol": rol
             }, 201
 
         except IntegrityError as e:
@@ -95,7 +148,9 @@ class GestorUsuarios:
         except Exception as e:
             db.session.rollback()
             print(f"❌ Error interno al registrar usuario {correo}: {str(e)}")
-            return {"error": "Error interno del servidor"}, 500
+            import traceback
+            traceback.print_exc()
+            return {"error": f"Error interno del servidor: {str(e)}"}, 500
 
     def verificar_correo(self, correo, codigo):
         """Verifica el correo electrónico con el código de 6 dígitos"""
@@ -509,25 +564,48 @@ class GestorUsuarios:
             return {"error": "Error al guardar la nueva contraseña"}, 500
 
     # ========================================
-    # UTILIDAD INTERNA
+    # UTILIDAD INTERNA (ACTUALIZADO)
     # ========================================
-    def generar_id_publico(self, nombre, primer_apellido, segundo_apellido, idioma, nivel):
+    def generar_id_publico(self, nombre, primer_apellido, segundo_apellido, idioma, nivel, rol='alumno'):
         """
-        Genera un ID público único y legible.
-        Formato: YY+IDIOMA(3)+INICIALES(3)+NIVEL(2)
-        Ejemplo: 25INGPRAA1
+        Genera un ID público único y legible según el rol.
+        Formato: YY+ROL(1)+IDIOMA(3)+INICIALES(3)+NIVEL(2)
+        Ejemplos: 
+          - Estudiante: 25EINGPRAA1
+          - Profesor: 25PPROPRAA00
+          - Admin: 25AADMPRAA00
         """
         año = str(datetime.now().year)[-2:]
-        idioma_codigo = idioma[:3].upper() if idioma else "XXX"
         
+        # Código de rol (1 caracter)
+        codigo_rol = {
+            'alumno': 'E',
+            'profesor': 'P', 
+            'admin': 'A',
+            'mantenimiento': 'M'
+        }.get(rol, 'U')  # U para desconocido
+        
+        # Código de idioma según rol
+        if rol == 'alumno':
+            idioma_codigo = idioma[:3].upper() if idioma else "XXX"
+        elif rol == 'profesor':
+            idioma_codigo = "PRO"
+        else:  # admin, mantenimiento
+            idioma_codigo = "ADM" if rol == 'admin' else "MNT"
+        
+        # Iniciales (apellido1 + apellido2 + nombre)
         i1 = primer_apellido[0].upper() if primer_apellido else ""
         i2 = segundo_apellido[0].upper() if segundo_apellido else ""
         i3 = nombre[0].upper() if nombre else ""
         iniciales = f"{i1}{i2}{i3}"[:3].ljust(3, 'X')
 
-        nivel_codigo = nivel.upper() if nivel else "XX"
+        # Código de nivel según rol
+        if rol == 'alumno':
+            nivel_codigo = nivel.upper() if nivel else "XX"
+        else:
+            nivel_codigo = "00"
 
-        base_id = f"{año}{idioma_codigo}{iniciales}{nivel_codigo}"
+        base_id = f"{año}{codigo_rol}{idioma_codigo}{iniciales}{nivel_codigo}"
         
         # Manejo de colisiones
         contador = 0

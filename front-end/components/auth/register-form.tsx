@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Eye, EyeOff, Loader2, Shield } from "lucide-react"
+import { authAPI } from "@/lib/api" // 👈 Importar la API correcta
 
 export function RegisterForm() {
   const router = useRouter()
@@ -22,7 +23,7 @@ export function RegisterForm() {
     confirmPassword: "",
     idioma: "",
     nivel: "",
-    rol: "estudiante", // 👈 nuevo campo por defecto
+    rol: "estudiante",
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,26 +51,25 @@ export function RegisterForm() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre: formData.nombre,
-          primer_apellido: formData.primerApellido,
-          segundo_apellido: formData.segundoApellido,
-          correo: formData.correo,
-          password: formData.password,
-          idioma: formData.idioma,
-          nivel_actual: formData.nivel,
-          rol: formData.rol, // 👈 se envía el rol temporal
-        }),
+      // ✅ Usar authAPI.registro en lugar de fetch directo
+      const data = await authAPI.registro({
+        nombre: formData.nombre,
+        primer_apellido: formData.primerApellido,
+        segundo_apellido: formData.segundoApellido,
+        correo: formData.correo,
+        password: formData.password,
+        idioma: formData.idioma,
+        nivel_actual: formData.nivel,
+        // Nota: el backend no acepta 'rol' en registro
+        // El rol se asigna automáticamente como 'estudiante'
       })
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Error al registrar usuario")
-
-      localStorage.setItem("correo", formData.correo)
-      localStorage.setItem("idioma", formData.idioma)
+      // ⚠️ IMPORTANTE: No usar localStorage en producción de Claude
+      // Para desarrollo local está bien
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("correo", formData.correo)
+        localStorage.setItem("idioma", formData.idioma)
+      }
 
       toast({
         title: "Cuenta creada exitosamente",
@@ -83,7 +83,7 @@ export function RegisterForm() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Error al crear la cuenta",
         variant: "destructive",
       })
     } finally {
@@ -210,6 +210,28 @@ export function RegisterForm() {
           <option value="francés">Francés</option>
           <option value="alemán">Alemán</option>
           <option value="italiano">Italiano</option>
+        </select>
+      </div>
+
+      {/* Nivel */}
+      <div className="space-y-2">
+        <Label htmlFor="nivel">Nivel actual</Label>
+        <select
+          id="nivel"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          value={formData.nivel}
+          onChange={(e) =>
+            setFormData({ ...formData, nivel: e.target.value })
+          }
+          required
+        >
+          <option value="">Selecciona tu nivel</option>
+          <option value="A1">A1 - Principiante</option>
+          <option value="A2">A2 - Elemental</option>
+          <option value="B1">B1 - Intermedio</option>
+          <option value="B2">B2 - Intermedio Alto</option>
+          <option value="C1">C1 - Avanzado</option>
+          <option value="C2">C2 - Maestría</option>
         </select>
       </div>
 

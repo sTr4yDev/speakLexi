@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/models/multimedia.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/multimedia.py
-# FECHA DESCARGA: 2025-10-29 18:39:49
+# FECHA DESCARGA: 2025-10-30 08:46:26
 # ==================================================
 
 # multimedia.py

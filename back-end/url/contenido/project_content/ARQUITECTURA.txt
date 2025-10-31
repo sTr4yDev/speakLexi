@@ -1,0 +1,120 @@
+# ARQUITECTURA DEL PROYECTO - SpeakLexi
+# Generado: 2025-10-30 08:56:05
+
+## RESUMEN DE COMPONENTES
+- Backend: 480 archivos
+- Frontend: 170 archivos
+
+## CONEXIONES BACKEND-FRONTEND
+
+### ENDPOINTS DEL BACKEND
+- **back-end/routes/__init__.py**
+- **back-end/routes/actividades_routes.py**
+- **back-end/routes/auth.py**
+- **back-end/routes/curso_routes.py**
+- **back-end/routes/leccion_routes.py**
+- **back-end/routes/multimedia_routes.py**
+- **back-end/routes/usuario_routes.py**
+- **back-end/test_routes.py**
+- **back-end/url/contenido/project_content/backend/back-end_routes___init__.py.txt**
+- **back-end/url/contenido/project_content/backend/back-end_routes_actividades_routes.py.txt**
+- **back-end/url/contenido/project_content/backend/back-end_routes_auth.py.txt**
+- **back-end/url/contenido/project_content/backend/back-end_routes_curso_routes.py.txt**
+- **back-end/url/contenido/project_content/backend/back-end_routes_leccion_routes.py.txt**
+- **back-end/url/contenido/project_content/backend/back-end_routes_multimedia_routes.py.txt**
+- **back-end/url/contenido/project_content/backend/back-end_routes_usuario_routes.py.txt**
+- **back-end/url/contenido/project_content/backend/back-end_test_routes.py.txt**
+- **back-end/url/contenido/project_content/backend/back-end_url_contenido_project_content_backend_back-end_routes___init__.py.txt.txt**
+- **back-end/url/contenido/project_content/backend/back-end_url_contenido_project_content_backend_back-end_routes_actividades_routes.py.txt.txt**
+- **back-end/url/contenido/project_content/backend/back-end_url_contenido_project_content_backend_back-end_routes_auth.py.txt.txt**
+- **back-end/url/contenido/project_content/backend/back-end_url_contenido_project_content_backend_back-end_routes_curso_routes.py.txt.txt**
+- **back-end/url/contenido/project_content/backend/back-end_url_contenido_project_content_backend_back-end_routes_leccion_routes.py.txt.txt**
+- **back-end/url/contenido/project_content/backend/back-end_url_contenido_project_content_backend_back-end_routes_multimedia_routes.py.txt.txt**
+- **back-end/url/contenido/project_content/backend/back-end_url_contenido_project_content_backend_back-end_routes_usuario_routes.py.txt.txt**
+- **back-end/url/contenido/project_content/backend/back-end_url_contenido_project_content_backend_back-end_test_routes.py.txt.txt**
+
+## ESTRUCTURA DE CARPETAS
+### BACKEND
+- `back-end/`
+- `back-end/config/`
+- `back-end/models/`
+- `back-end/routes/`
+- `back-end/services/`
+- `back-end/url/`
+- `back-end/url/contenido/`
+- `back-end/url/contenido/project_content/`
+- `back-end/url/contenido/project_content/backend/`
+- `back-end/url/contenido/project_content/docs/`
+- `back-end/url/contenido/project_content/frontend/`
+- `back-end/url/contenido/project_content/other/`
+- `back-end/utils/`
+
+### FRONTEND
+- `docs/guidelines/`
+- `front-end/`
+- `front-end/app/`
+- `front-end/app/admin/dashboard/`
+- `front-end/app/admin/lecciones/`
+- `front-end/app/admin/lecciones/[id]/editar/`
+- `front-end/app/admin/lecciones/crear/`
+- `front-end/app/admin/usuarios/`
+- `front-end/app/admin/usuarios/[id]/editar/`
+- `front-end/app/asignar-nivel/`
+- `front-end/app/cambiar-curso/`
+- `front-end/app/clasificacion/`
+- `front-end/app/correo-enviado/`
+- `front-end/app/cuenta-desactivada/`
+- `front-end/app/dashboard/`
+- `front-end/app/eliminar-cuenta/`
+- `front-end/app/lecciones/`
+- `front-end/app/lecciones/[id]/`
+- `front-end/app/login/`
+- `front-end/app/logros/`
+- `front-end/app/mantenimiento/dashboard/`
+- `front-end/app/mantenimiento/reportes/`
+- `front-end/app/mantenimiento/reportes/[id]/`
+- `front-end/app/mantenimiento/tareas/`
+- `front-end/app/mantenimiento/tareas/nueva/`
+- `front-end/app/perfil/`
+- `front-end/app/profesor/dashboard/`
+- `front-end/app/profesor/estadisticas/`
+- `front-end/app/profesor/estadisticas/[id]/`
+- `front-end/app/profesor/planificacion/`
+- `front-end/app/profesor/planificacion/nuevo/`
+- `front-end/app/profesor/retroalimentacion/`
+- `front-end/app/progreso/`
+- `front-end/app/recuperar-contrasena/`
+- `front-end/app/registro/`
+- `front-end/app/restablecer-contrasena/`
+- `front-end/app/verificar-email/`
+- `front-end/components/`
+- `front-end/components/admin/`
+- `front-end/components/admin/activity-forms/`
+- `front-end/components/auth/`
+- `front-end/components/dashboard/`
+- `front-end/components/gamification/`
+- `front-end/components/lessons/`
+- `front-end/components/lessons/activities/`
+- `front-end/components/maintenance/`
+- `front-end/components/profile/`
+- `front-end/components/teacher/`
+- `front-end/components/ui/`
+- `front-end/docs/`
+- `front-end/hooks/`
+- `front-end/scripts/`
+- `front-end/styles/`
+
+## FLUJO DE DATOS
+```
+Frontend → API Calls → Backend Endpoints → Database/External Services
+Backend → Responses → Frontend Components → User Interface
+```
+
+## TECNOLOGÍAS IDENTIFICADAS
+### BACKEND
+- Python
+
+### FRONTEND
+- CSS/SCSS
+- React
+- TypeScript

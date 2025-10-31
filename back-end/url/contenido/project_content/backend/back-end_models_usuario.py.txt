@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/models/usuario.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/usuario.py
-# FECHA DESCARGA: 2025-10-29 18:39:50
+# FECHA DESCARGA: 2025-10-30 08:46:26
 # ==================================================
 
 from config.database import db

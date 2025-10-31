@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { BookOpen, Brain, CheckCircle2, Loader2 } from "lucide-react"
+import { userAPI } from "@/lib/api"
 
 type Step = "choice" | "evaluation" | "manual" | "results"
 
@@ -41,27 +42,11 @@ export function LevelAssignmentFlow() {
   const [isLoading, setIsLoading] = useState(false)
   const [calculatedLevel, setCalculatedLevel] = useState<string>("")
   const [idioma, setIdioma] = useState<string>("")
-  const [rol, setRol] = useState<string>("")
 
-  // 🔹 Obtenemos datos desde localStorage
   useEffect(() => {
     const storedIdioma = localStorage.getItem("idioma")
-    const storedRol = localStorage.getItem("rol")
     if (storedIdioma) setIdioma(storedIdioma)
-    if (storedRol) setRol(storedRol)
   }, [])
-
-  // 🚫 Bloqueo para roles no permitidos
-  useEffect(() => {
-    if (rol === "admin" || rol === "profesor" || rol === "mantenimiento") {
-      toast({
-        title: "Acceso restringido",
-        description: "Esta página solo está disponible para estudiantes.",
-        variant: "destructive",
-      })
-      router.push("/dashboard")
-    }
-  }, [rol, router, toast])
 
   const handleStartEvaluation = () => {
     if (idioma.toLowerCase() !== "inglés") {
@@ -109,7 +94,7 @@ export function LevelAssignmentFlow() {
     if (!correo) {
       toast({
         title: "Error",
-        description: "No se encontró el correo del usuario. Por favor inicia sesión o regístrate nuevamente.",
+        description: "No se encontró el correo del usuario.",
         variant: "destructive",
       })
       setIsLoading(false)
@@ -117,29 +102,24 @@ export function LevelAssignmentFlow() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/usuario/actualizar-nivel", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correo, nivel }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Error al actualizar nivel")
+      // ✅ Usar userAPI en lugar de fetch directo
+      await userAPI.updateNivel(correo, nivel)
 
       toast({
         title: "Nivel asignado exitosamente",
-        description: `Tu nivel es ${nivel}`,
+        description: `Tu nivel es ${nivel}. Por favor inicia sesión para continuar.`,
       })
 
+      // Limpiar localStorage
       localStorage.removeItem("correo")
       localStorage.removeItem("idioma")
-      localStorage.removeItem("rol")
 
-      router.push("/dashboard")
+      // Redirigir a login
+      router.push("/login")
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.message,
+        description: err.message || "Error al actualizar nivel",
         variant: "destructive",
       })
     } finally {
@@ -263,7 +243,14 @@ export function LevelAssignmentFlow() {
         </div>
 
         <Button onClick={handleConfirmEvaluationLevel} disabled={isLoading} className="w-full">
-          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirmar y Continuar"}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Asignando nivel...
+            </>
+          ) : (
+            "Confirmar y Continuar"
+          )}
         </Button>
       </Card>
     )
@@ -278,9 +265,9 @@ export function LevelAssignmentFlow() {
             <button
               key={level.id}
               onClick={() => handleLevelSelect(level.id)}
-              className={`rounded-xl border-2 p-4 text-left ${
+              className={`rounded-xl border-2 p-4 text-left transition-all ${
                 selectedLevel === level.id
-                  ? "border-primary bg-primary/5"
+                  ? "border-primary bg-primary/5 shadow-md"
                   : "border-border hover:border-primary/50 hover:bg-primary/5"
               }`}
             >
@@ -288,9 +275,11 @@ export function LevelAssignmentFlow() {
                 <div>
                   <span className="text-lg font-bold mr-2">{level.id}</span>
                   <span className="font-semibold">{level.name}</span>
-                  <p className="text-sm text-muted-foreground">{level.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{level.description}</p>
                 </div>
-                {selectedLevel === level.id && <CheckCircle2 className="h-6 w-6 text-primary" />}
+                {selectedLevel === level.id && (
+                  <CheckCircle2 className="h-6 w-6 text-primary flex-shrink-0" />
+                )}
               </div>
             </button>
           ))}
@@ -301,11 +290,21 @@ export function LevelAssignmentFlow() {
           className="w-full"
           disabled={!selectedLevel || isLoading}
         >
-          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirmar Nivel"}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Asignando nivel...
+            </>
+          ) : (
+            "Confirmar Nivel"
+          )}
         </Button>
 
         <div className="mt-4 text-center">
-          <button onClick={() => setStep("choice")} className="text-sm text-primary hover:underline">
+          <button
+            onClick={() => setStep("choice")}
+            className="text-sm text-primary hover:underline"
+          >
             Volver atrás
           </button>
         </div>

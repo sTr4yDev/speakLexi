@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/models/leccion.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/models/leccion.py
-# FECHA DESCARGA: 2025-10-29 18:39:48
+# FECHA DESCARGA: 2025-10-30 08:46:25
 # ==================================================
 
 # back-end/models/leccion.py

@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/requirements.txt
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/requirements.txt
-# FECHA DESCARGA: 2025-10-29 18:39:51
+# FECHA DESCARGA: 2025-10-30 08:46:27
 # ==================================================
 
 # ==========================================================

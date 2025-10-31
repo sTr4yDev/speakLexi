@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/routes/actividades_routes.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/routes/actividades_routes.py
-# FECHA DESCARGA: 2025-10-29 18:39:53
+# FECHA DESCARGA: 2025-10-30 08:46:28
 # ==================================================
 
 # back-end/routes/actividades_routes.py

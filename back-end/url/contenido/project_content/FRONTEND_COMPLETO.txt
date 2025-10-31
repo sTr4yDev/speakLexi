@@ -1,6 +1,1438 @@
 # FRONTEND COMPLETO - SpeakLexi
-# Total archivos: 167
-# Generado: 2025-10-29 18:49:59
+# Total archivos: 170
+# Generado: 2025-10-30 08:54:46
+
+
+================================================================================
+# ARCHIVO: docs/guidelines/best-practices.md
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/best-practices.md
+================================================================================
+
+# 🌟 Mejores Prácticas y Prevención de Errores - SpeakLexi
+
+> **Documento basado en errores reales del proyecto**  
+> Este documento te ayudará a evitar los problemas más comunes que han ocurrido durante el desarrollo.
+
+---
+
+## 🚨 Errores Críticos y Cómo Evitarlos
+
+### 1. **Error: CORS - No 'Access-Control-Allow-Origin' header**
+
+#### ❌ Problema Común
+```python
+# app.py - Configuración incorrecta de CORS
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)  # ❌ Demasiado permisivo o restrictivo
+```
+
+#### ✅ Solución Correcta
+```python
+# app.py - Configuración específica y segura
+from flask_cors import CORS
+
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000"],  # Frontend específico
+        "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True  # Si usas cookies/sesiones
+    }
+})
+```
+
+#### 🔍 Verificación
+```bash
+# Probar desde el navegador
+fetch('http://localhost:5000/api/usuarios', {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+```
+
+---
+
+### 2. **Error: 405 Method Not Allowed**
+
+#### ❌ Problema Común
+```python
+# routes/usuario_routes.py
+@usuario_bp.route('/perfil', methods=['GET'])  # ❌ Solo GET definido
+def actualizar_perfil():  # ❌ Pero el frontend envía POST
+    data = request.get_json()
+    # ...
+```
+
+#### ✅ Solución Correcta
+```python
+# Definir todos los métodos necesarios
+@usuario_bp.route('/perfil', methods=['GET', 'PUT', 'PATCH'])
+def gestionar_perfil():
+    if request.method == 'GET':
+        return obtener_perfil()
+    elif request.method in ['PUT', 'PATCH']:
+        return actualizar_perfil()
+
+# O mejor, separa en rutas diferentes
+@usuario_bp.route('/perfil', methods=['GET'])
+def obtener_perfil():
+    pass
+
+@usuario_bp.route('/perfil', methods=['PUT', 'PATCH'])
+def actualizar_perfil():
+    pass
+```
+
+---
+
+### 3. **Error: AttributeError: 'NoneType' object has no attribute**
+
+#### ❌ Problema Común
+```python
+# services/gestor_usuarios.py
+def obtener_usuario(usuario_id):
+    usuario = db.session.query(Usuario).filter_by(id=usuario_id).first()
+    return usuario.to_dict()  # ❌ Si usuario es None, explota aquí
+```
+
+#### ✅ Solución Correcta
+```python
+def obtener_usuario(usuario_id):
+    usuario = db.session.query(Usuario).filter_by(id=usuario_id).first()
+    
+    if not usuario:
+        raise UsuarioNoEncontradoError(f"Usuario {usuario_id} no existe")
+    
+    return usuario.to_dict()
+
+# En la ruta
+@usuario_bp.route('/<int:usuario_id>', methods=['GET'])
+def get_usuario(usuario_id):
+    try:
+        resultado = gestor_usuarios.obtener_usuario(usuario_id)
+        return jsonify(resultado), 200
+    except UsuarioNoEncontradoError as e:
+        return jsonify({'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'error': 'Error interno'}), 500
+```
+
+---
+
+### 4. **Error: SQLAlchemy - (OperationalError) no such table**
+
+#### ❌ Problema Común
+```python
+# Olvidar ejecutar db.create_all()
+from config.database import db
+from models.usuario import Usuario
+
+# ❌ No se crean las tablas
+usuario = Usuario(nombre="Test")
+db.session.add(usuario)
+db.session.commit()  # ❌ Error: tabla no existe
+```
+
+#### ✅ Solución Correcta
+```python
+# app.py - Asegurar creación de tablas
+def create_app():
+    app = Flask(__name__)
+    db.init_app(app)
+    
+    with app.app_context():
+        try:
+            db.create_all()  # ✅ Crear tablas si no existen
+            print("✅ Tablas creadas correctamente")
+        except Exception as e:
+            print(f"❌ Error al crear tablas: {e}")
+    
+    return app
+```
+
+#### 🔍 Verificación
+```bash
+# Conectarse a MySQL y verificar
+mysql -u root -p
+USE SpeakLexi;
+SHOW TABLES;  # Debe mostrar: usuarios, perfiles_usuario, etc.
+```
+
+---
+
+### 5. **Error: JWT - Token has expired / Invalid token**
+
+#### ❌ Problema Común
+```python
+# Frontend - No manejar tokens expirados
+const response = await fetch('/api/usuarios/perfil', {
+  headers: {
+    'Authorization': `Bearer ${token}`  // ❌ Token expirado
+  }
+});
+// ❌ No hay manejo de error 401
+```
+
+#### ✅ Solución Correcta
+```python
+# Backend - Validar y devolver error claro
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from jwt.exceptions import ExpiredSignatureError
+
+@usuario_bp.route('/perfil', methods=['GET'])
+@jwt_required()
+def obtener_perfil():
+    try:
+        usuario_id = get_jwt_identity()
+        # ...
+    except ExpiredSignatureError:
+        return jsonify({'error': 'Token expirado', 'code': 'TOKEN_EXPIRED'}), 401
+```
+```tsx
+// Frontend - Manejar renovación de token
+async function fetchConAuth(url: string) {
+  const token = localStorage.getItem('token');
+  
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  
+  if (response.status === 401) {
+    const data = await response.json();
+    
+    if (data.code === 'TOKEN_EXPIRED') {
+      // Redirigir a login o renovar token
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+  }
+  
+  return response;
+}
+```
+
+---
+
+### 6. **Error: Contraseñas en Texto Plano**
+
+#### ❌ Problema Común
+```python
+# models/usuario.py - ¡NUNCA HAGAS ESTO!
+class Usuario(db.Model):
+    password = db.Column(db.String(255))  # ❌ Texto plano
+    
+    def verificar_password(self, password):
+        return self.password == password  # ❌ Comparación directa
+```
+
+#### ✅ Solución Correcta
+```python
+# models/usuario.py
+from werkzeug.security import generate_password_hash, check_password_hash
+
+class Usuario(db.Model):
+    password_hash = db.Column(db.String(255))  # ✅ Hash almacenado
+    
+    def set_password(self, password):
+        """Hashea la contraseña antes de guardar"""
+        self.password_hash = generate_password_hash(password)
+    
+    def verificar_password(self, password):
+        """Verifica contraseña contra el hash"""
+        return check_password_hash(self.password_hash, password)
+    
+    def to_dict(self):
+        """NUNCA incluir password_hash en respuestas"""
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'email': self.email
+            # password_hash NO se incluye
+        }
+```
+
+---
+
+### 7. **Error: Validación de Entrada Faltante**
+
+#### ❌ Problema Común
+```python
+# routes/auth.py - Sin validación
+@auth_bp.route('/registro', methods=['POST'])
+def registro():
+    data = request.get_json()
+    
+    # ❌ Asumir que los datos son correctos
+    usuario = Usuario(
+        nombre=data['nombre'],
+        email=data['email']
+    )
+    db.session.add(usuario)
+    db.session.commit()
+```
+
+#### ✅ Solución Correcta
+```python
+# routes/auth.py - Con validación
+from marshmallow import Schema, fields, validate, ValidationError
+
+class RegistroSchema(Schema):
+    nombre = fields.Str(
+        required=True, 
+        validate=validate.Length(min=2, max=100)
+    )
+    email = fields.Email(required=True)
+    password = fields.Str(
+        required=True,
+        validate=validate.Length(min=8, max=128)
+    )
+
+@auth_bp.route('/registro', methods=['POST'])
+def registro():
+    schema = RegistroSchema()
+    
+    try:
+        # Validar datos de entrada
+        data = schema.load(request.get_json())
+    except ValidationError as err:
+        return jsonify({
+            'error': 'Datos inválidos',
+            'detalles': err.messages
+        }), 400
+    
+    # Validaciones de negocio adicionales
+    if gestor_usuarios.email_existe(data['email']):
+        return jsonify({'error': 'Email ya registrado'}), 409
+    
+    # Procesar registro
+    resultado = gestor_usuarios.registrar(data)
+    return jsonify(resultado), 201
+```
+
+---
+
+### 8. **Error: SQL Injection (Aunque SQLAlchemy protege, es importante saberlo)**
+
+#### ❌ Problema Común (Si usaras SQL crudo)
+```python
+# ❌ NUNCA HAGAS ESTO
+email = request.args.get('email')
+query = f"SELECT * FROM usuarios WHERE email = '{email}'"
+resultado = db.session.execute(db.text(query))
+# Vulnerable a: email = "'; DROP TABLE usuarios; --"
+```
+
+#### ✅ Solución Correcta
+```python
+# ✅ Usar ORM de SQLAlchemy (protección automática)
+email = request.args.get('email')
+usuario = Usuario.query.filter_by(email=email).first()
+
+# ✅ O con parámetros si usas SQL crudo
+query = db.text("SELECT * FROM usuarios WHERE email = :email")
+resultado = db.session.execute(query, {'email': email})
+```
+
+---
+
+### 9. **Error: Frontend - No manejar estados de carga**
+
+#### ❌ Problema Común
+```tsx
+// components/auth/LoginForm.tsx
+export function LoginForm() {
+  const handleSubmit = async (e) => {
+    const response = await fetch('/api/auth/login', {...});
+    // ❌ Sin indicador de carga
+    // ❌ El botón puede clickearse múltiples veces
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <Button type="submit">Iniciar Sesión</Button>
+    </form>
+  );
+}
+```
+
+#### ✅ Solución Correcta
+```tsx
+export function LoginForm() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al iniciar sesión');
+      }
+      
+      const result = await response.json();
+      // Manejar éxito
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      {error && <Alert variant="destructive">{error}</Alert>}
+      
+      <Button 
+        type="submit" 
+        disabled={loading}
+      >
+        {loading ? 'Cargando...' : 'Iniciar Sesión'}
+      </Button>
+    </form>
+  );
+}
+```
+
+---
+
+### 10. **Error: Variables de Entorno No Cargadas**
+
+#### ❌ Problema Común
+```python
+# config/settings.py
+import os
+
+# ❌ Sin load_dotenv(), las variables no se cargan
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+```
+
+#### ✅ Solución Correcta
+```python
+# config/settings.py
+import os
+from dotenv import load_dotenv
+
+# ✅ Cargar variables de entorno PRIMERO
+load_dotenv()
+
+# Ahora sí funcionan
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_PORT = os.getenv('DB_PORT', '3306')
+
+# Verificar que se cargaron
+if not os.getenv('DB_PASSWORD'):
+    print("⚠️ WARNING: DB_PASSWORD no está configurada en .env")
+```
+
+---
+
+### 11. **Error: Circular Imports**
+
+#### ❌ Problema Común
+```python
+# models/usuario.py
+from config.database import db
+from services.gestor_usuarios import GestorUsuarios  # ❌
+
+class Usuario(db.Model):
+    def calcular_nivel(self):
+        return GestorUsuarios.calcular_nivel(self)  # ❌ Import circular
+
+# services/gestor_usuarios.py
+from models.usuario import Usuario  # ❌ Importa Usuario
+
+class GestorUsuarios:
+    @staticmethod
+    def calcular_nivel(usuario: Usuario):  # ❌ Usa Usuario
+        pass
+```
+
+#### ✅ Solución Correcta
+```python
+# models/usuario.py - Solo definición del modelo
+from config.database import db
+
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100))
+    # NO incluir lógica de negocio aquí
+
+# services/gestor_usuarios.py - Toda la lógica aquí
+from models.usuario import Usuario  # ✅ Import unidireccional
+
+class GestorUsuarios:
+    @staticmethod
+    def calcular_nivel(usuario: Usuario):
+        # Lógica de negocio
+        return usuario.puntos // 100
+```
+
+---
+
+### 12. **Error: No Cerrar Conexiones de Base de Datos**
+
+#### ❌ Problema Común
+```python
+# services/gestor_usuarios.py
+def obtener_usuarios():
+    usuarios = Usuario.query.all()
+    # ❌ No se cierra la sesión explícitamente
+    return [u.to_dict() for u in usuarios]
+```
+
+#### ✅ Solución Correcta
+```python
+# SQLAlchemy con Flask maneja esto automáticamente
+# Pero si haces consultas manuales:
+
+from contextlib import contextmanager
+
+@contextmanager
+def session_scope():
+    """Proporciona un scope transaccional para operaciones de BD"""
+    session = db.session()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+# Uso
+def operacion_compleja():
+    with session_scope() as session:
+        usuario = Usuario(nombre="Test")
+        session.add(usuario)
+        # Se hace commit automático al salir del with
+```
+
+---
+
+### 13. **Error: No Manejar Errores de Email**
+
+#### ❌ Problema Común
+```python
+# services/correo_service.py
+def enviar_verificacion(email, token):
+    msg = Message(
+        subject="Verificación de cuenta",
+        recipients=[email]
+    )
+    mail.send(msg)  # ❌ Si falla, crashea la app
+```
+
+#### ✅ Solución Correcta
+```python
+def enviar_verificacion(email, token):
+    try:
+        msg = Message(
+            subject="Verificación de cuenta",
+            recipients=[email],
+            body=f"Tu código: {token}"
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"❌ Error enviando email a {email}: {e}")
+        # Registrar en logs
+        logger.error(f"Fallo envío email: {e}")
+        return False
+
+# En el servicio de registro
+def registrar(data):
+    usuario = crear_usuario(data)
+    
+    email_enviado = correo_service.enviar_verificacion(
+        usuario.email, 
+        usuario.token_verificacion
+    )
+    
+    return {
+        'success': True,
+        'usuario_id': usuario.id,
+        'email_enviado': email_enviado,
+        'mensaje': 'Registro exitoso. Revisa tu email.' if email_enviado 
+                   else 'Registro exitoso. Email no pudo enviarse.'
+    }
+```
+
+---
+
+### 14. **Error: Frontend - Dependencias Faltantes en useEffect**
+
+#### ❌ Problema Común
+```tsx
+function UserProfile() {
+  const [user, setUser] = useState(null);
+  const userId = useParams().id;
+  
+  useEffect(() => {
+    fetchUser(userId);  // ❌ userId no está en dependencias
+  }, []);  // ❌ Array vacío
+  
+  // Si userId cambia, no se vuelve a cargar
+}
+```
+
+#### ✅ Solución Correcta
+```tsx
+function UserProfile() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { id: userId } = useParams();
+  
+  useEffect(() => {
+    async function loadUser() {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/usuarios/${userId}`);
+        const data = await response.json();
+        setUser(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    if (userId) {
+      loadUser();
+    }
+  }, [userId]);  // ✅ userId como dependencia
+  
+  if (loading) return <Spinner />;
+  
+  return <div>{user?.nombre}</div>;
+}
+```
+
+---
+
+### 15. **Error: No Validar Roles/Permisos**
+
+#### ❌ Problema Común
+```python
+# routes/admin/usuario_routes.py
+@admin_bp.route('/usuarios/<int:usuario_id>/eliminar', methods=['DELETE'])
+@jwt_required()
+def eliminar_usuario(usuario_id):
+    # ❌ Cualquier usuario autenticado puede eliminar
+    gestor_usuarios.eliminar(usuario_id)
+    return jsonify({'success': True})
+```
+
+#### ✅ Solución Correcta
+```python
+# utils/decorators.py
+from functools import wraps
+from flask_jwt_extended import get_jwt_identity
+from flask import jsonify
+
+def requiere_rol(rol_requerido):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            usuario_id = get_jwt_identity()
+            usuario = Usuario.query.get(usuario_id)
+            
+            if not usuario or usuario.rol != rol_requerido:
+                return jsonify({
+                    'error': 'No autorizado',
+                    'mensaje': f'Se requiere rol: {rol_requerido}'
+                }), 403
+            
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# routes/admin/usuario_routes.py
+from utils.decorators import requiere_rol
+
+@admin_bp.route('/usuarios/<int:usuario_id>/eliminar', methods=['DELETE'])
+@jwt_required()
+@requiere_rol('admin')  # ✅ Solo admins pueden eliminar
+def eliminar_usuario(usuario_id):
+    gestor_usuarios.eliminar(usuario_id)
+    return jsonify({'success': True})
+```
+
+---
+
+## 🛡️ Checklist de Seguridad
+
+Antes de hacer commit, verifica:
+
+- [ ] ✅ No hay contraseñas o tokens hardcodeados
+- [ ] ✅ Todas las rutas sensibles requieren autenticación (`@jwt_required()`)
+- [ ] ✅ Se validan roles/permisos en rutas admin/profesor
+- [ ] ✅ Todas las entradas de usuario se validan (marshmallow)
+- [ ] ✅ Las contraseñas se hashean con `bcrypt` o `werkzeug.security`
+- [ ] ✅ No se exponen datos sensibles en respuestas JSON
+- [ ] ✅ CORS configurado correctamente (no usar `*` en producción)
+- [ ] ✅ Variables de entorno en `.env` (no en el código)
+- [ ] ✅ `.env` está en `.gitignore`
+
+---
+
+## 🧪 Checklist de Testing
+
+- [ ] ✅ Probar con datos inválidos (emails malformados, campos vacíos)
+- [ ] ✅ Probar con tokens expirados
+- [ ] ✅ Probar con usuarios sin permisos
+- [ ] ✅ Probar límites (strings muy largos, números negativos)
+- [ ] ✅ Probar casos edge (usuario no existe, email duplicado)
+
+---
+
+## 📊 Monitoreo y Debugging
+
+### Logging Efectivo
+```python
+# config/logging.py
+import logging
+
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('app.log'),
+            logging.StreamHandler()
+        ]
+    )
+
+# En servicios
+import logging
+logger = logging.getLogger(__name__)
+
+def registrar_usuario(data):
+    logger.info(f"Intentando registrar usuario: {data['email']}")
+    try:
+        # ...
+        logger.info(f"Usuario registrado exitosamente: {usuario.id}")
+    except Exception as e:
+        logger.error(f"Error registrando usuario: {e}", exc_info=True)
+        raise
+```
+
+---
+
+## 🚀 Performance
+
+### Queries N+1
+```python
+# ❌ MAL - Query N+1
+usuarios = Usuario.query.all()
+for usuario in usuarios:
+    print(usuario.perfil.biografia)  # ❌ Query por cada usuario
+
+# ✅ BIEN - Eager loading
+from sqlalchemy.orm import joinedload
+
+usuarios = Usuario.query.options(
+    joinedload(Usuario.perfil)
+).all()
+
+for usuario in usuarios:
+    print(usuario.perfil.biografia)  # ✅ Una sola query
+```
+
+---
+
+## 📝 Documentación
+
+Documenta código complejo:
+```python
+def calcular_nivel_usuario(progreso, tiempo_estudio, racha):
+    """
+    Calcula el nivel del usuario basado en múltiples factores.
+    
+    Args:
+        progreso (int): Lecciones completadas (0-100)
+        tiempo_estudio (int): Minutos totales estudiados
+        racha (int): Días consecutivos de estudio
+    
+    Returns:
+        int: Nivel calculado (1-10)
+    
+    Examples:
+        >>> calcular_nivel_usuario(50, 300, 7)
+        5
+    
+    Notes:
+        - El algoritmo prioriza la constancia (racha) sobre cantidad
+        - Nivel máximo es 10, independiente de los puntos
+    """
+    # Implementación con comentarios explicativos
+    pass
+```
+
+---
+
+**Actualizado:** Octubre 2025  
+**Basado en:** Errores reales del proyecto SpeakLexi  
+**Versión:** 1.0.0
+
+
+================================================================================
+# ARCHIVO: docs/guidelines/naming-conventions.md
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/naming-conventions.md
+================================================================================
+
+# 🏷️ Convenciones de Nombres - SpeakLexi
+
+## 🎯 Principio General
+> **Los nombres deben ser descriptivos, consistentes y en español** (excepto términos técnicos estándar en inglés).
+
+---
+
+## 🐍 Backend (Python/Flask)
+
+### **1. Archivos y Módulos**
+```
+✅ BIEN - snake_case en español
+usuario.py
+gestor_usuarios.py
+correo_service.py
+auth.py (técnico, puede ser inglés)
+leccion.py
+progreso.py
+
+❌ MAL
+Usuario.py          # ❌ PascalCase
+gestorUsuarios.py   # ❌ camelCase
+user.py             # ❌ Inglés inconsistente
+USUARIO.PY          # ❌ MAYÚSCULAS
+```
+
+### **2. Clases (Modelos)**
+```python
+✅ BIEN - PascalCase, sustantivos singulares
+class Usuario:
+    pass
+
+class PerfilUsuario:
+    pass
+
+class Leccion:
+    pass
+
+class ReporteFalla:
+    pass
+
+class TareaMantenimiento:
+    pass
+
+❌ MAL
+class usuario:              # ❌ Minúsculas
+class Usuarios:             # ❌ Plural
+class usuario_model:        # ❌ snake_case
+class User:                 # ❌ Inglés inconsistente
+```
+
+### **3. Funciones y Métodos**
+```python
+✅ BIEN - snake_case, verbos descriptivos
+def registrar_usuario():
+    pass
+
+def enviar_correo_verificacion():
+    pass
+
+def calcular_nivel_usuario():
+    pass
+
+def obtener_lecciones_por_nivel():
+    pass
+
+def validar_credenciales():
+    pass
+
+# Métodos privados con guión bajo inicial
+def _generar_hash_password():
+    pass
+
+def _validar_datos_entrada():
+    pass
+
+❌ MAL
+def RegistrarUsuario():        # ❌ PascalCase
+def registerUser():            # ❌ camelCase + inglés
+def register():                # ❌ No descriptivo
+def reg_usr():                 # ❌ Abreviaciones
+def enviarCorreo():            # ❌ camelCase
+```
+
+### **4. Variables**
+```python
+✅ BIEN - snake_case, descriptivas
+usuario_id = "123"
+email_usuario = "test@example.com"
+datos_registro = {...}
+lista_lecciones = []
+nivel_actual = "principiante"
+fecha_creacion = datetime.now()
+es_activo = True
+tiene_verificacion = False
+
+# Constantes en MAYÚSCULAS
+MAX_INTENTOS_LOGIN = 3
+TIEMPO_EXPIRACION_TOKEN = 3600
+NIVELES_DISPONIBLES = ['principiante', 'intermedio', 'avanzado']
+
+❌ MAL
+id = "123"                  # ❌ Demasiado genérico
+e = "test@example.com"      # ❌ Una letra
+data = {...}                # ❌ Inglés + no descriptivo
+list = []                   # ❌ Palabra reservada
+n = "principiante"          # ❌ Abreviación
+x = True                    # ❌ No descriptivo
+```
+
+### **5. Blueprints (Rutas)**
+```python
+✅ BIEN - sufijo _bp
+from flask import Blueprint
+
+auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+usuario_bp = Blueprint('usuarios', __name__, url_prefix='/api/usuarios')
+leccion_bp = Blueprint('lecciones', __name__, url_prefix='/api/lecciones')
+progreso_bp = Blueprint('progreso', __name__, url_prefix='/api/progreso')
+
+❌ MAL
+authBlueprint               # ❌ camelCase
+usuario_routes              # ❌ Inconsistente con _bp
+bp_auth                     # ❌ Prefijo en lugar de sufijo
+```
+
+### **6. Servicios/Gestores**
+```python
+✅ BIEN - prefijo gestor_ o sufijo _service
+gestor_usuarios.py
+gestor_lecciones.py
+gestor_progreso.py
+correo_service.py
+autenticacion_service.py
+
+# Dentro del archivo
+class GestorUsuarios:
+    def registrar(self, datos):
+        pass
+    
+    def actualizar_perfil(self, usuario_id, datos):
+        pass
+
+❌ MAL
+user_manager.py         # ❌ Inglés
+UsuarioGestor.py       # ❌ PascalCase en archivo
+manager_usuario.py     # ❌ Orden incorrecto
+```
+
+### **7. Rutas/Endpoints**
+```python
+✅ BIEN - kebab-case (guiones), plurales para recursos
+@auth_bp.route('/registro', methods=['POST'])
+@usuario_bp.route('/perfil', methods=['GET'])
+@usuario_bp.route('/cambiar-curso', methods=['PUT'])
+@leccion_bp.route('/', methods=['GET'])  # /api/lecciones
+@leccion_bp.route('/<leccion_id>', methods=['GET'])
+@progreso_bp.route('/racha-actual', methods=['GET'])
+
+❌ MAL
+@auth_bp.route('/Registro')              # ❌ PascalCase
+@usuario_bp.route('/cambiarcurso')       # ❌ Sin separador
+@usuario_bp.route('/cambiar_curso')      # ❌ snake_case
+@leccion_bp.route('/leccion/<id>')       # ❌ Singular inconsistente
+```
+
+---
+
+## 🗄️ Base de Datos (MySQL/SQLAlchemy)
+
+### **1. Nombres de Tablas**
+```python
+✅ BIEN - Plural, snake_case
+__tablename__ = 'usuarios'
+__tablename__ = 'perfiles_usuario'
+__tablename__ = 'lecciones'
+__tablename__ = 'progresos'
+__tablename__ = 'recompensas'
+__tablename__ = 'reportes_falla'
+__tablename__ = 'tareas_mantenimiento'
+
+❌ MAL
+__tablename__ = 'Usuario'           # ❌ Singular + PascalCase
+__tablename__ = 'usuario'           # ❌ Singular
+__tablename__ = 'perfil_usuarios'   # ❌ Inconsistente
+__tablename__ = 'users'             # ❌ Inglés
+```
+
+### **2. Nombres de Columnas**
+```python
+✅ BIEN - snake_case, descriptivas
+id = db.Column(db.Integer, primary_key=True)
+nombre_completo = db.Column(db.String(100))
+email = db.Column(db.String(120), unique=True)
+password_hash = db.Column(db.String(255))
+fecha_registro = db.Column(db.DateTime)
+fecha_nacimiento = db.Column(db.Date)
+es_activo = db.Column(db.Boolean, default=True)
+nivel_actual = db.Column(db.String(50))
+puntos_acumulados = db.Column(db.Integer, default=0)
+
+# Claves foráneas con sufijo _id
+usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
+leccion_id = db.Column(db.Integer, db.ForeignKey('lecciones.id'))
+
+❌ MAL
+Nombre = db.Column(...)              # ❌ PascalCase
+nombreCompleto = db.Column(...)      # ❌ camelCase
+name = db.Column(...)                # ❌ Inglés
+n = db.Column(...)                   # ❌ Abreviación
+created_at = db.Column(...)          # ❌ Inglés (usar fecha_creacion)
+isActive = db.Column(...)            # ❌ camelCase + inglés
+```
+
+### **3. Índices y Constraints**
+```python
+✅ BIEN
+db.Index('idx_usuarios_email', 'email')
+db.Index('idx_lecciones_nivel', 'nivel')
+db.UniqueConstraint('email', name='uq_usuarios_email')
+db.ForeignKeyConstraint(['usuario_id'], ['usuarios.id'], name='fk_progreso_usuario')
+
+❌ MAL
+db.Index('index1', 'email')          # ❌ No descriptivo
+db.Index('email_idx', 'email')       # ❌ Orden incorrecto
+```
+
+### **4. Relaciones SQLAlchemy**
+```python
+✅ BIEN
+# En Usuario
+perfil = db.relationship('PerfilUsuario', backref='usuario', uselist=False)
+lecciones_completadas = db.relationship('Progreso', backref='usuario')
+recompensas = db.relationship('Recompensa', backref='usuario')
+
+# En Leccion
+actividades = db.relationship('Actividad', backref='leccion', cascade='all, delete-orphan')
+
+❌ MAL
+prof = db.relationship(...)          # ❌ Abreviación
+leccionesCompletadas = db.relationship(...)  # ❌ camelCase
+```
+
+---
+
+## ⚛️ Frontend (React/Next.js/TypeScript)
+
+### **1. Archivos y Carpetas**
+```
+✅ BIEN - kebab-case para archivos, PascalCase para componentes
+app/
+├── login/page.tsx                    ✅
+├── registro/page.tsx                 ✅
+├── recuperar-contrasena/page.tsx     ✅
+├── dashboard/page.tsx                ✅
+
+components/
+├── auth/
+│   ├── LoginForm.tsx                 ✅ Componente
+│   ├── RegisterForm.tsx              ✅
+│   └── login-form.tsx                ✅ Alternativa válida
+├── ui/
+│   ├── Button.tsx                    ✅
+│   └── button.tsx                    ✅ shadcn/ui usa minúsculas
+
+hooks/
+├── use-user-data.ts                  ✅
+├── use-auth.ts                       ✅
+
+❌ MAL
+app/Login/page.tsx                    # ❌ PascalCase en carpeta
+components/login_form.tsx             # ❌ snake_case
+components/loginForm.tsx              # ❌ camelCase
+hooks/useUserData.ts                  # ❌ camelCase sin guion
+```
+
+### **2. Componentes React**
+```tsx
+✅ BIEN - PascalCase
+export function LoginForm() {}
+export function DashboardHeader() {}
+export function LessonCard() {}
+export function UserProfileSettings() {}
+
+// Componentes internos (no exportados)
+function LoadingSpinner() {}
+
+❌ MAL
+export function loginForm() {}        # ❌ camelCase
+export function login_form() {}       # ❌ snake_case
+export function LOGINFORM() {}        # ❌ MAYÚSCULAS
+```
+
+### **3. Props y State**
+```tsx
+✅ BIEN - camelCase
+interface LoginFormProps {
+  initialEmail?: string;
+  onSubmit: (data: LoginData) => void;
+  isLoading: boolean;
+  errorMessage?: string;
+}
+
+function LoginForm({ initialEmail, onSubmit, isLoading }: LoginFormProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+}
+
+❌ MAL
+interface Props {                     # ❌ Demasiado genérico
+  InitialEmail?: string;              # ❌ PascalCase
+  on_submit: () => void;              # ❌ snake_case
+}
+
+const [Email, SetEmail] = useState(); # ❌ PascalCase
+const [show_password, set_show_password] = useState(); # ❌ snake_case
+```
+
+### **4. Hooks Personalizados**
+```tsx
+✅ BIEN - prefijo use + camelCase
+export function useAuth() {}
+export function useUserData() {}
+export function useLessons() {}
+export function useLocalStorage() {}
+
+❌ MAL
+export function auth() {}             # ❌ Sin prefijo use
+export function UseAuth() {}          # ❌ PascalCase
+export function use_auth() {}         # ❌ snake_case
+```
+
+### **5. Tipos e Interfaces TypeScript**
+```tsx
+✅ BIEN - PascalCase
+interface Usuario {
+  id: string;
+  nombre: string;
+  email: string;
+}
+
+type NivelCurso = 'principiante' | 'intermedio' | 'avanzado';
+
+type LeccionEstado = 'pendiente' | 'en_progreso' | 'completada';
+
+interface PropsFormularioRegistro {
+  onSuccess: () => void;
+}
+
+❌ MAL
+interface usuario {}                  # ❌ minúsculas
+type nivel_curso = string;            # ❌ snake_case
+interface propsFormularioRegistro {}  # ❌ camelCase
+```
+
+### **6. Constantes**
+```tsx
+✅ BIEN - MAYÚSCULAS con guión bajo
+const API_BASE_URL = 'http://localhost:5000/api';
+const MAX_LOGIN_ATTEMPTS = 3;
+const TOKEN_STORAGE_KEY = 'auth_token';
+const NIVELES_DISPONIBLES = ['principiante', 'intermedio', 'avanzado'];
+
+❌ MAL
+const apiBaseUrl = '...';             # ❌ camelCase
+const max_login_attempts = 3;         # ❌ snake_case minúsculas
+const MaxLoginAttempts = 3;           # ❌ PascalCase
+```
+
+### **7. Funciones de Utilidad**
+```tsx
+✅ BIEN - camelCase, verbos descriptivos
+export function formatearFecha(fecha: Date): string {}
+export function validarEmail(email: string): boolean {}
+export function calcularNivel(puntos: number): number {}
+export function obtenerToken(): string | null {}
+
+❌ MAL
+export function FormatearFecha() {}   # ❌ PascalCase
+export function formatear_fecha() {}  # ❌ snake_case
+export function format() {}           # ❌ No descriptivo
+export function fmt() {}              # ❌ Abreviación
+```
+
+### **8. Rutas Next.js**
+```
+✅ BIEN - kebab-case
+app/
+├── login/                            ✅ /login
+├── registro/                         ✅ /registro
+├── recuperar-contrasena/             ✅ /recuperar-contrasena
+├── perfil/                           ✅ /perfil
+├── lecciones/
+│   └── [id]/                         ✅ /lecciones/123
+└── admin/
+    └── usuarios/
+        └── [id]/
+            └── editar/               ✅ /admin/usuarios/123/editar
+
+❌ MAL
+app/Login/                            # ❌ PascalCase
+app/recuperar_contrasena/             # ❌ snake_case
+app/recuperarContrasena/              # ❌ camelCase
+```
+
+---
+
+## 🌐 Variables de Entorno (.env)
+```bash
+✅ BIEN - MAYÚSCULAS con guión bajo
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=loquesea2013
+DB_NAME=SpeakLexi
+JWT_SECRET_KEY=clave_secreta
+JWT_ACCESS_TOKEN_EXPIRES=3600
+MAIL_SERVER=smtp.gmail.com
+MAIL_USERNAME=donitasdechocolate01@gmail.com
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+
+❌ MAL
+db_host=localhost                     # ❌ Minúsculas
+DbHost=localhost                      # ❌ PascalCase
+dbHost=localhost                      # ❌ camelCase
+DATABASE-HOST=localhost               # ❌ Guiones en lugar de _
+```
+
+---
+
+## 📁 Estructura de Carpetas
+```
+✅ BIEN - snake_case o kebab-case
+back-end/                             ✅
+├── config/                           ✅
+├── models/                           ✅
+├── routes/                           ✅
+├── services/                         ✅
+└── utils/                            ✅
+
+front-end/                            ✅
+├── app/                              ✅
+├── components/                       ✅
+│   ├── auth/                         ✅
+│   ├── dashboard/                    ✅
+│   └── ui/                           ✅
+├── hooks/                            ✅
+└── lib/                              ✅
+
+❌ MAL
+BackEnd/                              # ❌ PascalCase
+back_End/                             # ❌ Inconsistente
+BACKEND/                              # ❌ MAYÚSCULAS
+componentes/                          # ❌ Español inconsistente con proyecto
+```
+
+---
+
+## 🎨 Clases CSS (Tailwind)
+```tsx
+✅ BIEN - kebab-case para clases personalizadas
+<div className="bg-blue-500 text-white p-4 rounded-lg">
+  {/* Tailwind usa clases predefinidas */}
+</div>
+
+// En globals.css
+.boton-primario {
+  @apply bg-blue-500 text-white px-4 py-2 rounded;
+}
+
+.tarjeta-leccion {
+  @apply border rounded-lg shadow-md p-6;
+}
+
+❌ MAL
+.botonPrimario {}                     # ❌ camelCase
+.boton_primario {}                    # ❌ snake_case (no estándar en CSS)
+.BotonPrimario {}                     # ❌ PascalCase
+```
+
+---
+
+## 📊 Resumen de Convenciones
+
+| Elemento | Convención | Ejemplo |
+|----------|-----------|---------|
+| **Archivos Python** | snake_case | `gestor_usuarios.py` |
+| **Clases Python** | PascalCase | `class Usuario:` |
+| **Funciones Python** | snake_case | `def registrar_usuario():` |
+| **Variables Python** | snake_case | `usuario_id = "123"` |
+| **Constantes Python** | MAYÚSCULAS | `MAX_INTENTOS = 3` |
+| **Tablas BD** | snake_case plural | `usuarios`, `lecciones` |
+| **Columnas BD** | snake_case | `nombre_completo`, `email` |
+| **Archivos React** | kebab-case / PascalCase | `LoginForm.tsx`, `login-form.tsx` |
+| **Componentes React** | PascalCase | `function LoginForm()` |
+| **Props/State** | camelCase | `isLoading`, `userName` |
+| **Hooks** | use + camelCase | `useAuth()`, `useUserData()` |
+| **Tipos TS** | PascalCase | `interface Usuario {}` |
+| **Funciones TS** | camelCase | `validarEmail()` |
+| **Rutas Next.js** | kebab-case | `/recuperar-contrasena` |
+| **Variables ENV** | MAYÚSCULAS | `DB_HOST`, `JWT_SECRET_KEY` |
+| **Clases CSS** | kebab-case | `.boton-primario` |
+
+---
+
+## 🚨 Errores Comunes a Evitar
+
+### 1. **Mezclar Idiomas**
+```python
+❌ MAL
+def register_usuario(data):  # ❌ Inglés + Español
+    user_email = data['correo']  # ❌ Inglés + Español
+    
+✅ BIEN
+def registrar_usuario(data):
+    email_usuario = data['email']
+```
+
+### 2. **Abreviaciones No Claras**
+```python
+❌ MAL
+usr_id = "123"
+msg = "Hola"
+btn_clk = True
+
+✅ BIEN
+usuario_id = "123"
+mensaje = "Hola"
+boton_clickeado = True
+```
+
+### 3. **Inconsistencia en el Proyecto**
+```python
+❌ MAL - Inconsistente
+# En un archivo
+class Usuario:
+    pass
+
+# En otro archivo
+class user_profile:
+    pass
+
+✅ BIEN - Consistente
+class Usuario:
+    pass
+
+class PerfilUsuario:
+    pass
+```
+
+### 4. **Nombres Demasiado Genéricos**
+```python
+❌ MAL
+def handle():
+    data = get()
+    process(data)
+    
+✅ BIEN
+def manejar_registro_usuario():
+    datos_formulario = obtener_datos_formulario()
+    procesar_registro(datos_formulario)
+```
+
+---
+
+## ✅ Checklist de Nombres
+
+Antes de crear un archivo, variable o función, pregúntate:
+
+- [ ] ¿Sigue la convención correcta (snake_case, PascalCase, camelCase)?
+- [ ] ¿Es descriptivo y claro?
+- [ ] ¿Está en español (excepto términos técnicos)?
+- [ ] ¿Es consistente con el resto del proyecto?
+- [ ] ¿Evita abreviaciones confusas?
+- [ ] ¿No usa palabras reservadas del lenguaje?
+
+---
+
+## 📚 Referencias
+
+- **PEP 8** (Python): https://pep8.org/
+- **Google TypeScript Style Guide**: https://google.github.io/styleguide/tsguide.html
+- **Airbnb JavaScript Style Guide**: https://github.com/airbnb/javascript
+
+---
+
+**Actualizado:** Octubre 2025  
+**Proyecto:** SpeakLexi v1.0.0
+
+
+================================================================================
+# ARCHIVO: docs/guidelines/requisitos-funcionales.md
+# URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/docs/guidelines/requisitos-funcionales.md
+================================================================================
+
+# 📋 Tabla de Requisitos Funcionales del Sistema
+
+| **Módulo** | **Actividad** | **ID** | **Requisito Funcional** | **Descripción Breve** |
+|-------------|----------------|---------|---------------------------|------------------------|
+| **Gestión de Usuarios** | Implementar requisitos, CRUD de usuario y validaciones | **RF-1** | Iniciar sesión | El usuario podrá acceder al sistema ingresando su correo electrónico y contraseña. |
+|  |  | **RF-2** | Recuperar contraseña | El sistema permitirá recuperar la contraseña mediante un enlace enviado al correo electrónico. |
+|  |  | **RF-3** | Autenticar usuario | El sistema debe permitir enviar automáticamente un mensaje de verificación al correo electrónico del usuario para validar su identidad. |
+|  |  | **RF-4** | Registrar usuario | El usuario podrá crear una cuenta proporcionando información básica como nombre, correo electrónico, contraseña y otros datos personales necesarios. |
+|  |  | **RF-5** | Asignar usuario | Después del registro, el sistema clasificará al usuario según su nivel de dominio del idioma, asignándolo al curso o módulo correspondiente. |
+|  |  | **RF-6** | Cambiar curso | El sistema debe permitir al usuario cambiar el curso de idioma. |
+|  |  | **RF-7** | Eliminar cuenta | El usuario tendrá la opción de borrar su cuenta y todos sus datos asociados del sistema de forma definitiva. |
+
+---
+
+| **Módulo** | **Actividad** | **ID** | **Requisito Funcional** | **Descripción Breve** |
+|-------------|----------------|---------|---------------------------|------------------------|
+| **Gestión de Lecciones y Contenidos** | Implementar requisitos, CRUD de usuario y validaciones | **RF-8** | Crear nuevas lecciones | El sistema debe permitir al administrador de contenido crear nuevas lecciones mediante preguntas con actividades dinámicas de juego. |
+|  |  | **RF-9** | Agregar Multimedia | El sistema debe permitir agregar recursos multimedia (audio, video, imágenes) dentro de las lecciones. |
+
+---
+
+| **Módulo** | **Actividad** | **ID** | **Requisito Funcional** | **Descripción Breve** |
+|-------------|----------------|---------|---------------------------|------------------------|
+| **Gestión del Aprendizaje** | Implementar requisitos, CRUD de usuario y validaciones | **RF-10** | Registrar progreso | El sistema debe registrar el progreso del alumno al acabar cada lección. |
+|  |  | **RF-11** | Otorgar recompensas | El sistema debe otorgar recompensas con el objetivo de incentivar al alumno. |
+|  |  | **RF-12** | Generar tablas | El sistema debe generar tablas de clasificación a partir de desafíos entre diferentes alumnos. |
+
+---
+
+| **Módulo** | **Actividad** | **ID** | **Requisito Funcional** | **Descripción Breve** |
+|-------------|----------------|---------|---------------------------|------------------------|
+| **Gestión de Desempeño y Retroalimentación** | Implementar requisitos, análisis y reportes | **RF-13** | Consultar estadísticas de progreso | Permite al profesor visualizar el rendimiento de los alumnos (promedio, racha y tiempo de estudio) mediante reportes automáticos. |
+|  |  | **RF-14** | Revisar retroalimentación | Permite al profesor revisar y responder comentarios enviados por los alumnos sobre las lecciones. |
+|  |  | **RF-15** | Planificar nuevos contenidos | Genera planes personalizados de estudio según las áreas de mejora detectadas en las estadísticas. |
+
+---
+
+| **Módulo** | **Actividad** | **ID** | **Requisito Funcional** | **Descripción Breve** |
+|-------------|----------------|---------|---------------------------|------------------------|
+| **Gestión de Soporte y Mantenimiento** | Implementar requisitos, CRUD y validaciones | **RF-16** | Consultar reportes de fallas | El sistema debe permitir al personal de mantenimiento consultar reportes de fallas del sistema para identificar errores. |
+|  |  | **RF-17** | Programar tareas | El sistema debe permitir al personal de mantenimiento programar tareas de mantenimiento preventivo. |
+
 
 
 ================================================================================
@@ -50,316 +1482,308 @@ export default function AdminDashboardPage() {
 
 "use client"
 
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save, Loader2, CheckCircle } from "lucide-react"
-import Link from "next/link"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { leccionesAPI, type Leccion } from "@/lib/api"
+import { Badge } from "@/components/ui/badge"
+import { ArrowLeft, Clock, Award, BookOpen, Loader2, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
+import Link from "next/link"
 
-export default function EditLessonPage({ params }: { params: { id: string } }) {
+export default function LeccionVistaPrevia() {
+  const params = useParams()
   const router = useRouter()
+  const [leccion, setLeccion] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [leccion, setLeccion] = useState<Leccion | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    cargarLeccion()
+    if (params.id) {
+      cargarLeccion(params.id as string)
+    }
   }, [params.id])
 
-  const cargarLeccion = async () => {
+  const cargarLeccion = async (id: string) => {
     try {
       setLoading(true)
-      const response = await leccionesAPI.obtener(parseInt(params.id), true, true)
-      setLeccion(response.leccion)
+      setError(null)
+      
+      console.log('🔍 Cargando lección ID:', id)
+      
+      const token = localStorage.getItem('token')
+      console.log('🔑 Token:', token ? 'Presente' : 'NO ENCONTRADO')
+      
+      const response = await fetch(`http://localhost:5000/api/lecciones/${id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('📡 Response status:', response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Error response:', errorData)
+        throw new Error(errorData.message || errorData.error || `Error ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Datos recibidos:', data)
+      
+      const leccionData = data.leccion || data
+      console.log('📚 Lección procesada:', leccionData)
+      
+      if (!leccionData || !leccionData.id) {
+        throw new Error('Los datos de la lección están incompletos')
+      }
+      
+      setLeccion(leccionData)
+      
     } catch (error: any) {
-      console.error("Error al cargar lección:", error)
-      toast.error(error.message || "Error al cargar lección")
-      router.push("/admin/lecciones")
+      console.error('❌ Error completo:', error)
+      setError(error.message || 'Error desconocido al cargar la lección')
+      toast.error('Error: ' + (error.message || 'No se pudo cargar la lección'))
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!leccion) return
-
-    try {
-      setSaving(true)
-      
-      const datosActualizados = {
-        titulo: leccion.titulo,
-        descripcion: leccion.descripcion,
-        nivel: leccion.nivel,
-        idioma: leccion.idioma,
-        categoria: leccion.categoria,
-        duracion_estimada: leccion.duracion_estimada,
-        puntos_xp: leccion.puntos_xp,
-        estado: leccion.estado
-      }
-      
-      await leccionesAPI.actualizar(parseInt(params.id), datosActualizados)
-      
-      toast.success("Lección actualizada exitosamente")
-      router.push("/admin/lecciones")
-      
-    } catch (error: any) {
-      console.error("Error al actualizar:", error)
-      toast.error(error.message || "Error al actualizar lección")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handlePublicar = async () => {
-    if (!leccion) return
-
-    try {
-      await leccionesAPI.publicar(parseInt(params.id))
-      toast.success("Lección publicada exitosamente")
-      cargarLeccion() // Recargar para actualizar estado
-    } catch (error: any) {
-      console.error("Error al publicar:", error)
-      toast.error(error.message || "Error al publicar lección")
-    }
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-        <DashboardHeader />
-        <main className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </main>
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando lección...</p>
+        </div>
       </div>
     )
   }
 
-  if (!leccion) {
+  if (error || !leccion) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-        <DashboardHeader />
-        <main className="container mx-auto px-4 py-8">
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Lección no encontrada</p>
-            <Link href="/admin/lecciones">
-              <Button variant="outline" className="mt-4">
-                Volver a lecciones
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">❌ Error al cargar</h2>
+            <p className="text-muted-foreground mb-4">
+              {error || 'Lección no encontrada'}
+            </p>
+            <div className="space-y-2">
+              <Button onClick={() => cargarLeccion(params.id as string)} className="w-full">
+                🔄 Reintentar
               </Button>
-            </Link>
-          </div>
-        </main>
+              <Button variant="outline" onClick={() => router.push('/admin/lecciones')} className="w-full">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Volver a Lecciones
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-      <DashboardHeader />
+      <div className="container mx-auto px-4 py-8">
+        <Button
+          variant="ghost"
+          onClick={() => router.back()}
+          className="mb-6"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Volver
+        </Button>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/admin/lecciones">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver a Lecciones
-            </Button>
-          </Link>
-          
-          {leccion.estado === 'borrador' && (
-            <Button variant="outline" onClick={handlePublicar}>
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Publicar Lección
-            </Button>
-          )}
-        </div>
-
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-balance">Editar Lección</h1>
-          <p className="mt-1 text-muted-foreground">Modifica los detalles de la lección #{params.id}</p>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <Card className="mx-auto max-w-3xl">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Header */}
+          <Card>
             <CardHeader>
-              <CardTitle>Información de la Lección</CardTitle>
-              <CardDescription>Actualiza los campos que desees modificar</CardDescription>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-3xl mb-2">{leccion.titulo}</CardTitle>
+                  <CardDescription className="text-lg">{leccion.descripcion}</CardDescription>
+                </div>
+                <Badge variant={leccion.estado === 'publicada' ? 'default' : 'secondary'} className="ml-4">
+                  {leccion.estado === 'publicada' ? '✅ Publicada' : 
+                   leccion.estado === 'borrador' ? '📝 Borrador' : leccion.estado}
+                </Badge>
+              </div>
+
+              <div className="flex flex-wrap gap-3 mt-4">
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <BookOpen className="h-3 w-3" />
+                  {leccion.nivel}
+                </Badge>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {leccion.duracion_estimada} min
+                </Badge>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Award className="h-3 w-3" />
+                  {leccion.puntos_xp} XP
+                </Badge>
+                {leccion.idioma && (
+                  <Badge variant="outline">
+                    🌐 {leccion.idioma}
+                  </Badge>
+                )}
+                {leccion.categoria && (
+                  <Badge variant="outline">
+                    📚 {leccion.categoria}
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
-
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="title">Título de la Lección</Label>
-                <Input 
-                  id="title" 
-                  value={leccion.titulo}
-                  onChange={(e) => setLeccion({...leccion, titulo: e.target.value})}
-                  required
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="nivel">Nivel</Label>
-                  <Select 
-                    value={leccion.nivel}
-                    onValueChange={(value: any) => setLeccion({...leccion, nivel: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="principiante">Principiante</SelectItem>
-                      <SelectItem value="intermedio">Intermedio</SelectItem>
-                      <SelectItem value="avanzado">Avanzado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="idioma">Idioma</Label>
-                  <Select 
-                    value={leccion.idioma}
-                    onValueChange={(value) => setLeccion({...leccion, idioma: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ingles">Inglés</SelectItem>
-                      <SelectItem value="espanol">Español</SelectItem>
-                      <SelectItem value="frances">Francés</SelectItem>
-                      <SelectItem value="aleman">Alemán</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="categoria">Categoría</Label>
-                <Input 
-                  id="categoria" 
-                  value={leccion.categoria || ''}
-                  onChange={(e) => setLeccion({...leccion, categoria: e.target.value})}
-                  placeholder="vocabulario, gramatica, pronunciacion, etc."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  value={leccion.descripcion}
-                  onChange={(e) => setLeccion({...leccion, descripcion: e.target.value})}
-                  rows={4}
-                  required
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Duración (minutos)</Label>
-                  <Input 
-                    id="duration" 
-                    type="number" 
-                    value={leccion.duracion_estimada}
-                    onChange={(e) => setLeccion({...leccion, duracion_estimada: parseInt(e.target.value)})}
-                    required
-                    min="1"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="xp">XP Otorgados</Label>
-                  <Input 
-                    id="xp" 
-                    type="number" 
-                    value={leccion.puntos_xp}
-                    onChange={(e) => setLeccion({...leccion, puntos_xp: parseInt(e.target.value)})}
-                    required
-                    min="0"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Estado</Label>
-                <Select 
-                  value={leccion.estado}
-                  onValueChange={(value: any) => setLeccion({...leccion, estado: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="borrador">Borrador</SelectItem>
-                    <SelectItem value="publicada">Publicada</SelectItem>
-                    <SelectItem value="archivada">Archivada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-3">
-                <Button type="submit" className="flex-1" disabled={saving}>
-                  {saving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Guardando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Guardar Cambios
-                    </>
-                  )}
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/admin/lecciones">Cancelar</Link>
-                </Button>
-              </div>
-            </CardContent>
           </Card>
-        </form>
 
-        {/* Sección de actividades */}
-        {leccion.actividades && leccion.actividades.length > 0 && (
-          <Card className="mx-auto max-w-3xl mt-6">
-            <CardHeader>
-              <CardTitle>Actividades ({leccion.actividades.length})</CardTitle>
-              <CardDescription>Actividades asociadas a esta lección</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {leccion.actividades.map((actividad, index) => (
-                  <div 
-                    key={actividad.id} 
-                    className="p-3 border rounded-lg flex items-center justify-between"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {index + 1}. {actividad.pregunta}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Tipo: {actividad.tipo} • {actividad.puntos} puntos
-                      </p>
+          {/* Contenido */}
+          {leccion.contenido && typeof leccion.contenido === 'object' && (
+            <>
+              {/* Objetivos */}
+              {leccion.contenido.objetivos && Array.isArray(leccion.contenido.objetivos) && leccion.contenido.objetivos.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>📌 Objetivos de Aprendizaje</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {leccion.contenido.objetivos.map((objetivo: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-primary mt-1">✓</span>
+                          <span>{objetivo}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Introducción */}
+              {leccion.contenido.introduccion && leccion.contenido.introduccion.trim() && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>💡 Introducción</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground whitespace-pre-wrap">
+                      {leccion.contenido.introduccion}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Vocabulario */}
+              {leccion.contenido.vocabulario_clave && Array.isArray(leccion.contenido.vocabulario_clave) && leccion.contenido.vocabulario_clave.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>📖 Vocabulario Clave</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {leccion.contenido.vocabulario_clave.map((palabra: string, idx: number) => (
+                        <Badge key={idx} variant="secondary">
+                          {palabra}
+                        </Badge>
+                      ))}
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+
+          {/* Actividades */}
+          {leccion.actividades && Array.isArray(leccion.actividades) && leccion.actividades.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>🎮 Actividades ({leccion.actividades.length})</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {leccion.actividades.map((actividad: any, idx: number) => (
+                  <div key={idx} className="p-4 border rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold">#{idx + 1} - {actividad.pregunta}</h4>
+                      <Badge>{actividad.puntos || 10} pts</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Tipo: {actividad.tipo || 'No especificado'}
+                    </p>
+                    {actividad.instrucciones && (
+                      <p className="text-sm mt-2 text-muted-foreground italic">
+                        "{actividad.instrucciones}"
+                      </p>
+                    )}
                   </div>
                 ))}
-              </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Etiquetas */}
+          {leccion.etiquetas && Array.isArray(leccion.etiquetas) && leccion.etiquetas.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>🏷️ Etiquetas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {leccion.etiquetas.map((tag: string, idx: number) => (
+                    <Badge key={idx} variant="outline">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Información adicional */}
+          <Card>
+            <CardHeader>
+              <CardTitle>ℹ️ Información de la Lección</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="font-semibold text-muted-foreground">ID</dt>
+                  <dd>{leccion.id}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-muted-foreground">Curso ID</dt>
+                  <dd>{leccion.curso_id || 'No asignado'}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-muted-foreground">Orden</dt>
+                  <dd>{leccion.orden || 0}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-muted-foreground">Estado</dt>
+                  <dd>{leccion.estado || 'borrador'}</dd>
+                </div>
+              </dl>
             </CardContent>
           </Card>
-        )}
-      </main>
+
+          {/* Botones de acción */}
+          <div className="flex gap-3 flex-col sm:flex-row">
+            <Link href={`/admin/lecciones/${leccion.id}/editar`} className="flex-1">
+              <Button className="w-full">
+                ✏️ Editar Lección
+              </Button>
+            </Link>
+            <Link href="/admin/lecciones" className="flex-1">
+              <Button variant="outline" className="w-full">
+                📚 Ver Todas las Lecciones
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -373,31 +1797,38 @@ export default function EditLessonPage({ params }: { params: { id: string } }) {
 "use client"
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { CreateLessonForm } from "@/components/admin/create-lesson-form"
-import { ArrowLeft } from "lucide-react"
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { CreateLessonForm } from "@/components/admin/create-lesson-form"
 
 export default function CreateLessonPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <DashboardHeader />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header con botón de regresar */}
         <div className="mb-6">
           <Link href="/admin/lecciones">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" className="mb-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver a Lecciones
             </Button>
           </Link>
+          
+          <Card className="border-2 border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-3xl">✨ Crear Nueva Lección</CardTitle>
+              <CardDescription className="text-base">
+                Completa los siguientes pasos para crear una lección interactiva y gamificada con multimedia
+              </CardDescription>
+            </CardHeader>
+          </Card>
         </div>
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-balance">Crear Nueva Lección</h1>
-          <p className="mt-1 text-muted-foreground">Completa los pasos para crear una lección</p>
-        </div>
-
+        {/* Formulario completo de creación */}
         <CreateLessonForm />
       </main>
     </div>
@@ -8255,14 +9686,15 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Save, Loader2, Plus, X, Edit, Trash2 } from "lucide-react"
+import { ArrowLeft, Save, Loader2, Plus, X, Edit, Trash2, Upload, Image, Music, Video, FileText } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
-// FIX 1: Se importa el 'type Actividad' desde la API
-import { cursosAPI, leccionesAPI, actividadesAPI, type Actividad } from "@/lib/api"
 import { ActivityModal } from "@/components/admin/activity-modal"
 
-// Tipos de actividades gamificadas
+// Tipos
+type TipoActividad = 'multiple_choice' | 'fill_blank' | 'matching' | 'translation' | 'true_false' | 'word_order' | 'listen_repeat'
+type NivelLeccion = 'principiante' | 'intermedio' | 'avanzado'
+
 const TIPOS_ACTIVIDAD = [
   { value: 'multiple_choice', label: '🎯 Opción múltiple', icon: '🎯' },
   { value: 'fill_blank', label: '✏️ Completar espacios', icon: '✏️' },
@@ -8270,7 +9702,7 @@ const TIPOS_ACTIVIDAD = [
   { value: 'translation', label: '🌐 Traducción', icon: '🌐' },
   { value: 'true_false', label: '✓✗ Verdadero/Falso', icon: '✓' },
   { value: 'word_order', label: '📝 Ordenar palabras', icon: '📝' },
-]
+] as const
 
 interface Curso {
   id: number
@@ -8280,8 +9712,52 @@ interface Curso {
   idioma: string
 }
 
-// FIX 2: Se elimina la interfaz 'Actividad' local duplicada.
-// Ya no es necesaria porque la importamos desde 'lib/api'.
+interface Actividad {
+  tipo: TipoActividad
+  pregunta: string
+  instrucciones?: string
+  opciones: any
+  respuesta_correcta: any
+  retroalimentacion?: any
+  pista?: string
+  puntos: number
+  orden: number
+  multimedia_id?: number
+}
+
+interface ArchivoMultimedia {
+  file: File
+  id: string
+  preview?: string
+}
+
+interface MultimediaSubido {
+  id: number
+  nombre_archivo: string
+  tipo: string
+  url: string
+}
+
+interface FormData {
+  curso_id: number | null
+  titulo: string
+  descripcion: string
+  nivel: NivelLeccion
+  idioma: string
+  categoria: string
+  duracion_estimada: number
+  puntos_xp: number
+  orden: number
+  contenido: {
+    objetivos: string[]
+    vocabulario_clave: string[]
+    introduccion: string
+    ejemplos: string[]
+  }
+  etiquetas: string[]
+  actividades: Actividad[]
+  multimedia_ids: number[]
+}
 
 export function CreateLessonForm() {
   const router = useRouter()
@@ -8292,47 +9768,43 @@ export function CreateLessonForm() {
   
   // Estados para modal de actividades
   const [modalActividadOpen, setModalActividadOpen] = useState(false)
-  // FIX 3: Se usa el tipo importado 'Actividad['tipo']' para el estado del modal
-  const [tipoActividadModal, setTipoActividadModal] = useState<Actividad['tipo'] | null>(null)
+  const [tipoActividadModal, setTipoActividadModal] = useState<TipoActividad | null>(null)
   const [actividadEditando, setActividadEditando] = useState<Actividad | null>(null)
   const [indiceEditando, setIndiceEditando] = useState<number | null>(null)
   
-  const [formData, setFormData] = useState({
-    // Paso 1: Básico + Curso
-    curso_id: null as number | null,
+  // Estados para multimedia
+  const [archivosMultimedia, setArchivosMultimedia] = useState<ArchivoMultimedia[]>([])
+  const [subiendoArchivos, setSubiendoArchivos] = useState(false)
+  const [archivosSubidos, setArchivosSubidos] = useState<MultimediaSubido[]>([])
+  
+  // Estado del formulario
+  const [formData, setFormData] = useState<FormData>({
+    curso_id: null,
     titulo: "",
     descripcion: "",
-    // Pequeña mejora: Usar los tipos exactos de la API de Leccion
-    nivel: "principiante" as 'principiante' | 'intermedio' | 'avanzado', 
+    nivel: "principiante",
     idioma: "ingles",
     categoria: "",
     duracion_estimada: 10,
     puntos_xp: 50,
     orden: 0,
-    
-    // Paso 2: Contenido
     contenido: {
-      objetivos: [] as string[],
-      vocabulario_clave: [] as string[],
+      objetivos: [],
+      vocabulario_clave: [],
       introduccion: "",
-      ejemplos: [] as string[]
+      ejemplos: []
     },
-    etiquetas: [] as string[],
-    
-    // Paso 3: Actividades gamificadas
-    // Este array ahora usa correctamente el tipo 'Actividad' importado
-    actividades: [] as Actividad[],
-    
-    // Paso 4: Multimedia
-    multimedia_ids: [] as number[]
+    etiquetas: [],
+    actividades: [],
+    multimedia_ids: []
   })
 
-  // Estados temporales para agregar items
+  // Estados temporales para inputs
   const [objetivoTemp, setObjetivoTemp] = useState("")
   const [vocabularioTemp, setVocabularioTemp] = useState("")
   const [etiquetaTemp, setEtiquetaTemp] = useState("")
 
-  // Cargar cursos disponibles
+  // Cargar cursos al montar el componente
   useEffect(() => {
     cargarCursos()
   }, [])
@@ -8340,27 +9812,128 @@ export function CreateLessonForm() {
   const cargarCursos = async () => {
     try {
       setLoadingCursos(true)
-      const data = await cursosAPI.listar({ activo: true })
+      const response = await fetch('http://localhost:5000/api/cursos?activo=true', {
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) throw new Error('Error al cargar cursos')
+      
+      const data = await response.json()
       setCursos(data.cursos || [])
       
-      if (data.cursos && data.cursos.length > 0) {
+      if (data.cursos?.length > 0) {
         toast.success(`${data.cursos.length} cursos cargados`)
       } else {
-        toast.warning('No hay cursos disponibles')
+        toast.warning('No hay cursos disponibles. Crea un curso primero.')
       }
     } catch (error: any) {
-      console.error('Error al cargar cursos:', error)
+      console.error('❌ Error:', error)
       toast.error(error.message || 'Error al cargar cursos')
     } finally {
       setLoadingCursos(false)
     }
   }
 
+  // Mapear nivel del curso a nivel de lección
+  const mapearNivelCursoALeccion = (nivelCurso: string): NivelLeccion => {
+    if (['A1', 'A2'].includes(nivelCurso)) return 'principiante'
+    if (['B1', 'B2'].includes(nivelCurso)) return 'intermedio'
+    return 'avanzado'
+  }
+
+  // ========== MANEJO DE ARCHIVOS MULTIMEDIA ==========
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return
+    
+    const nuevosArchivos = Array.from(e.target.files).map(file => ({
+      file,
+      id: Math.random().toString(36).substr(2, 9),
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+    }))
+    
+    setArchivosMultimedia(prev => [...prev, ...nuevosArchivos])
+    toast.success(`${nuevosArchivos.length} archivo(s) seleccionado(s)`)
+  }
+
+  const eliminarArchivo = (id: string) => {
+    setArchivosMultimedia(prev => prev.filter(a => a.id !== id))
+    toast.success("Archivo eliminado")
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
+
+  const getFileIcon = (tipo: string) => {
+    if (tipo.startsWith('image/')) return <Image className="h-5 w-5" />
+    if (tipo.startsWith('audio/')) return <Music className="h-5 w-5" />
+    if (tipo.startsWith('video/')) return <Video className="h-5 w-5" />
+    return <FileText className="h-5 w-5" />
+  }
+
+  const subirArchivosMultimedia = async (leccionId: number): Promise<number[]> => {
+    if (archivosMultimedia.length === 0) return []
+
+    setSubiendoArchivos(true)
+    const multimediaSubida: MultimediaSubido[] = []
+
+    try {
+      for (const archivoData of archivosMultimedia) {
+        const formData = new FormData()
+        formData.append('archivo', archivoData.file)
+        formData.append('descripcion', `Archivo para lección ${leccionId}`)
+        formData.append('categoria', 'leccion')
+
+        const response = await fetch('http://localhost:5000/api/multimedia/upload', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Error al subir archivo')
+        }
+
+        const data = await response.json()
+        multimediaSubida.push(data.multimedia)
+
+        // Asociar multimedia con la lección
+        await fetch(`http://localhost:5000/api/multimedia/${data.multimedia.id}/asociar-leccion/${leccionId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orden: multimediaSubida.length })
+        })
+      }
+
+      setArchivosSubidos(multimediaSubida)
+      return multimediaSubida.map(m => m.id)
+    } catch (error: any) {
+      console.error('❌ Error:', error)
+      toast.error('Error al subir archivos: ' + error.message)
+      return []
+    } finally {
+      setSubiendoArchivos(false)
+    }
+  }
+
+  // ========== MANEJO DEL ENVÍO DEL FORMULARIO ==========
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validaciones
     if (!formData.curso_id) {
       toast.error("Debes seleccionar un curso")
+      setStep(1)
+      return
+    }
+
+    if (!formData.titulo.trim() || !formData.descripcion.trim()) {
+      toast.error("El título y descripción son obligatorios")
       setStep(1)
       return
     }
@@ -8374,12 +9947,12 @@ export function CreateLessonForm() {
     try {
       setSaving(true)
       
-      // Preparar datos de la lección
+      // 1. Crear lección
       const leccionData = {
         curso_id: formData.curso_id,
-        titulo: formData.titulo,
-        descripcion: formData.descripcion,
-        contenido: JSON.stringify(formData.contenido), // FIX: Convertir a string
+        titulo: formData.titulo.trim(),
+        descripcion: formData.descripcion.trim(),
+        contenido: formData.contenido,
         nivel: formData.nivel,
         idioma: formData.idioma,
         categoria: formData.categoria,
@@ -8387,111 +9960,153 @@ export function CreateLessonForm() {
         duracion_estimada: formData.duracion_estimada,
         puntos_xp: formData.puntos_xp,
         orden: formData.orden,
-        estado: 'borrador' as const // Usar 'as const' para tipado estricto
+        estado: "borrador" as const
       }
       
-      console.log('📤 Enviando lección:', leccionData)
+      const response = await fetch('http://localhost:5000/api/lecciones', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(leccionData)
+      })
       
-      // ✅ USAR LA API EN LUGAR DE FETCH DIRECTO
-      const response = await leccionesAPI.crear(leccionData)
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Error al crear lección')
+      }
       
-      console.log('✅ Lección creada:', response)
-      
-      const leccionId = response.leccion?.id || response.id
+      const data = await response.json()
+      const leccionId = data.leccion?.id || data.id
       
       if (!leccionId) {
         throw new Error('No se recibió el ID de la lección creada')
       }
 
-      // Crear actividades una por una
-      console.log(`📤 Creando ${formData.actividades.length} actividades...`)
-      
-      for (const actividad of formData.actividades) {
+      // 2. Crear actividades
+      for (const [index, actividad] of formData.actividades.entries()) {
         try {
-          // Esta línea ahora es funcional gracias a la corrección de tipos
-          await actividadesAPI.agregar(leccionId, actividad)
-          console.log(`✅ Actividad "${actividad.pregunta}" creada`)
+          await fetch(`http://localhost:5000/api/actividades/leccion/${leccionId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+              ...actividad,
+              orden: index + 1
+            })
+          })
         } catch (actError: any) {
-          console.error('Error al crear actividad:', actError)
-          toast.error(`Error al crear actividad: ${actError.message}`)
+          console.error('❌ Error al crear actividad:', actError)
+          // Continuar con las demás actividades aunque falle una
+        }
+      }
+
+      // 3. Subir archivos multimedia
+      if (archivosMultimedia.length > 0) {
+        const multimediaIds = await subirArchivosMultimedia(leccionId)
+        if (multimediaIds.length > 0) {
+          toast.success(`✅ ${multimediaIds.length} archivo(s) multimedia subido(s)`)
         }
       }
       
-      toast.success("✅ Lección creada exitosamente")
-      router.push(`/admin/lecciones/${leccionId}/editar`)
+      toast.success("🎉 ¡Lección creada exitosamente!")
+      router.push(`/lecciones/${leccionId}`)
       
     } catch (error: any) {
-      console.error("❌ Error al crear lección:", error)
+      console.error("❌ Error:", error)
       toast.error(error.message || "Error al crear lección")
     } finally {
       setSaving(false)
     }
   }
 
-  // Funciones auxiliares
+  // ========== FUNCIONES AUXILIARES ==========
   const agregarObjetivo = () => {
     if (objetivoTemp.trim()) {
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         contenido: {
-          ...formData.contenido,
-          objetivos: [...formData.contenido.objetivos, objetivoTemp.trim()]
+          ...prev.contenido,
+          objetivos: [...prev.contenido.objetivos, objetivoTemp.trim()]
         }
-      })
+      }))
       setObjetivoTemp("")
     }
   }
 
   const eliminarObjetivo = (index: number) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       contenido: {
-        ...formData.contenido,
-        objetivos: formData.contenido.objetivos.filter((_, i) => i !== index)
+        ...prev.contenido,
+        objetivos: prev.contenido.objetivos.filter((_, i) => i !== index)
       }
-    })
+    }))
   }
 
   const agregarVocabulario = () => {
     if (vocabularioTemp.trim()) {
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         contenido: {
-          ...formData.contenido,
-          vocabulario_clave: [...formData.contenido.vocabulario_clave, vocabularioTemp.trim()]
+          ...prev.contenido,
+          vocabulario_clave: [...prev.contenido.vocabulario_clave, vocabularioTemp.trim()]
         }
-      })
+      }))
       setVocabularioTemp("")
     }
   }
 
+  const eliminarVocabulario = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      contenido: {
+        ...prev.contenido,
+        vocabulario_clave: prev.contenido.vocabulario_clave.filter((_, i) => i !== index)
+      }
+    }))
+  }
+
   const agregarEtiqueta = () => {
     if (etiquetaTemp.trim() && !formData.etiquetas.includes(etiquetaTemp.trim())) {
-      setFormData({
-        ...formData,
-        etiquetas: [...formData.etiquetas, etiquetaTemp.trim()]
-      })
+      setFormData(prev => ({
+        ...prev,
+        etiquetas: [...prev.etiquetas, etiquetaTemp.trim()]
+      }))
       setEtiquetaTemp("")
     }
   }
 
+  const eliminarEtiqueta = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      etiquetas: prev.etiquetas.filter((_, i) => i !== index)
+    }))
+  }
+
   const handleGuardarActividad = (actividad: Actividad) => {
     if (indiceEditando !== null) {
-      // Editar existente
-      const nuevasActividades = [...formData.actividades]
-      nuevasActividades[indiceEditando] = { ...actividad, orden: indiceEditando }
-      setFormData({ ...formData, actividades: nuevasActividades })
+      // Editar actividad existente
+      setFormData(prev => ({
+        ...prev,
+        actividades: prev.actividades.map((act, idx) => 
+          idx === indiceEditando ? { ...actividad, orden: idx } : act
+        )
+      }))
       toast.success("Actividad actualizada")
     } else {
-      // Agregar nueva
-      setFormData({
-        ...formData,
-        actividades: [...formData.actividades, { ...actividad, orden: formData.actividades.length }]
-      })
+      // Agregar nueva actividad
+      setFormData(prev => ({
+        ...prev,
+        actividades: [...prev.actividades, { ...actividad, orden: prev.actividades.length }]
+      }))
       toast.success("Actividad agregada")
     }
     
-    // Cerrar modal
+    // Limpiar estado del modal
     setModalActividadOpen(false)
     setTipoActividadModal(null)
     setActividadEditando(null)
@@ -8506,10 +10121,10 @@ export function CreateLessonForm() {
   }
 
   const handleEliminarActividad = (index: number) => {
-    setFormData({
-      ...formData,
-      actividades: formData.actividades.filter((_, i) => i !== index)
-    })
+    setFormData(prev => ({
+      ...prev,
+      actividades: prev.actividades.filter((_, i) => i !== index)
+    }))
     toast.success("Actividad eliminada")
   }
 
@@ -8521,7 +10136,7 @@ export function CreateLessonForm() {
         {/* Indicador de pasos */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               {[
                 { num: 1, label: 'Información Básica' },
                 { num: 2, label: 'Contenido' },
@@ -8535,14 +10150,14 @@ export function CreateLessonForm() {
                     {s.num}
                   </div>
                   <span className="ml-2 hidden sm:inline">{s.label}</span>
-                  {idx < 3 && <div className="mx-4 h-1 w-12 bg-secondary" />}
+                  {idx < 3 && <div className="mx-4 h-1 w-12 bg-secondary hidden sm:block" />}
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* PASO 1: Información Básica + Curso */}
+        {/* PASO 1: Información Básica */}
         {step === 1 && (
           <Card>
             <CardHeader>
@@ -8552,32 +10167,33 @@ export function CreateLessonForm() {
 
             <CardContent className="space-y-6">
               {/* Selector de Curso */}
-              <div className="space-y-2 rounded-lg border-2 border-primary/50 bg-primary/5 p-4">
-                <Label htmlFor="curso" className="text-lg font-semibold">
-                  🎓 Curso de la Lección *
-                </Label>
+              <div className="space-y-2">
+                <Label htmlFor="curso">🎓 Curso de la Lección *</Label>
                 <Select 
                   value={formData.curso_id?.toString() || ""}
                   onValueChange={(value) => {
                     const cursoId = parseInt(value)
                     const curso = cursos.find(c => c.id === cursoId)
-                    setFormData({
-                      ...formData, 
+                    setFormData(prev => ({
+                      ...prev, 
                       curso_id: cursoId,
-                      idioma: curso?.idioma || formData.idioma,
-                      nivel: curso?.nivel === 'A1' || curso?.nivel === 'A2' ? 'principiante' : 
-                             curso?.nivel === 'B1' || curso?.nivel === 'B2' ? 'intermedio' : 'avanzado'
-                    })
+                      idioma: curso?.idioma || prev.idioma,
+                      nivel: curso ? mapearNivelCursoALeccion(curso.nivel) : prev.nivel
+                    }))
                   }}
                 >
-                  <SelectTrigger className="h-12">
+                  <SelectTrigger>
                     <SelectValue placeholder="Selecciona el curso..." />
                   </SelectTrigger>
                   <SelectContent>
                     {loadingCursos ? (
-                      <SelectItem value="loading" disabled>Cargando cursos...</SelectItem>
+                      <SelectItem value="loading" disabled>
+                        Cargando cursos...
+                      </SelectItem>
                     ) : cursos.length === 0 ? (
-                      <SelectItem value="empty" disabled>No hay cursos disponibles</SelectItem>
+                      <SelectItem value="empty" disabled>
+                        No hay cursos disponibles
+                      </SelectItem>
                     ) : (
                       cursos.map((curso) => (
                         <SelectItem key={curso.id} value={curso.id.toString()}>
@@ -8588,9 +10204,9 @@ export function CreateLessonForm() {
                   </SelectContent>
                 </Select>
                 {cursoSeleccionado && (
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    ℹ️ Esta lección será parte de: <strong>{cursoSeleccionado.nombre}</strong>
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Curso seleccionado: <strong>{cursoSeleccionado.nombre}</strong>
+                  </p>
                 )}
               </div>
 
@@ -8600,7 +10216,7 @@ export function CreateLessonForm() {
                   id="titulo" 
                   placeholder="Ej: Saludos y Presentaciones"
                   value={formData.titulo}
-                  onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+                  onChange={(e) => setFormData(prev => ({...prev, titulo: e.target.value}))}
                   required
                 />
               </div>
@@ -8611,21 +10227,21 @@ export function CreateLessonForm() {
                   id="descripcion"
                   placeholder="Describe brevemente de qué trata esta lección..."
                   value={formData.descripcion}
-                  onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+                  onChange={(e) => setFormData(prev => ({...prev, descripcion: e.target.value}))}
                   rows={3}
                   required
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Nivel (según curso)</Label>
-                  <Input value={formData.nivel} disabled className="bg-secondary" />
+                  <Label>Nivel</Label>
+                  <Input value={formData.nivel} disabled className="bg-muted" />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Idioma (según curso)</Label>
-                  <Input value={formData.idioma} disabled className="bg-secondary" />
+                  <Label>Idioma</Label>
+                  <Input value={formData.idioma} disabled className="bg-muted" />
                 </div>
               </div>
 
@@ -8633,7 +10249,7 @@ export function CreateLessonForm() {
                 <Label htmlFor="categoria">Categoría</Label>
                 <Select 
                   value={formData.categoria}
-                  onValueChange={(value) => setFormData({...formData, categoria: value})}
+                  onValueChange={(value) => setFormData(prev => ({...prev, categoria: value}))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona una categoría..." />
@@ -8645,12 +10261,11 @@ export function CreateLessonForm() {
                     <SelectItem value="conversacion">💬 Conversación</SelectItem>
                     <SelectItem value="lectura">📰 Lectura</SelectItem>
                     <SelectItem value="escritura">✍️ Escritura</SelectItem>
-                    <SelectItem value="comprension_auditiva">👂 Comprensión Auditiva</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="duracion">⏱️ Duración (min) *</Label>
                   <Input 
@@ -8658,7 +10273,7 @@ export function CreateLessonForm() {
                     type="number" 
                     min="1"
                     value={formData.duracion_estimada}
-                    onChange={(e) => setFormData({...formData, duracion_estimada: parseInt(e.target.value) || 1})}
+                    onChange={(e) => setFormData(prev => ({...prev, duracion_estimada: parseInt(e.target.value) || 1}))}
                     required
                   />
                 </div>
@@ -8670,7 +10285,7 @@ export function CreateLessonForm() {
                     type="number"
                     min="0"
                     value={formData.puntos_xp}
-                    onChange={(e) => setFormData({...formData, puntos_xp: parseInt(e.target.value) || 0})}
+                    onChange={(e) => setFormData(prev => ({...prev, puntos_xp: parseInt(e.target.value) || 0}))}
                     required
                   />
                 </div>
@@ -8682,22 +10297,25 @@ export function CreateLessonForm() {
                     type="number"
                     min="0"
                     value={formData.orden}
-                    onChange={(e) => setFormData({...formData, orden: parseInt(e.target.value) || 0})}
+                    onChange={(e) => setFormData(prev => ({...prev, orden: parseInt(e.target.value) || 0}))}
                   />
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-col sm:flex-row">
                 <Button 
                   type="button" 
                   onClick={() => setStep(2)} 
                   className="flex-1"
-                  disabled={!formData.curso_id || !formData.titulo || !formData.descripcion}
+                  disabled={!formData.curso_id || !formData.titulo.trim() || !formData.descripcion.trim()}
                 >
                   Siguiente
                 </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/admin/lecciones">Cancelar</Link>
+                <Button variant="outline" asChild className="sm:w-auto">
+                  <Link href="/admin/lecciones">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Cancelar
+                  </Link>
                 </Button>
               </div>
             </CardContent>
@@ -8709,7 +10327,7 @@ export function CreateLessonForm() {
           <Card>
             <CardHeader>
               <CardTitle>Paso 2: Contenido Pedagógico</CardTitle>
-              <CardDescription>Objetivos, vocabulario y estructura</CardDescription>
+              <CardDescription>Objetivos, vocabulario y estructura de la lección</CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6">
@@ -8720,7 +10338,7 @@ export function CreateLessonForm() {
                     placeholder="Ej: Aprender saludos formales en inglés"
                     value={objetivoTemp}
                     onChange={(e) => setObjetivoTemp(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarObjetivo())}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), agregarObjetivo())}
                   />
                   <Button type="button" onClick={agregarObjetivo} size="icon">
                     <Plus className="h-4 w-4" />
@@ -8729,7 +10347,7 @@ export function CreateLessonForm() {
                 {formData.contenido.objetivos.length > 0 && (
                   <div className="space-y-2 mt-2">
                     {formData.contenido.objetivos.map((obj, i) => (
-                      <div key={i} className="flex items-center gap-2 p-2 bg-secondary rounded">
+                      <div key={i} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                         <span className="flex-1 text-sm">{obj}</span>
                         <Button type="button" variant="ghost" size="icon" onClick={() => eliminarObjetivo(i)}>
                           <X className="h-4 w-4" />
@@ -8747,7 +10365,7 @@ export function CreateLessonForm() {
                     placeholder="Ej: Hello, Good morning, How are you?"
                     value={vocabularioTemp}
                     onChange={(e) => setVocabularioTemp(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarVocabulario())}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), agregarVocabulario())}
                   />
                   <Button type="button" onClick={agregarVocabulario} size="icon">
                     <Plus className="h-4 w-4" />
@@ -8756,17 +10374,13 @@ export function CreateLessonForm() {
                 {formData.contenido.vocabulario_clave.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {formData.contenido.vocabulario_clave.map((vocab, i) => (
-                      <Badge key={i} variant="secondary">
+                      <Badge key={i} variant="secondary" className="flex items-center gap-1">
                         {vocab}
-                        <button type="button" onClick={() => {
-                          setFormData({
-                            ...formData,
-                            contenido: {
-                              ...formData.contenido,
-                              vocabulario_clave: formData.contenido.vocabulario_clave.filter((_, idx) => idx !== i)
-                            }
-                          })
-                        }} className="ml-1">
+                        <button 
+                          type="button" 
+                          onClick={() => eliminarVocabulario(i)}
+                          className="hover:bg-muted-foreground/20 rounded-full p-0.5"
+                        >
                           <X className="h-3 w-3" />
                         </button>
                       </Badge>
@@ -8781,10 +10395,10 @@ export function CreateLessonForm() {
                   id="introduccion"
                   placeholder="Breve introducción al tema de la lección..."
                   value={formData.contenido.introduccion}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    contenido: {...formData.contenido, introduccion: e.target.value}
-                  })}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    contenido: {...prev.contenido, introduccion: e.target.value}
+                  }))}
                   rows={3}
                 />
               </div>
@@ -8796,7 +10410,7 @@ export function CreateLessonForm() {
                     placeholder="Ej: saludos, presentaciones, básico"
                     value={etiquetaTemp}
                     onChange={(e) => setEtiquetaTemp(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarEtiqueta())}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), agregarEtiqueta())}
                   />
                   <Button type="button" onClick={agregarEtiqueta} size="icon">
                     <Plus className="h-4 w-4" />
@@ -8805,11 +10419,13 @@ export function CreateLessonForm() {
                 {formData.etiquetas.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {formData.etiquetas.map((tag, i) => (
-                      <Badge key={i} variant="outline">
+                      <Badge key={i} variant="outline" className="flex items-center gap-1">
                         {tag}
-                        <button type="button" onClick={() => {
-                          setFormData({...formData, etiquetas: formData.etiquetas.filter((_, idx) => idx !== i)})
-                        }} className="ml-1">
+                        <button 
+                          type="button" 
+                          onClick={() => eliminarEtiqueta(i)}
+                          className="hover:bg-muted-foreground/20 rounded-full p-0.5"
+                        >
                           <X className="h-3 w-3" />
                         </button>
                       </Badge>
@@ -8818,7 +10434,7 @@ export function CreateLessonForm() {
                 )}
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-col sm:flex-row">
                 <Button type="button" variant="outline" onClick={() => setStep(1)}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Anterior
@@ -8844,7 +10460,7 @@ export function CreateLessonForm() {
             <CardContent className="space-y-6">
               <div className="rounded-lg border-2 border-dashed border-primary/30 p-6">
                 <h3 className="mb-4 font-semibold">Tipos de Actividades Disponibles</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {TIPOS_ACTIVIDAD.map((tipo) => (
                     <Button
                       key={tipo.value}
@@ -8852,25 +10468,29 @@ export function CreateLessonForm() {
                       variant="outline"
                       className="justify-start h-auto p-4"
                       onClick={() => {
-                        // El tipo 'tipo.value' ahora se valida contra 'Actividad['tipo']'
-                        setTipoActividadModal(tipo.value as Actividad['tipo']) 
+                        setTipoActividadModal(tipo.value)
                         setActividadEditando(null)
                         setIndiceEditando(null)
                         setModalActividadOpen(true)
                       }}
                     >
                       <span className="text-2xl mr-3">{tipo.icon}</span>
-                      <span>{tipo.label}</span>
+                      <div className="text-left">
+                        <div className="font-medium">{tipo.label.split(' ')[0]}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {tipo.label.split(' ').slice(1).join(' ')}
+                        </div>
+                      </div>
                     </Button>
                   ))}
                 </div>
               </div>
 
-              {formData.actividades.length > 0 && (
+              {formData.actividades.length > 0 ? (
                 <div className="space-y-3">
                   <h3 className="font-semibold">Actividades Agregadas ({formData.actividades.length})</h3>
                   {formData.actividades.map((act, idx) => (
-                    <div key={idx} className="flex items-center gap-3 rounded-lg border p-3">
+                    <div key={idx} className="flex items-center gap-3 rounded-lg border p-4">
                       <span className="text-2xl">
                         {TIPOS_ACTIVIDAD.find(t => t.value === act.tipo)?.icon || '🎮'}
                       </span>
@@ -8880,36 +10500,36 @@ export function CreateLessonForm() {
                           {TIPOS_ACTIVIDAD.find(t => t.value === act.tipo)?.label} • {act.puntos} pts
                         </p>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditarActividad(act, idx)}
-                        title="Editar actividad"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEliminarActividad(idx)}
-                        title="Eliminar actividad"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditarActividad(act, idx)}
+                          title="Editar actividad"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEliminarActividad(idx)}
+                          title="Eliminar actividad"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
-              )}
-
-              {formData.actividades.length === 0 && (
-                <div className="rounded-lg bg-yellow-50 p-4 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-200">
+              ) : (
+                <div className="rounded-lg bg-yellow-50 p-4 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200">
                   ⚠️ Debes agregar al menos una actividad para continuar
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-col sm:flex-row">
                 <Button type="button" variant="outline" onClick={() => setStep(2)}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Anterior
@@ -8932,31 +10552,108 @@ export function CreateLessonForm() {
           <Card>
             <CardHeader>
               <CardTitle>Paso 4: Recursos Multimedia 📸🎵 (Opcional)</CardTitle>
-              <CardDescription>Próximamente: subir imágenes, audios o videos</CardDescription>
+              <CardDescription>
+                Sube imágenes, audios o videos para enriquecer tu lección
+              </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6">
-              <div className="text-center p-8 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">
-                  💡 La funcionalidad de multimedia se implementará próximamente
-                </p>
+              {/* Área de subida de archivos */}
+              <div>
+                <Label htmlFor="file-upload" className="block mb-2">
+                  📤 Subir Archivos Multimedia
+                </Label>
+                <div className="flex flex-col gap-4">
+                  <label
+                    htmlFor="file-upload"
+                    className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="h-12 w-12 text-muted-foreground mb-3" />
+                      <p className="mb-2 text-sm text-muted-foreground">
+                        <span className="font-semibold">Click para subir</span> o arrastra archivos
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Imágenes, Audio, Video - Max 50MB por archivo
+                      </p>
+                    </div>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      multiple
+                      accept="image/*,audio/*,video/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
 
-              <div className="flex gap-3">
+              {/* Lista de archivos seleccionados */}
+              {archivosMultimedia.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold">
+                    📁 Archivos seleccionados ({archivosMultimedia.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {archivosMultimedia.map((archivoData) => (
+                      <div
+                        key={archivoData.id}
+                        className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800"
+                      >
+                        {archivoData.preview ? (
+                          <img
+                            src={archivoData.preview}
+                            alt={archivoData.file.name}
+                            className="h-12 w-12 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded">
+                            {getFileIcon(archivoData.file.type)}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {archivoData.file.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(archivoData.file.size)}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => eliminarArchivo(archivoData.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 flex-col sm:flex-row">
                 <Button type="button" variant="outline" onClick={() => setStep(3)}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Anterior
                 </Button>
-                <Button type="submit" className="flex-1" disabled={saving}>
-                  {saving ? (
+                <Button 
+                  type="submit" 
+                  className="flex-1" 
+                  disabled={saving || subiendoArchivos}
+                >
+                  {(saving || subiendoArchivos) ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creando lección...
+                      {subiendoArchivos ? 'Subiendo archivos...' : 'Creando lección...'}
                     </>
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
                       Crear Lección Completa
+                      {archivosMultimedia.length > 0 && ` (+${archivosMultimedia.length} archivos)`}
                     </>
                   )}
                 </Button>
@@ -9187,12 +10884,22 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Edit, Eye, Trash2, Loader2 } from "lucide-react"
+import { Edit, Eye, Trash2, Loader2, RefreshCw } from "lucide-react"
 import { useState, useEffect } from "react"
-import { leccionesAPI, type Leccion } from "@/lib/api"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
+
+interface Leccion {
+  id: number
+  titulo: string
+  descripcion: string
+  nivel: string
+  idioma: string
+  duracion_estimada: number
+  estado: string
+  actualizado_en?: string
+}
 
 export function RecentLessons() {
   const [lessons, setLessons] = useState<Leccion[]>([])
@@ -9200,33 +10907,52 @@ export function RecentLessons() {
 
   useEffect(() => {
     cargarLecciones()
+    
+    // ✅ AUTO-REFRESH cada 10 segundos
+    const interval = setInterval(() => {
+      cargarLecciones()
+    }, 10000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const cargarLecciones = async () => {
     try {
       setLoading(true)
-      const response = await leccionesAPI.listar({ 
-        por_pagina: 5,
-        pagina: 1
+      const response = await fetch('http://localhost:5000/api/lecciones?por_pagina=5&pagina=1', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       })
-      setLessons(response.lecciones || [])
+      
+      if (!response.ok) throw new Error('Error al cargar')
+      
+      const data = await response.json()
+      setLessons(data.lecciones || [])
     } catch (error: any) {
-      console.error("Error al cargar lecciones:", error)
-      toast.error("Error al cargar lecciones recientes")
+      console.error("Error:", error)
     } finally {
       setLoading(false)
     }
   }
 
   const handleDelete = async (id: number, titulo: string) => {
-    if (!confirm(`¿Archivar la lección "${titulo}"?`)) return
+    if (!confirm(`¿Archivar "${titulo}"?`)) return
 
     try {
-      await leccionesAPI.eliminar(id)
+      const response = await fetch(`http://localhost:5000/api/lecciones/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (!response.ok) throw new Error('Error')
+      
       toast.success("Lección archivada")
       cargarLecciones()
     } catch (error: any) {
-      toast.error(error.message || "Error al archivar")
+      toast.error("Error al archivar")
     }
   }
 
@@ -9237,26 +10963,20 @@ export function RecentLessons() {
         locale: es 
       })
     } catch {
-      return "Fecha no disponible"
+      return "Hace poco"
     }
   }
 
   const getEstadoBadge = (estado: string) => {
-    const variants = {
+    const variants: Record<string, any> = {
       publicada: "default",
       borrador: "secondary",
       archivada: "outline"
     }
     
-    const labels = {
-      publicada: "Publicada",
-      borrador: "Borrador",
-      archivada: "Archivada"
-    }
-    
     return (
-      <Badge variant={variants[estado as keyof typeof variants] as any}>
-        {labels[estado as keyof typeof labels] || estado}
+      <Badge variant={variants[estado] || "secondary"}>
+        {estado === 'publicada' ? '✅' : estado === 'borrador' ? '📝' : '📦'} {estado}
       </Badge>
     )
   }
@@ -9265,9 +10985,14 @@ export function RecentLessons() {
     <Card className="p-6">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-bold">Lecciones Recientes</h2>
-        <Link href="/admin/lecciones/crear">
-          <Button>Crear Lección</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="icon" onClick={cargarLecciones}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Link href="/admin/lecciones/crear">
+            <Button>Crear Lección</Button>
+          </Link>
+        </div>
       </div>
 
       {loading ? (
@@ -9297,7 +11022,7 @@ export function RecentLessons() {
                     {getEstadoBadge(lesson.estado || 'borrador')}
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <span>Nivel: {lesson.nivel}</span>
+                    <span>{lesson.nivel}</span>
                     <span>•</span>
                     <span>{lesson.idioma}</span>
                     <span>•</span>
@@ -9325,7 +11050,7 @@ export function RecentLessons() {
                     variant="ghost" 
                     size="icon" 
                     title="Archivar"
-                    onClick={() => handleDelete(lesson.id!, lesson.titulo)}
+                    onClick={() => handleDelete(lesson.id, lesson.titulo)}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>

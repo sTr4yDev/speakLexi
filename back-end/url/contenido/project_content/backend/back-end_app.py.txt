@@ -1,6 +1,6 @@
 # ARCHIVO: back-end/app.py
 # URL: https://raw.githubusercontent.com/sTr4yDev/speakLexi/main/back-end/app.py
-# FECHA DESCARGA: 2025-10-29 18:39:42
+# FECHA DESCARGA: 2025-10-30 08:46:21
 # ==================================================
 
 # back-end/app.py
@@ -17,11 +17,10 @@ import os
 # ========================================
 # ⭐ IMPORTAR TODOS LOS MODELOS
 # ========================================
-# Importante: Importar ANTES de init_db() para que SQLAlchemy los registre
 from models.usuario import Usuario, PerfilUsuario, PerfilEstudiante, PerfilProfesor, PerfilAdministrador
 from models.leccion import Leccion, Actividad, leccion_multimedia
 from models.multimedia import Multimedia, ConfiguracionMultimedia
-from models.cursos import Curso, ProgresoCurso  # ← CORREGIDO: era "cursos" debe ser "curso"
+from models.cursos import Curso, ProgresoCurso
 
 # ========================================
 # IMPORTAR BLUEPRINTS
@@ -38,8 +37,26 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
     
-    # FIX CRÍTICO: Deshabilitar trailing slash redirect
+    # ========================================
+    # 🔥 CONFIGURACIÓN CRÍTICA PARA MULTIMEDIA
+    # ========================================
     app.url_map.strict_slashes = False
+    
+    # ✅ CONFIGURAR LÍMITE DE ARCHIVOS (50MB)
+    app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+    
+    # ✅ CONFIGURAR CARPETA DE UPLOADS
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'multimedia')
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'imagen'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'audio'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'video'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'documento'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'thumbnails'), exist_ok=True)
+    
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+    
+    print(f"\n📁 CARPETAS DE MULTIMEDIA CREADAS EN: {UPLOAD_FOLDER}\n")
     
     # ========================================
     # CONFIGURACIÓN CORS
@@ -67,12 +84,10 @@ def create_app(config_class=Config):
     # ========================================
     @jwt.user_identity_loader
     def user_identity_lookup(identity):
-        """Convierte cualquier identidad numérica en string para evitar errores con JWT"""
         return str(identity)
 
     @jwt.user_lookup_loader
     def user_lookup_callback(_jwt_header, jwt_data):
-        """Cargar usuario desde JWT (opcional)"""
         identity = jwt_data["sub"]
         return Usuario.query.filter_by(id=int(identity)).one_or_none()
 
@@ -103,7 +118,6 @@ def create_app(config_class=Config):
     def handle_request_fixes():
         from flask import request
         
-        # Remover trailing slash (excepto root)
         if request.path != '/' and request.path.endswith('/'):
             return redirect(request.path[:-1], code=308)
     
@@ -114,9 +128,9 @@ def create_app(config_class=Config):
     app.register_blueprint(usuario_bp)
     app.register_blueprint(leccion_bp)
     app.register_blueprint(multimedia_bp)
-    app.register_blueprint(curso_bp)  # ← YA ESTÁ REGISTRADO ✅
+    app.register_blueprint(curso_bp)
     
-    # Log de rutas registradas (útil para debugging)
+    # Log de rutas registradas
     if app.debug:
         print("\n" + "="*60)
         print("📋 RUTAS REGISTRADAS:")
@@ -156,11 +170,6 @@ def create_app(config_class=Config):
                 'cursos': '/api/cursos',
                 'lecciones': '/api/lecciones',
                 'multimedia': '/api/multimedia'
-            },
-            'documentacion': {
-                'info_cursos': '/api/cursos/info',
-                'info_lecciones': '/api/lecciones/info',
-                'health': '/health'
             }
         }
     
@@ -168,10 +177,8 @@ def create_app(config_class=Config):
     def health():
         """Endpoint de health check"""
         try:
-            # Verificar conexión a BD
             db.session.execute(db.text('SELECT 1'))
             
-            # Contar recursos
             total_usuarios = Usuario.query.count()
             total_cursos = Curso.query.count()
             total_lecciones = Leccion.query.count()
@@ -188,8 +195,7 @@ def create_app(config_class=Config):
                     'lecciones': total_lecciones,
                     'actividades': total_actividades,
                     'multimedia': total_multimedia
-                },
-                'timestamp': db.func.now()
+                }
             }
         except Exception as e:
             app.logger.error(f'Health check failed: {str(e)}')
@@ -203,10 +209,15 @@ def create_app(config_class=Config):
     def not_found(error):
         return {
             'success': False,
-            'error': 'Endpoint no encontrado',
-            'mensaje': str(error),
-            'ruta_solicitada': str(error.description) if hasattr(error, 'description') else None
+            'error': 'Endpoint no encontrado'
         }, 404
+    
+    @app.errorhandler(413)
+    def file_too_large(error):
+        return {
+            'success': False,
+            'error': 'Archivo muy grande. Máximo: 50MB'
+        }, 413
     
     @app.errorhandler(500)
     def internal_error(error):
@@ -214,25 +225,8 @@ def create_app(config_class=Config):
         app.logger.error(f'Internal error: {str(error)}')
         return {
             'success': False,
-            'error': 'Error interno del servidor',
-            'mensaje': str(error)
+            'error': 'Error interno del servidor'
         }, 500
-    
-    @app.errorhandler(403)
-    def forbidden(error):
-        return {
-            'success': False,
-            'error': 'Acceso denegado',
-            'mensaje': 'No tienes permisos para acceder a este recurso'
-        }, 403
-    
-    @app.errorhandler(401)
-    def unauthorized(error):
-        return {
-            'success': False,
-            'error': 'No autorizado',
-            'mensaje': 'Debes iniciar sesión para acceder a este recurso'
-        }, 401
     
     return app
 
@@ -249,8 +243,7 @@ if __name__ == '__main__':
     print(f"🌐 Servidor: http://localhost:5000")
     print(f"📝 Documentación: http://localhost:5000/")
     print(f"💚 Health check: http://localhost:5000/health")
-    print(f"📚 Info Cursos: http://localhost:5000/api/cursos/info")
-    print(f"📖 Info Lecciones: http://localhost:5000/api/lecciones/info")
+    print(f"📤 Subir Multimedia: POST /api/multimedia/upload")
     print("="*60)
     print("📦 Módulos Cargados:")
     print("   ✅ Autenticación (JWT)")
@@ -258,7 +251,7 @@ if __name__ == '__main__':
     print("   ✅ Sistema de Cursos (A1-C2)")
     print("   ✅ Lecciones Dinámicas")
     print("   ✅ Actividades Gamificadas")
-    print("   ✅ Multimedia")
+    print("   ✅ Multimedia (Imágenes/Audio/Video)")
     print("   ✅ Seguimiento de Progreso")
     print("="*60)
     print("👥 Usuarios Demo:")
